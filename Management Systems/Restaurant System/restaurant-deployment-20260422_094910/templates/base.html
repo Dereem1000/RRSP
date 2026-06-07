@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Restaurant Management System{% endblock %}</title>
+    
+    <!-- Bootstrap CSS for responsive design -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* License status sidebar styles */
+        .license-status-sidebar {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .license-status-sidebar .text-success {
+            color: #28a745 !important;
+        }
+        
+        .license-status-sidebar .text-warning {
+            color: #ffc107 !important;
+        }
+        
+        .license-status-sidebar .text-danger {
+            color: #dc3545 !important;
+        }
+        
+        .license-status-sidebar .text-secondary {
+            color: #6c757d !important;
+        }
+        
+        /* Touchscreen-friendly styles */
+        .btn {
+            min-height: 44px;
+            font-size: 16px;
+            border-radius: 8px;
+            margin: 4px;
+        }
+        
+        .btn-lg {
+            min-height: 60px;
+            font-size: 18px;
+        }
+        
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+        }
+        
+        .form-control {
+            min-height: 44px;
+            font-size: 16px;
+            border-radius: 8px;
+        }
+        
+        .table-responsive {
+            border-radius: 8px;
+        }
+        
+        .status-badge {
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 20px;
+        }
+        
+        .order-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        
+        .order-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: none;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+            width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden;
+        }
+        
+        .sidebar .nav-link {
+            color: white;
+            padding: 16px 20px;
+            margin: 4px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            font-weight: bold;
+        }
+        
+        .main-content {
+            padding: 20px;
+            transition: none;
+        }
+        
+        .main-content.expanded {
+            margin-left: 0;
+        }
+        
+        /* Responsive layout adjustments */
+        @media (min-width: 768px) {
+            .sidebar.collapsed {
+                flex: 0 0 0 !important;
+                max-width: 0 !important;
+            }
+            
+            .sidebar:not(.collapsed) {
+                flex: 0 0 25% !important;
+                max-width: 25% !important;
+            }
+            
+            @media (min-width: 992px) {
+                .sidebar:not(.collapsed) {
+                    flex: 0 0 16.666667% !important;
+                    max-width: 16.666667% !important;
+                }
+            }
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .stats-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        /* Mobile-first responsive design */
+        @media (max-width: 768px) {
+            .sidebar {
+                min-height: auto;
+            }
+            
+            .main-content {
+                padding: 10px;
+            }
+            
+            .btn {
+                min-height: 50px;
+                font-size: 18px;
+            }
+            
+            .stats-number {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Touch-friendly spacing */
+        .touch-spacing {
+            padding: 16px;
+            margin: 8px 0;
+        }
+        
+        .touch-spacing-sm {
+            padding: 12px;
+            margin: 6px 0;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+    <style>
+        .license-status-muted {
+            color: #17a2b8 !important;
+        }
+        .license-status-muted i {
+            color: #17a2b8 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar" id="sidebar">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <h4 class="text-white">Restaurant</h4>
+                        <p class="text-white-50">Welcome, {{ session.name if session.name else 'User' }}</p>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        {% if session and session.user_id and session.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin') }}">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_tables') }}">
+                                <i class="fas fa-utensils me-2"></i>
+                                Manage Tables
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_menu') }}">
+                                <i class="fas fa-utensils me-2"></i>
+                                Manage Menu
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_staff') }}">
+                                <i class="fas fa-users me-2"></i>
+                                Manage Staff
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_inventory') }}">
+                                <i class="fas fa-boxes me-2"></i>
+                                Inventory Management
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_waiter_assignments') }}">
+                                <i class="fas fa-user-friends me-2"></i>
+                                Waiter Assignments
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_settings') }}">
+                                <i class="fas fa-cogs me-2"></i>
+                                System Settings
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_reports') }}">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                Reports Center
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_refund_requests') }}">
+                                <i class="fas fa-undo me-2"></i>
+                                Refund Requests
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if session and session.user_id and session.role == 'chef' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('kitchen') }}">
+                                <i class="fas fa-utensils me-2"></i>
+                                Kitchen
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if session and session.user_id and session.role == 'waiter' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('waiter') }}">
+                                <i class="fas fa-user-tie me-2"></i>
+                                Waiter Panel
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if session and session.user_id and session.role == 'cashier' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('cashier') }}">
+                                <i class="fas fa-cash-register me-2"></i>
+                                Cash Register
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('cash_register_fullscreen') }}">
+                                <i class="fas fa-expand-arrows-alt me-2"></i>
+                                Fullscreen Cash Register
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manual_cash_register') }}">
+                                <i class="fas fa-calculator me-2"></i>
+                                Manual Cash Register
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('table_management') }}">
+                                <i class="fas fa-user-friends me-2"></i>
+                                Table Management
+                            </a>
+                        </li>
+                        {% if session and session.original_role == 'admin' and session.switched_to_cashier %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="switchBackToAdmin(); return false;" style="background-color: rgba(255, 193, 7, 0.2);">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Switch Back to Admin
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endif %}
+                        
+
+                        
+                        {% if session and session.user_id %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Logout
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <!-- Dev Mode Hot Reload Control - Only visible in dev mode -->
+                    {% if dev_mode and session.user_id and session.role == 'admin' %}
+                    <div class="mt-3 pt-3 border-top border-light border-opacity-25">
+                        <div class="px-2">
+                            <small class="text-white-50 d-block mb-2">
+                                <i class="fas fa-code me-1"></i>Dev Mode
+                            </small>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-white small">Hot Reload</span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="navbarHotReloadToggle" 
+                                           {% if hot_reload_enabled %}checked{% endif %}
+                                           onchange="toggleNavbarHotReload()">
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-light w-100" onclick="triggerManualReload()" 
+                                    id="navbarReloadBtn" style="font-size: 0.75rem;">
+                                <i class="fas fa-sync-alt me-1"></i>Reload
+                            </button>
+                            <small class="text-white-50 d-block mt-1 text-center" id="navbarReloadStatus"></small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- License Status at bottom of sidebar - Only show for admin users -->
+                    {% if session.user_id and session.role == 'admin' %}
+                    <div class="license-status-sidebar mt-auto p-2 rounded">
+                        {% if session.license_info %}
+                            {% if session.license_info.offline_mode %}
+                                <div class="d-flex align-items-center justify-content-center text-warning">
+                                    <i class="fas fa-wifi me-2" style="opacity:0.5"></i>
+                                    <small><strong>Offline Mode</strong></small>
+                                </div>
+                                <div class="text-center mt-1">
+                                    <small class="text-warning-emphasis">
+                                        License server unreachable<br>
+                                        Grace period: {{ session.license_info.grace_period }}
+                                        {% if session.license_info.grace_remaining_hours is not none %}
+                                            (~{{ session.license_info.grace_remaining_hours }}h left)
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% elif session.license_info.status == 'active' %}
+                                <div class="d-flex align-items-center justify-content-center license-status-muted">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <small><strong>License Active</strong></small>
+                                </div>
+                                <div class="text-center mt-1">
+                                    <small class="text-white-50">
+                                        {{ session.license_info.type|title }} - 
+                                        {% if session.license_info.time_remaining and session.license_info.time_remaining != 'Unknown' %}
+                                            {{ session.license_info.time_remaining }}
+                                        {% elif session.license_info.expiration_date and session.license_info.expiration_date not in ['None', 'null', ''] %}
+                                            expires {{ session.license_info.expiration_date[:10] }}
+                                        {% elif session.license_info.days_remaining is none or session.license_info.expiration_date is none or not session.license_info.expiration_date %}
+                                            <span class="text-warning">Expiration date not set</span>
+                                            <small class="text-white-50 d-block">(Please refresh or logout/login)</small>
+                                        {% elif session.license_info.days_remaining > 0 %}
+                                            {{ session.license_info.days_remaining }} day{{ 's' if session.license_info.days_remaining != 1 else '' }}
+                                        {% elif session.license_info.days_remaining == 0 %}
+                                            {{ session.license_info.time_remaining|default('Less than 1 day', true) }}
+                                        {% else %}
+                                            {{ session.license_info.days_remaining|abs }} days ago
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% elif session.license_info.status == 'warning' %}
+                                <div class="d-flex align-items-center justify-content-center text-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <small><strong>Expires Soon</strong></small>
+                                </div>
+                                <div class="text-center mt-1">
+                                    <small class="text-white-50">
+                                        {% if session.license_info.time_remaining %}
+                                            {{ session.license_info.time_remaining }} left
+                                        {% elif session.license_info.days_remaining > 0 %}
+                                            {{ session.license_info.days_remaining }} day{{ 's' if session.license_info.days_remaining != 1 else '' }} left
+                                        {% else %}
+                                            {{ session.license_info.days_remaining }} days left
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% elif session.license_info.status == 'expired' %}
+                                <div class="d-flex align-items-center justify-content-center text-danger">
+                                    <i class="fas fa-times-circle me-2"></i>
+                                    <small><strong>License Expired</strong></small>
+                                </div>
+                                <div class="text-center mt-1">
+                                    <small class="text-white-50">
+                                        {% if session.license_info.time_remaining %}
+                                            {{ session.license_info.time_remaining }}
+                                        {% elif session.license_info.days_remaining|abs > 0 %}
+                                            {{ session.license_info.days_remaining|abs }} day{{ 's' if session.license_info.days_remaining|abs != 1 else '' }} ago
+                                        {% else %}
+                                            {{ session.license_info.days_remaining|abs }} days ago
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% else %}
+                                <div class="d-flex align-items-center justify-content-center text-secondary">
+                                    <i class="fas fa-question-circle me-2"></i>
+                                    <small><strong>Status Unknown</strong></small>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center text-secondary">
+                                <i class="fas fa-question-circle me-2"></i>
+                                <small><strong>Status Unknown</strong></small>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </nav>
+            
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <!-- Sidebar Toggle Button -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <button class="btn btn-outline-primary btn-sm" id="sidebarToggle" type="button">
+                        <i class="fas fa-bars"></i> Toggle Menu
+                    </button>
+                </div>
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery for AJAX -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Global Functions -->
+    <script>
+        // Global showAlert function for all pages
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Find the main content area to insert the alert
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.insertBefore(alertDiv, mainContent.firstChild);
+            }
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        
+        // Global currency formatting function
+        function formatCurrency(amount, currency = 'USD') {
+            if (typeof amount !== 'number' || isNaN(amount)) {
+                amount = 0;
+            }
+            
+            const currencySymbols = {
+                'USD': '$',
+                'EUR': '€',
+                'GBP': '£',
+                'JPY': '¥',
+                'TTD': 'TT$'
+            };
+            
+            const symbol = currencySymbols[currency] || '$';
+            
+            // Special handling for TTD (Trinidad and Tobago Dollar)
+            if (currency === 'TTD') {
+                return `${symbol}${amount.toFixed(2)}`;
+            }
+            
+            // Standard formatting for other currencies
+            return `${symbol}${amount.toFixed(2)}`;
+        }
+        
+        // Get current currency from settings or localStorage
+        function getCurrentCurrency() {
+            // Try to get from localStorage first
+            const savedCurrency = localStorage.getItem('systemCurrency');
+            if (savedCurrency) {
+                return savedCurrency;
+            }
+            
+            // Default to USD if no currency is set
+            return 'USD';
+        }
+        
+        // Update currency display across the page
+        function updateCurrencyDisplay() {
+            const currency = getCurrentCurrency();
+            const currencyElements = document.querySelectorAll('[data-currency]');
+            
+            currencyElements.forEach(element => {
+                const amount = parseFloat(element.getAttribute('data-currency'));
+                if (!isNaN(amount)) {
+                    element.textContent = formatCurrency(amount, currency);
+                }
+            });
+        }
+        
+        // Switch back to admin mode
+        function switchBackToAdmin() {
+            if (!confirm('Switch back to admin mode?')) {
+                return;
+            }
+            
+            fetch('/api/admin/switch_back', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Switched back to admin mode', 'success');
+                    // Redirect to admin dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1000);
+                } else {
+                    showAlert(data.message || 'Failed to switch back to admin mode', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error switching back to admin:', error);
+                showAlert('Error switching back to admin mode: ' + error.message, 'danger');
+            });
+        }
+        
+        // Dev Mode Hot Reload Functions
+        {% if dev_mode %}
+        function toggleNavbarHotReload() {
+            const toggle = document.getElementById('navbarHotReloadToggle');
+            const enabled = toggle.checked;
+            
+            fetch('/api/dev/toggle_hot_reload', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: enabled})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const statusEl = document.getElementById('navbarReloadStatus');
+                    statusEl.textContent = data.message;
+                    statusEl.className = 'text-success d-block mt-1 text-center';
+                    setTimeout(() => {
+                        statusEl.textContent = '';
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling hot reload:', error);
+            });
+        }
+        
+        function triggerManualReload() {
+            const btn = document.getElementById('navbarReloadBtn');
+            const statusEl = document.getElementById('navbarReloadStatus');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reloading...';
+            
+            fetch('/api/dev/trigger_reload', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusEl.textContent = data.message;
+                    statusEl.className = 'text-success d-block mt-1 text-center';
+                } else {
+                    statusEl.textContent = data.message || 'Error triggering reload';
+                    statusEl.className = 'text-danger d-block mt-1 text-center';
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Reload';
+                }
+            })
+            .catch(error => {
+                console.error('Error triggering reload:', error);
+                statusEl.textContent = 'Error triggering reload';
+                statusEl.className = 'text-danger d-block mt-1 text-center';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Reload';
+            });
+        }
+        {% endif %}
+    </script>
+    
+    <!-- Sidebar Toggle Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const mainContent = document.querySelector('.main-content');
+            
+                            // Only setup sidebar toggle if elements exist
+            if (sidebar && sidebarToggle && mainContent) {
+                // Check localStorage for sidebar state, default to collapsed
+                const sidebarWasOpen = localStorage.getItem('sidebarOpen') === 'true';
+                
+                if (sidebarWasOpen) {
+                    // Sidebar was open, restore that state
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('expanded');
+                    
+                    // Set Bootstrap column classes for expanded state
+                    sidebar.classList.remove('d-none');
+                    sidebar.classList.add('col-md-3', 'col-lg-2');
+                    mainContent.classList.remove('col-12');
+                    mainContent.classList.add('col-md-9', 'col-lg-10');
+                    
+                    // Update button text
+                    const icon = sidebarToggle.querySelector('i');
+                    icon.className = 'fas fa-times';
+                    sidebarToggle.innerHTML = '<i class="fas fa-times"></i> Hide Menu';
+                } else {
+                    // Sidebar was closed, start collapsed
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('expanded');
+                    
+                    // Set Bootstrap column classes for collapsed state
+                    sidebar.classList.remove('col-md-3', 'col-lg-2');
+                    sidebar.classList.add('d-none');
+                    mainContent.classList.remove('col-md-9', 'col-lg-10');
+                    mainContent.classList.add('col-12');
+                }
+                
+                // Toggle sidebar on button click
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                    
+                    // Dynamically adjust Bootstrap column classes
+                    if (sidebar.classList.contains('collapsed')) {
+                        // Sidebar collapsed - remove column classes and hide
+                        sidebar.classList.remove('col-md-3', 'col-lg-2');
+                        sidebar.classList.add('d-none');
+                        // Expand main content to full width
+                        mainContent.classList.remove('col-md-9', 'col-lg-10');
+                        mainContent.classList.add('col-12');
+                        
+                        // Save state to localStorage
+                        localStorage.setItem('sidebarOpen', 'false');
+                    } else {
+                        // Sidebar expanded - restore column classes and show
+                        sidebar.classList.remove('d-none');
+                        sidebar.classList.add('col-md-3', 'col-lg-2');
+                        // Restore main content column classes
+                        mainContent.classList.remove('col-12');
+                        mainContent.classList.add('col-md-9', 'col-lg-10');
+                        
+                        // Save state to localStorage
+                        localStorage.setItem('sidebarOpen', 'true');
+                    }
+                    
+                    // Update button text
+                    const icon = sidebarToggle.querySelector('i');
+                    if (sidebar.classList.contains('collapsed')) {
+                        icon.className = 'fas fa-bars';
+                        sidebarToggle.innerHTML = '<i class="fas fa-bars"></i> Show Menu';
+                    } else {
+                        icon.className = 'fas fa-times';
+                        sidebarToggle.innerHTML = '<i class="fas fa-times"></i> Hide Menu';
+                    }
+                });
+                
+                // Prevent navigation links from closing the sidebar
+                const navLinks = document.querySelectorAll('.sidebar a[href]');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        // Prevent any default behavior that might interfere
+                        e.stopPropagation();
+                        
+                        // Always ensure sidebar is open when navigating
+                        if (sidebar.classList.contains('collapsed')) {
+                            sidebar.classList.remove('collapsed');
+                            mainContent.classList.remove('expanded');
+                            
+                            // Update Bootstrap column classes
+                            sidebar.classList.remove('d-none');
+                            sidebar.classList.add('col-md-3', 'col-lg-2');
+                            mainContent.classList.remove('col-12');
+                            mainContent.classList.add('col-md-9', 'col-lg-10');
+                            
+                            // Update button text
+                            const icon = sidebarToggle.querySelector('i');
+                            icon.className = 'fas fa-times';
+                            sidebarToggle.innerHTML = '<i class="fas fa-times"></i> Hide Menu';
+                        }
+                        
+                        // Save the open state to localStorage before navigating
+                        localStorage.setItem('sidebarOpen', 'true');
+                    });
+                });
+                
+                // Note: Auto-close functionality removed to prevent interference with navigation
+                // Users can manually toggle the sidebar using the toggle button
+            }
+        });
+        
+        // License status refresh function
+        function refreshLicenseStatus() {
+            const refreshBtn = document.querySelector('button[onclick="refreshLicenseStatus()"]');
+            const icon = refreshBtn.querySelector('i');
+            
+            // Show loading state
+            icon.className = 'fas fa-spinner fa-spin';
+            refreshBtn.disabled = true;
+            
+            // Make API call to check license status
+            fetch('/api/check_restaurant_license')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.valid) {
+                        // Update license info in session (this would require a page reload in a real implementation)
+                        // For now, just show success message
+                        showLicenseStatusMessage('License status refreshed successfully', 'success');
+                    } else {
+                        showLicenseStatusMessage('License validation failed: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showLicenseStatusMessage('Error checking license status: ' + error.message, 'error');
+                })
+                .finally(() => {
+                    // Reset button state
+                    icon.className = 'fas fa-sync-alt';
+                    refreshBtn.disabled = false;
+                });
+        }
+        
+        // Show license status message
+        function showLicenseStatusMessage(message, type) {
+            // Create a temporary message element
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+            messageDiv.style.position = 'fixed';
+            messageDiv.style.bottom = '60px';  // Position above the license status bar
+            messageDiv.style.right = '20px';
+            messageDiv.style.zIndex = '1060';
+            messageDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(messageDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+        
+        // Auto-refresh license status every 5 minutes
+        setInterval(() => {
+            if (document.getElementById('licenseStatusBar')) {
+                refreshLicenseStatus();
+            }
+        }, 300000); // 5 minutes
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+    
+</body>
+</html>

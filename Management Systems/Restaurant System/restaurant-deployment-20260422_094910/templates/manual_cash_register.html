@@ -1,0 +1,738 @@
+{% extends "base.html" %}
+
+{% block title %}Manual Cash Register - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">
+                <i class="fas fa-calculator text-primary me-2"></i>
+                Manual Cash Register
+            </h1>
+            <p class="text-muted">Process manual payments and standalone transactions</p>
+        </div>
+    </div>
+    
+    <!-- Manual Cash Register Interface -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        Manual Payment Entry
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="manualPaymentForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="manualAmount" class="form-label">Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="text" class="form-control form-control-lg" id="manualAmount" placeholder="0.00" readonly required>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="showKeypad()">
+                                            <i class="fas fa-keyboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="manualPaymentMethod" class="form-label">Payment Method</label>
+                                    <select class="form-select" id="manualPaymentMethod" required>
+                                        <option value="">Select Payment Method</option>
+                                        <option value="cash">Cash</option>
+                                        <option value="card">Credit/Debit Card</option>
+                                        <option value="mobile">Mobile Payment</option>
+                                        <option value="check">Check</option>
+                                        <option value="gift_card">Gift Card</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="manualCustomerName" class="form-label">Customer Name (Optional)</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="manualCustomerName" placeholder="Customer name" readonly>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="showKeyboard('manualCustomerName')">
+                                            <i class="fas fa-keyboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="manualNotes" class="form-label">Notes</label>
+                                    <div class="input-group">
+                                        <textarea class="form-control" id="manualNotes" rows="3" placeholder="Any additional notes..." readonly></textarea>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="showKeyboard('manualNotes')">
+                                            <i class="fas fa-keyboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check me-2"></i>
+                                Process Payment
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-lg" onclick="clearManualForm()">
+                                <i class="fas fa-eraser me-2"></i>
+                                Clear
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Quick Amount Buttons -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Quick Amount Buttons
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-2">
+                            <button class="btn btn-outline-primary w-100" onclick="addToAmount(5.00)">$5.00</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-outline-primary w-100" onclick="addToAmount(10.00)">$10.00</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-outline-primary w-100" onclick="addToAmount(20.00)">$20.00</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-outline-primary w-100" onclick="addToAmount(50.00)">$50.00</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-outline-primary w-100" onclick="addToAmount(100.00)">$100.00</button>
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-outline-primary w-100" onclick="addToAmount(0.01)">$0.01</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Today's Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Today's Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="stats-number text-primary" id="totalTransactions">0</div>
+                            <div class="stats-label">Transactions</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-number text-success" id="totalAmount">$0.00</div>
+                            <div class="stats-label">Total Amount</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Transactions -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Recent Transactions
+                    </h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadManualTransactions()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="manualTransactionsList">
+                        <small class="text-muted">Loading transactions...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Virtual Keypad Modal -->
+<div class="modal fade" id="keypadModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enter Amount</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-lg text-center" id="keypadDisplay" readonly>
+                </div>
+                <div class="keypad-grid">
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('7')">7</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('8')">8</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('9')">9</button></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('4')">4</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('5')">5</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('6')">6</button></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('1')">1</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('2')">2</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('3')">3</button></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('0')">0</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('.')">.</button></div>
+                        <div class="col-4"><button class="btn btn-outline-danger w-100" onclick="keypadClear()">C</button></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="keypadDone()">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Virtual Keyboard Modal -->
+<div class="modal fade" id="keyboardModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enter Text</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-lg" id="keyboardDisplay" readonly>
+                </div>
+                <div class="keyboard-container">
+                    <!-- Row 1 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('1')">1</button>
+                        <button class="keyboard-key" onclick="keyboardInput('2')">2</button>
+                        <button class="keyboard-key" onclick="keyboardInput('3')">3</button>
+                        <button class="keyboard-key" onclick="keyboardInput('4')">4</button>
+                        <button class="keyboard-key" onclick="keyboardInput('5')">5</button>
+                        <button class="keyboard-key" onclick="keyboardInput('6')">6</button>
+                        <button class="keyboard-key" onclick="keyboardInput('7')">7</button>
+                        <button class="keyboard-key" onclick="keyboardInput('8')">8</button>
+                        <button class="keyboard-key" onclick="keyboardInput('9')">9</button>
+                        <button class="keyboard-key" onclick="keyboardInput('0')">0</button>
+                    </div>
+                    <!-- Row 2 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('q')">Q</button>
+                        <button class="keyboard-key" onclick="keyboardInput('w')">W</button>
+                        <button class="keyboard-key" onclick="keyboardInput('e')">E</button>
+                        <button class="keyboard-key" onclick="keyboardInput('r')">R</button>
+                        <button class="keyboard-key" onclick="keyboardInput('t')">T</button>
+                        <button class="keyboard-key" onclick="keyboardInput('y')">Y</button>
+                        <button class="keyboard-key" onclick="keyboardInput('u')">U</button>
+                        <button class="keyboard-key" onclick="keyboardInput('i')">I</button>
+                        <button class="keyboard-key" onclick="keyboardInput('o')">O</button>
+                        <button class="keyboard-key" onclick="keyboardInput('p')">P</button>
+                    </div>
+                    <!-- Row 3 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('a')">A</button>
+                        <button class="keyboard-key" onclick="keyboardInput('s')">S</button>
+                        <button class="keyboard-key" onclick="keyboardInput('d')">D</button>
+                        <button class="keyboard-key" onclick="keyboardInput('f')">F</button>
+                        <button class="keyboard-key" onclick="keyboardInput('g')">G</button>
+                        <button class="keyboard-key" onclick="keyboardInput('h')">H</button>
+                        <button class="keyboard-key" onclick="keyboardInput('j')">J</button>
+                        <button class="keyboard-key" onclick="keyboardInput('k')">K</button>
+                        <button class="keyboard-key" onclick="keyboardInput('l')">L</button>
+                    </div>
+                    <!-- Row 4 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('z')">Z</button>
+                        <button class="keyboard-key" onclick="keyboardInput('x')">X</button>
+                        <button class="keyboard-key" onclick="keyboardInput('c')">C</button>
+                        <button class="keyboard-key" onclick="keyboardInput('v')">V</button>
+                        <button class="keyboard-key" onclick="keyboardInput('b')">B</button>
+                        <button class="keyboard-key" onclick="keyboardInput('n')">N</button>
+                        <button class="keyboard-key" onclick="keyboardInput('m')">M</button>
+                        <button class="keyboard-key" onclick="keyboardInput(' ')">Space</button>
+                    </div>
+                    <!-- Special Keys Row -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key special-key" onclick="keyboardBackspace()">←</button>
+                        <button class="keyboard-key special-key" onclick="keyboardClear()">Clear</button>
+                        <button class="keyboard-key special-key" onclick="keyboardInput('.')">.</button>
+                        <button class="keyboard-key special-key" onclick="keyboardInput('-')">-</button>
+                        <button class="keyboard-key special-key" onclick="keyboardInput('@')">@</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="keyboardDone()">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payment Receipt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="receiptBody">
+                    <!-- Receipt content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                    <i class="fas fa-print me-2"></i>
+                    Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stats-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.transaction-item {
+    border-left: 3px solid #28a745;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+
+.transaction-item .amount {
+    font-weight: bold;
+    color: #28a745;
+}
+
+.transaction-item .details {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Keypad Styles */
+.keypad-grid .btn {
+    height: 50px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.keypad-grid .btn:hover {
+    transform: scale(1.05);
+}
+
+/* Keyboard Styles */
+.keyboard-container {
+    text-align: center;
+}
+
+.keyboard-row {
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+}
+
+.keyboard-key {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.keyboard-key:hover {
+    background: #e9ecef;
+    transform: scale(1.05);
+}
+
+.keyboard-key.special-key {
+    width: 80px;
+    background: #6c757d;
+    color: white;
+}
+
+.keyboard-key.special-key:hover {
+    background: #5a6268;
+}
+
+#keyboardDisplay {
+    font-family: monospace;
+    font-size: 18px;
+}
+
+#keypadDisplay {
+    font-family: monospace;
+    font-size: 24px;
+    font-weight: bold;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentInputField = '';
+let keypadValue = '';
+let keyboardValue = '';
+
+$(document).ready(function() {
+    loadManualTransactions();
+    loadTodaySummary();
+    
+    // Form submission
+    $('#manualPaymentForm').on('submit', function(e) {
+        e.preventDefault();
+        processManualPayment();
+    });
+    
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        loadManualTransactions();
+        loadTodaySummary();
+    }, 30000);
+});
+
+// Keypad Functions
+function showKeypad() {
+    keypadValue = $('#manualAmount').val() || '';
+    $('#keypadDisplay').val(keypadValue);
+    $('#keypadModal').modal('show');
+}
+
+function keypadInput(key) {
+    if (key === '.') {
+        if (keypadValue.includes('.')) return; // Only one decimal point allowed
+        if (keypadValue === '') keypadValue = '0';
+    }
+    
+    if (key === '0' && keypadValue === '') return; // Don't start with 0
+    
+    keypadValue += key;
+    
+    // Format as currency
+    if (keypadValue.includes('.')) {
+        const parts = keypadValue.split('.');
+        if (parts[1].length > 2) return; // Max 2 decimal places
+    }
+    
+    $('#keypadDisplay').val(keypadValue);
+}
+
+function keypadClear() {
+    keypadValue = '';
+    $('#keypadDisplay').val('');
+}
+
+function keypadDone() {
+    $('#manualAmount').val(keypadValue);
+    $('#keypadModal').modal('hide');
+}
+
+// Keyboard Functions
+function showKeyboard(fieldId) {
+    currentInputField = fieldId;
+    const field = $('#' + fieldId);
+    keyboardValue = field.val() || '';
+    $('#keyboardDisplay').val(keyboardValue);
+    $('#keyboardModal').modal('show');
+}
+
+function keyboardInput(key) {
+    if (currentInputField === 'manualNotes') {
+        // For textarea, limit length
+        if (keyboardValue.length >= 200) return;
+    } else {
+        // For input fields, limit length
+        if (keyboardValue.length >= 50) return;
+    }
+    
+    keyboardValue += key;
+    $('#keyboardDisplay').val(keyboardValue);
+}
+
+function keyboardBackspace() {
+    keyboardValue = keyboardValue.slice(0, -1);
+    $('#keyboardDisplay').val(keyboardValue);
+}
+
+function keyboardClear() {
+    keyboardValue = '';
+    $('#keyboardDisplay').val('');
+}
+
+function keyboardDone() {
+    $('#' + currentInputField).val(keyboardValue);
+    $('#keyboardModal').modal('hide');
+}
+
+function addToAmount(value) {
+    const currentAmount = parseFloat($('#manualAmount').val()) || 0;
+    $('#manualAmount').val((currentAmount + value).toFixed(2));
+}
+
+function clearManualForm() {
+    $('#manualPaymentForm')[0].reset();
+    $('#manualAmount').val('');
+}
+
+function processManualPayment() {
+    const amount = parseFloat($('#manualAmount').val());
+    const paymentMethod = $('#manualPaymentMethod').val();
+    const customerName = $('#manualCustomerName').val();
+    const notes = $('#manualNotes').val();
+    
+    if (!amount || amount <= 0) {
+        showAlert('Please enter a valid amount', 'warning');
+        return;
+    }
+    
+    if (!paymentMethod) {
+        showAlert('Please select a payment method', 'warning');
+        return;
+    }
+    
+    const paymentData = {
+        amount: amount,
+        payment_method: paymentMethod,
+        customer_name: customerName,
+        notes: notes,
+        is_manual: true
+    };
+    
+    $.ajax({
+        url: '/api/create_manual_payment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(paymentData),
+        success: function(response) {
+            if (response.success) {
+                showManualReceipt(paymentData, response.payment_id);
+                clearManualForm();
+                loadManualTransactions();
+                loadTodaySummary();
+                showAlert('Manual payment processed successfully!', 'success');
+            } else {
+                showAlert('Error processing payment: ' + response.message, 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            showAlert('Error processing payment: ' + error, 'danger');
+        }
+    });
+}
+
+function showManualReceipt(paymentData, paymentId) {
+    const { amount, payment_method, customer_name, notes } = paymentData;
+    
+    $('#receiptBody').html(`
+        <div class="text-center mb-4">
+            <h4>Manual Payment Receipt</h4>
+            <p class="text-muted">Restaurant Management System</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Payment ID:</strong><br>
+                <strong>Customer:</strong><br>
+                <strong>Date:</strong><br>
+                <strong>Time:</strong>
+            </div>
+            <div class="col-6 text-end">
+                ${paymentId}<br>
+                ${customer_name || 'Walk-in Customer'}<br>
+                ${new Date().toLocaleDateString()}<br>
+                ${new Date().toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="row">
+            <div class="col-6">
+                <strong>Amount:</strong><br>
+                <strong>Payment Method:</strong><br>
+                ${notes ? '<strong>Notes:</strong><br>' : ''}
+            </div>
+            <div class="col-6 text-end">
+                $${amount.toFixed(2)}<br>
+                ${payment_method.replace('_', ' ').toUpperCase()}<br>
+                ${notes || ''}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <p class="text-muted">Manual transaction - No order associated</p>
+        </div>
+    `);
+    
+    $('#receiptModal').modal('show');
+}
+
+function loadManualTransactions() {
+    $.get('/api/get_manual_transactions')
+        .done(function(data) {
+            const container = $('#manualTransactionsList');
+            
+            if (data.transactions.length === 0) {
+                container.html('<small class="text-muted">No manual transactions today</small>');
+                return;
+            }
+            
+            let html = '';
+            data.transactions.slice(0, 10).forEach(transaction => { // Show only last 10
+                html += `
+                    <div class="transaction-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="amount">$${transaction.amount.toFixed(2)}</div>
+                                <div class="details">
+                                    ${transaction.payment_method.replace('_', ' ').toUpperCase()}
+                                    ${transaction.customer_name ? ' • ' + transaction.customer_name : ''}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">${new Date(transaction.created_at).toLocaleTimeString()}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.html(html);
+        })
+        .fail(function() {
+            $('#manualTransactionsList').html('<small class="text-danger">Failed to load transactions</small>');
+        });
+}
+
+function loadTodaySummary() {
+    $.get('/api/get_manual_transactions')
+        .done(function(data) {
+            const totalTransactions = data.transactions.length;
+            const totalAmount = data.transactions.reduce((sum, t) => sum + t.amount, 0);
+            
+            $('#totalTransactions').text(totalTransactions);
+            $('#totalAmount').text('$' + totalAmount.toFixed(2));
+        })
+        .fail(function() {
+            console.error('Failed to load today summary');
+        });
+}
+
+function printReceipt() {
+    const printContent = document.getElementById('receiptBody').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <meta name="viewport" content="width=280, initial-scale=1.0">
+                <title>Receipt</title>
+                <style>
+                    /* 76mm thermal roll: usable width ~72mm, margins 2mm each side */
+                    @page {
+                        size: 76mm auto;
+                        margin: 2mm;
+                    }
+                    * { box-sizing: border-box; color: #000 !important; }
+                    body {
+                        font-family: Arial, Helvetica, sans-serif;
+                        font-size: 12px;
+                        font-weight: bold;
+                        width: 72mm;
+                        margin: 0 auto;
+                        padding: 0;
+                        color: #000;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .text-center { text-align: center; }
+                    .text-end { text-align: right; }
+                    .mb-4 { margin-bottom: 6px; }
+                    .mb-3 { margin-bottom: 4px; }
+                    .mt-4 { margin-top: 6px; }
+                    h4 { font-size: 13px; margin: 4px 0; }
+                    h6 { font-size: 11px; margin: 3px 0; }
+                    p { margin: 2px 0; }
+                    hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+                    .text-muted { color: #000; }
+                    .row { display: flex; width: 100%; }
+                    .col-6 { width: 50%; }
+                    .d-flex { display: flex; }
+                    .justify-content-between { justify-content: space-between; }
+                    .p-2 { padding: 1px 0; }
+                    .bg-light { background: none; }
+                    .rounded { }
+                    strong { font-weight: bold; }
+                    .alert { display: none; }
+                    html {
+                        height: auto;
+                    }
+                    @media print {
+                        html, body { height: auto; overflow: visible; }
+                        body { width: 72mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function() {
+        printWindow.focus();
+        printWindow.print();
+    };
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('.main-content').prepend(alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,1556 @@
+{% extends "base.html" %}
+
+{% block title %}Database Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-database"></i> Database Management
+                    </h3>
+                    <p class="mb-0">Configure and manage your database connection - Local SQLite or Remote API Server</p>
+                </div>
+            </div>
+
+            <!-- Alert Container -->
+            <div id="alertContainer"></div>
+
+            <!-- Setup Wizard -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-magic"></i> Quick Setup Wizard</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="setup-step" id="step1">
+                                <div class="step-number">1</div>
+                                <h6>Choose Database Type</h6>
+                                <div class="btn-group-vertical w-100" role="group">
+                                    <button type="button" class="btn btn-outline-primary" id="chooseLocalBtn">
+                                        <i class="fas fa-home"></i> Local SQLite
+                                        <small class="d-block">Use local database file</small>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" id="chooseRemoteBtn">
+                                        <i class="fas fa-cloud"></i> Remote API Server
+                                        <small class="d-block">Connect to remote database server</small>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="setup-step" id="step2" style="display: none;">
+                                <div class="step-number">2</div>
+                                <h6>Configure Connection</h6>
+                                <div id="configStep">
+                                    <!-- Configuration will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="setup-step" id="step3" style="display: none;">
+                                <div class="step-number">3</div>
+                                <h6>Test & Connect</h6>
+                                <div id="testStep">
+                                    <button class="btn btn-info w-100 mb-2" id="testConnectionBtn">
+                                        <i class="fas fa-plug"></i> Test Connection
+                                    </button>
+                                    <button class="btn btn-success w-100" id="applyConfigBtn" disabled>
+                                        <i class="fas fa-check"></i> Apply Configuration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Status -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-info-circle"></i> Current Database Status</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refreshStatusBtn">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="databaseStatus">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Configuration -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs"></i> Advanced Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Database Server Executable</h6>
+                            <p class="text-muted">Download the standalone database server executable (34MB)</p>
+                            <button class="btn btn-success" id="downloadPackageBtn">
+                                <i class="fas fa-download"></i> 📦 Download EXE
+                            </button>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <strong>Quick Start:</strong> Download → Double-click → System tray icon appears
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Quick Actions</h6>
+                            <div class="btn-group-vertical w-100" role="group">
+                                <button class="btn btn-outline-primary" id="switchToLocalBtn">
+                                    <i class="fas fa-home"></i> Switch to Local Database
+                                </button>
+                                <button class="btn btn-outline-warning" id="switchToRemoteBtn">
+                                    <i class="fas fa-cloud"></i> Switch to Remote Database
+                                </button>
+                                <hr class="my-2">
+                                <button class="btn btn-outline-danger" id="resetSystemBtn">
+                                    <i class="fas fa-trash-alt"></i> Reset All Data
+                                </button>
+                                <hr class="my-2">
+                                <button class="btn btn-outline-secondary" id="backupDatabaseBtn">
+                                    <i class="fas fa-database"></i> Backup Database
+                                </button>
+                                <button class="btn btn-outline-secondary" id="backupFullSystemBtn">
+                                    <i class="fas fa-archive"></i> Full System Backup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup Management -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-history"></i> Backup Management</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refreshBackupsBtn">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="backupStats" class="mb-3">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <h4 class="mb-0" id="totalBackupsCount">-</h4>
+                                    <small class="text-muted">Total Backups</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <h4 class="mb-0" id="totalBackupsSize">-</h4>
+                                    <small class="text-muted">Total Size</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-light rounded">
+                                    <h4 class="mb-0" id="latestBackupDate">-</h4>
+                                    <small class="text-muted">Latest Backup</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="backupsList">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="sr-only">Loading backups...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Database Status</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="statusModalBody">
+                <!-- Status content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.setup-step {
+    text-align: center;
+    padding: 20px;
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.setup-step.active {
+    border-color: #007bff;
+    background: #e3f2fd;
+}
+
+.setup-step.completed {
+    border-color: #28a745;
+    background: #e8f5e8;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #6c757d;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin: 0 auto 15px;
+    font-size: 18px;
+}
+
+.setup-step.active .step-number {
+    background: #007bff;
+}
+
+.setup-step.completed .step-number {
+    background: #28a745;
+}
+
+.config-form {
+    text-align: left;
+}
+
+.config-form .form-group {
+    margin-bottom: 15px;
+}
+
+.config-form label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-indicator.connected {
+    background: #28a745;
+}
+
+.status-indicator.disconnected {
+    background: #dc3545;
+}
+
+.status-indicator.unknown {
+    background: #ffc107;
+}
+</style>
+
+<!-- Password Verification Modal -->
+<div class="modal fade" id="passwordModal" tabindex="-1" role="dialog" aria-labelledby="passwordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="passwordModalLabel">🔐 Password Verification Required</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <strong>⚠️ WARNING:</strong> You are about to permanently delete ALL system data!
+                </div>
+                <p>To proceed with the data reset, please enter your admin password:</p>
+                <div class="form-group">
+                    <label for="resetPasswordInput">Admin Password:</label>
+                    <input type="password" class="form-control" id="resetPasswordInput" placeholder="Enter admin password" autocomplete="current-password">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmResetBtn">Reset All Data</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+console.log('Database management script starting...');
+
+let currentStep = 1;
+let selectedDbType = null;
+let currentConfig = {};
+
+// Simple function to wait for jQuery
+function waitForJQuery(callback) {
+    if (typeof $ !== 'undefined') {
+        callback();
+    } else {
+        console.log('Waiting for jQuery...');
+        setTimeout(() => waitForJQuery(callback), 100);
+    }
+}
+
+// Store license serial securely
+let secureLicenseSerial = '';
+
+// Load license information
+function loadLicenseInfo() {
+    console.log('Loading license information...');
+    $.ajax({
+        url: '/api/get_license_serial',
+        method: 'GET',
+        success: function(response) {
+            console.log('License API response:', response);
+            if (response.success) {
+                // Store license serial securely (not visible)
+                secureLicenseSerial = response.serial_number;
+                console.log('License serial stored securely');
+                
+                // Keep the field hidden with dots
+                $('#licenseSerial').val('••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••');
+                
+                // Populate license information display
+                $('#licenseType').text(response.license_type || '-');
+                $('#companyName').text(response.company_name || '-');
+                $('#maxUsers').text(response.max_users || '-');
+                $('#activationDate').text(formatDate(response.activation_date));
+                $('#expirationDate').text(formatDate(response.expiration_date));
+                
+                // Show license info card
+                $('#licenseInfoCard').show();
+                
+                console.log('License loaded successfully (hidden)');
+            } else {
+                console.log('No license found or error:', response.error);
+                $('#licenseSerial').val('No license found');
+                $('#licenseInfoCard').hide();
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading license:', error);
+            console.error('XHR status:', xhr.status);
+            console.error('XHR response:', xhr.responseText);
+            $('#licenseSerial').val('Error loading license');
+            $('#licenseInfoCard').hide();
+        }
+    });
+}
+
+// Format date for display
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    } catch (e) {
+        return dateString;
+    }
+}
+
+// Show alert message
+function showAlert(message, type = 'info') {
+    // Remove any existing alerts
+    $('.alert').remove();
+    
+    // Create alert element
+    const alertClass = `alert-${type}`;
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    `;
+    
+    // Insert at the top of the alert container
+    $('#alertContainer').html(alertHtml);
+    
+    // Auto-hide after 5 seconds for success messages
+    if (type === 'success') {
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+}
+
+// Toggle license visibility with authentication
+function toggleLicenseVisibility() {
+    const licenseField = $('#licenseSerial');
+    const showBtn = $('#showLicenseBtn');
+    const icon = showBtn.find('i');
+    
+    if (licenseField.attr('type') === 'password') {
+        // Show license - open modal for authentication
+        $('#passwordModal').modal('show');
+        $('#passwordInput').focus();
+        $('#passwordError').hide();
+        $('#passwordInput').val('');
+    } else {
+        // Hide license
+        licenseField.attr('type', 'password');
+        licenseField.val('••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••');
+        icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        showBtn.html('<i class="fas fa-eye"></i> Show');
+        showBtn.removeClass('btn-outline-danger').addClass('btn-outline-secondary');
+    }
+}
+
+// Handle password verification
+function verifyPassword() {
+    const password = $('#passwordInput').val();
+    if (!password) {
+        $('#passwordError').text('Please enter your password').show();
+        return;
+    }
+    
+    // Disable button and show loading
+    $('#verifyPasswordBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Verifying...');
+    
+    $.ajax({
+        url: '/api/verify_password',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({password: password}),
+        success: function(response) {
+            if (response.success) {
+                // Close modal
+                $('#passwordModal').modal('hide');
+                
+                // Show the actual license serial
+                const licenseField = $('#licenseSerial');
+                const showBtn = $('#showLicenseBtn');
+                const icon = showBtn.find('i');
+                
+                licenseField.attr('type', 'text');
+                licenseField.val(secureLicenseSerial);
+                icon.removeClass('fa-eye').addClass('fa-eye-slash');
+                showBtn.html('<i class="fas fa-eye-slash"></i> Hide');
+                showBtn.removeClass('btn-outline-secondary').addClass('btn-outline-danger');
+            } else {
+                $('#passwordError').text(response.error || 'Invalid password. Access denied.').show();
+            }
+        },
+        error: function() {
+            $('#passwordError').text('Authentication failed. Please try again.').show();
+        },
+        complete: function() {
+            // Re-enable button
+            $('#verifyPasswordBtn').prop('disabled', false).html('Verify');
+        }
+    });
+}
+
+// Initialize when jQuery is ready
+waitForJQuery(function() {
+    console.log('jQuery is ready!');
+    
+    $(document).ready(function() {
+        console.log('Document ready, setting up database management...');
+        
+        // Check for auto-setup parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoSetup = urlParams.get('auto_setup');
+        
+        if (autoSetup === 'remote') {
+            console.log('🔄 Auto-setup: Remote database mode detected');
+            // Auto-select remote database and go to step 2
+            setTimeout(() => {
+                selectDatabaseType('remote');
+                console.log('✅ Auto-selected remote database mode');
+            }, 500);
+        }
+        
+        // Load license information
+        loadLicenseInfo();
+        
+        // Password modal event handlers will be set up after modal is created
+        
+        // Simple button click handlers
+        $(document).on('click', '#chooseLocalBtn', function(e) {
+            e.preventDefault();
+            console.log('Local button clicked!');
+            selectDatabaseType('local');
+        });
+        
+        $(document).on('click', '#chooseRemoteBtn', function(e) {
+            e.preventDefault();
+            console.log('Remote button clicked!');
+            selectDatabaseType('remote');
+        });
+        
+        $(document).on('click', '#testConnectionBtn', function(e) {
+            e.preventDefault();
+            testDatabaseConnection();
+        });
+        
+        $(document).on('click', '#applyConfigBtn', function(e) {
+            e.preventDefault();
+            applyConfiguration();
+        });
+        
+        $(document).on('click', '#downloadPackageBtn', function(e) {
+            e.preventDefault();
+            downloadDatabasePackage();
+        });
+        
+        $(document).on('click', '#switchToLocalBtn', function(e) {
+            e.preventDefault();
+            switchToLocalDatabase();
+        });
+        
+        $(document).on('click', '#switchToRemoteBtn', function(e) {
+            e.preventDefault();
+            switchToRemoteDatabase();
+        });
+        
+        $(document).on('click', '#refreshStatusBtn', function(e) {
+            e.preventDefault();
+            loadDatabaseStatus();
+        });
+        
+        $(document).on('click', '#resetSystemBtn', function(e) {
+            e.preventDefault();
+            resetSystemData();
+        });
+
+        // Backups
+        $(document).on('click', '#backupDatabaseBtn', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating Backup...');
+            
+            showAlert('Creating database backup...', 'info');
+            
+            $.ajax({
+                url: '/api/backup_database',
+                method: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        showAlert('Database backup created successfully! Backup saved to backups directory.', 'success');
+                        // Refresh backup list
+                        setTimeout(function() {
+                            loadBackups();
+                        }, 500);
+                    } else {
+                        showAlert('Backup failed: ' + (response.error || 'Unknown error'), 'danger');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showAlert('Error creating backup: ' + error, 'danger');
+                },
+                complete: function() {
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        });
+        $(document).on('click', '#backupFullSystemBtn', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating Backup...');
+            
+            showAlert('Creating full system backup (this may take a moment)...', 'info');
+            
+            $.ajax({
+                url: '/api/backup_full_system',
+                method: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        showAlert('Full system backup created successfully! Backup saved to backups directory.', 'success');
+                        // Refresh backup list
+                        setTimeout(function() {
+                            loadBackups();
+                        }, 500);
+                    } else {
+                        showAlert('Backup failed: ' + (response.error || 'Unknown error'), 'danger');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showAlert('Error creating backup: ' + error, 'danger');
+                },
+                complete: function() {
+                    btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        });
+        
+        // Backup Management
+        $(document).on('click', '#refreshBackupsBtn', function(e) {
+            e.preventDefault();
+            loadBackups();
+        });
+        
+        // Handle password modal confirm button
+        $(document).on('click', '#confirmResetBtn', function(e) {
+            e.preventDefault();
+            console.log('Confirm reset button clicked');
+            
+            const password = $('#resetPasswordInput').val();
+            console.log('Password entered:', password ? 'Yes' : 'No');
+            
+            if (!password) {
+                console.log('No password entered, showing warning');
+                showAlert('Please enter your admin password', 'warning');
+                return;
+            }
+            
+            console.log('Closing modal and calling performReset');
+            // Close the modal
+            $('#passwordModal').modal('hide');
+            
+            // Perform the reset
+            performReset(password);
+        });
+        
+        // Handle Enter key in password input
+        $(document).on('keypress', '#resetPasswordInput', function(e) {
+            if (e.which === 13) { // Enter key
+                $('#confirmResetBtn').click();
+            }
+        });
+        
+        // Load initial data
+        loadDatabaseConfig();
+        loadDatabaseStatus();
+        loadBackups();
+        
+        console.log('All event handlers set up!');
+    });
+});
+
+// Backup Management Functions
+function loadBackups() {
+    $('#backupsList').html(`
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Loading backups...</span>
+            </div>
+        </div>
+    `);
+    
+    $.ajax({
+        url: '/api/list_backups',
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                renderBackups(response.backups);
+                updateBackupStats(response);
+            } else {
+                $('#backupsList').html(`
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${response.error || 'Failed to load backups'}
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading backups:', error);
+            $('#backupsList').html(`
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error loading backups: ${error}
+                </div>
+            `);
+        }
+    });
+}
+
+function renderBackups(backups) {
+    const container = $('#backupsList');
+    
+    if (backups.length === 0) {
+        container.html(`
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                No backups found. Create your first backup using the buttons above.
+            </div>
+        `);
+        return;
+    }
+    
+    let html = '<div class="table-responsive"><table class="table table-hover">';
+    html += `
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Filename</th>
+                <th>Size</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    backups.forEach(function(backup) {
+        const typeIcon = backup.type === 'database' ? 'fa-database' : 'fa-archive';
+        const typeBadge = backup.type === 'database' ? 'bg-primary' : 'bg-info';
+        const typeText = backup.type === 'database' ? 'Database' : 'Full System';
+        
+        // Format size
+        let sizeText = '';
+        if (backup.size_mb >= 1) {
+            sizeText = `${backup.size_mb} MB`;
+        } else {
+            sizeText = `${backup.size_kb} KB`;
+        }
+        
+        html += `
+            <tr data-backup-path="${backup.path}">
+                <td>
+                    <span class="badge ${typeBadge}">
+                        <i class="fas ${typeIcon}"></i> ${typeText}
+                    </span>
+                </td>
+                <td>
+                    <code class="small">${escapeHtml(backup.filename)}</code>
+                </td>
+                <td>${sizeText}</td>
+                <td>${backup.modified_display}</td>
+                <td>
+                    <span class="badge bg-secondary" data-verification-status="${backup.path}">
+                        <i class="fas fa-question-circle"></i> Not Verified
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary btn-sm" onclick="verifyBackup('${backup.path.replace(/'/g, "\\'")}')" title="Verify Backup">
+                            <i class="fas fa-check-circle"></i> Verify
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="downloadBackup('${backup.path.replace(/'/g, "\\'")}', '${backup.filename.replace(/'/g, "\\'")}')" title="Download">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table></div>';
+    container.html(html);
+    
+    // Auto-verify all backups (optional - can be removed if too slow)
+    // backups.forEach(function(backup) {
+    //     setTimeout(function() {
+    //         verifyBackup(backup.path, true);
+    //     }, 1000);
+    // });
+}
+
+function updateBackupStats(response) {
+    $('#totalBackupsCount').text(response.total_count || 0);
+    
+    if (response.total_size_mb >= 1) {
+        $('#totalBackupsSize').text(response.total_size_mb + ' MB');
+    } else {
+        const sizeKb = Math.round(response.total_size_mb * 1024);
+        $('#totalBackupsSize').text(sizeKb + ' KB');
+    }
+    
+    if (response.backups && response.backups.length > 0) {
+        const latest = response.backups[0];
+        $('#latestBackupDate').text(latest.modified_display || 'Unknown');
+    } else {
+        $('#latestBackupDate').text('No backups');
+    }
+}
+
+function verifyBackup(backupPath, silent) {
+    if (!silent) {
+        showAlert('Verifying backup integrity...', 'info');
+    }
+    
+    const statusBadge = $(`[data-verification-status="${backupPath}"]`);
+    statusBadge.html('<i class="fas fa-spinner fa-spin"></i> Verifying...');
+    statusBadge.removeClass('bg-secondary bg-success bg-danger').addClass('bg-warning');
+    
+    $.ajax({
+        url: '/api/verify_backup',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ backup_path: backupPath }),
+        success: function(response) {
+            if (response.success) {
+                if (response.is_valid) {
+                    statusBadge.html('<i class="fas fa-check-circle"></i> Valid');
+                    statusBadge.removeClass('bg-warning bg-danger').addClass('bg-success');
+                    if (!silent) {
+                        showAlert('Backup verification successful: ' + response.message, 'success');
+                    }
+                } else {
+                    statusBadge.html('<i class="fas fa-times-circle"></i> Invalid');
+                    statusBadge.removeClass('bg-warning bg-success').addClass('bg-danger');
+                    if (!silent) {
+                        showAlert('Backup verification failed: ' + response.message, 'danger');
+                    }
+                }
+            } else {
+                statusBadge.html('<i class="fas fa-question-circle"></i> Error');
+                statusBadge.removeClass('bg-warning bg-success').addClass('bg-danger');
+                if (!silent) {
+                    showAlert('Verification error: ' + (response.error || 'Unknown error'), 'danger');
+                }
+            }
+        },
+        error: function(xhr, status, error) {
+            statusBadge.html('<i class="fas fa-question-circle"></i> Error');
+            statusBadge.removeClass('bg-warning bg-success').addClass('bg-danger');
+            if (!silent) {
+                showAlert('Error verifying backup: ' + error, 'danger');
+            }
+        }
+    });
+}
+
+function downloadBackup(backupPath, filename) {
+    // Create a temporary download link
+    const link = document.createElement('a');
+    link.href = '/api/download_backup?path=' + encodeURIComponent(backupPath);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showAlert('Download started: ' + filename, 'info');
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function selectDatabaseType(type) {
+    console.log('selectDatabaseType called with type:', type);
+    selectedDbType = type;
+    
+    // Update step 1 with immediate visual feedback
+    $('#step1 .btn').removeClass('btn-primary btn-success').addClass('btn-outline-primary btn-outline-success');
+    if (type === 'local') {
+        $('#chooseLocalBtn').removeClass('btn-outline-primary').addClass('btn-primary');
+        console.log('Updated local button styling');
+    } else {
+        $('#chooseRemoteBtn').removeClass('btn-outline-success').addClass('btn-success');
+        console.log('Updated remote button styling');
+    }
+    
+    // Show step 2 immediately with animation
+    $('#step2').slideDown(300).addClass('active');
+    console.log('Showing step 2');
+    
+    // Load configuration after a brief delay to ensure step 2 is visible
+    setTimeout(function() {
+        loadConfigurationStep(type);
+    }, 100);
+    
+    // Reset step 3
+    $('#step3').hide();
+    $('#step3').removeClass('active completed');
+    $('#applyConfigBtn').prop('disabled', true);
+    console.log('Reset step 3');
+}
+
+function loadConfigurationStep(type) {
+    console.log('loadConfigurationStep called with type:', type);
+    
+    // Preserve the current license serial value
+    const currentLicenseSerial = $('#licenseSerial').val();
+    
+    let configHtml = '';
+    
+    if (type === 'local') {
+        configHtml = `
+            <div class="config-form">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Local SQLite Database</strong><br>
+                    Your data will be stored in a local SQLite file on this system.
+                </div>
+                <div class="form-group">
+                    <label>Database File Location</label>
+                    <input type="text" class="form-control" value="restaurant.db" readonly>
+                    <small class="form-text text-muted">This is your current local database file</small>
+                </div>
+                <div class="form-group">
+                    <label>Configuration Name</label>
+                    <input type="text" class="form-control" id="configName" value="Local Database">
+                </div>
+            </div>
+        `;
+    } else {
+        configHtml = `
+            <div class="config-form">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Remote API Server</strong><br>
+                    Connect to a remote database server via HTTP API calls.
+                </div>
+                <div class="form-group">
+                    <label for="host">Server Host</label>
+                    <input type="text" class="form-control" id="host" value="localhost">
+                </div>
+                <div class="form-group">
+                    <label for="port">Server Port</label>
+                    <input type="number" class="form-control" id="port" value="5002">
+                </div>
+                <div class="form-group">
+                    <label for="licenseSerial">License Serial</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="licenseSerial" readonly style="background-color: #f8f9fa;" value="••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" type="button" id="showLicenseBtn" onclick="toggleLicenseVisibility()">
+                                <i class="fas fa-eye"></i> Show
+                            </button>
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">Click "Show" to reveal your license serial (requires authentication)</small>
+                </div>
+                
+                <!-- License Information Display -->
+                <div class="card mt-3" id="licenseInfoCard" style="display: none;">
+                    <div class="card-header">
+                        <h6 class="mb-0">Current License Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>License Type:</strong> <span id="licenseType">-</span><br>
+                                <strong>Company:</strong> <span id="companyName">-</span><br>
+                                <strong>Max Users:</strong> <span id="maxUsers">-</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Activation Date:</strong> <span id="activationDate">-</span><br>
+                                <strong>Expiration Date:</strong> <span id="expirationDate">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Password Verification Modal -->
+                <div class="modal fade" id="passwordModal" tabindex="-1" role="dialog" aria-labelledby="passwordModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="passwordModalLabel">Verify Password</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="passwordInput">Enter your password to view license serial:</label>
+                                    <input type="password" class="form-control" id="passwordInput" placeholder="Enter password">
+                                    <small class="form-text text-muted">This is required for security purposes.</small>
+                                </div>
+                                <div id="passwordError" class="alert alert-danger" style="display: none;"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="verifyPasswordBtn">Verify</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="databaseName">Database Name</label>
+                    <input type="text" class="form-control" id="databaseName" value="restaurant_db">
+                </div>
+                <div class="form-group">
+                    <label for="configName">Configuration Name</label>
+                    <input type="text" class="form-control" id="configName" value="Remote Database">
+                </div>
+            </div>
+        `;
+    }
+    
+    $('#configStep').html(configHtml);
+    console.log('Configuration HTML loaded into configStep');
+    
+    // Restore the license serial value if it was preserved
+    if (currentLicenseSerial && type === 'remote') {
+        $('#licenseSerial').val(currentLicenseSerial);
+        console.log('Restored license serial:', currentLicenseSerial);
+    }
+    
+    // Reload license information for remote configuration
+    if (type === 'remote') {
+        loadLicenseInfo();
+        
+        // Set up password modal event handlers after modal is loaded
+        $('#verifyPasswordBtn').off('click').on('click', verifyPassword);
+        $('#passwordInput').off('keypress').on('keypress', function(e) {
+            if (e.which === 13) { // Enter key
+                verifyPassword();
+            }
+        });
+        
+        // Set up modal close handlers
+        $('#passwordModal .close, #passwordModal [data-dismiss="modal"], #passwordModal .btn-secondary').off('click').on('click', function() {
+            console.log('Modal close button clicked');
+            $('#passwordModal').modal('hide');
+        });
+        
+        // Clear password field when modal is hidden
+        $('#passwordModal').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+            $('#passwordInput').val('');
+            $('#passwordError').hide();
+        });
+    }
+    
+    // Show step 3
+    $('#step3').show();
+    $('#step3').addClass('active');
+    console.log('Showing step 3');
+}
+
+function testDatabaseConnection() {
+    const config = getCurrentConfig();
+    
+    $('#testConnectionBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Testing...');
+    
+    $.ajax({
+        url: '/api/test_database_server_connection',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(config)
+    })
+        .done(function(response) {
+            if (response.success) {
+                showAlert('Connection test successful!', 'success');
+                $('#applyConfigBtn').prop('disabled', false);
+                $('#step3').addClass('completed');
+            } else {
+                showAlert('Connection test failed: ' + response.error, 'danger');
+                $('#applyConfigBtn').prop('disabled', true);
+            }
+        })
+        .fail(function() {
+            showAlert('Connection test failed: Unable to reach server', 'danger');
+            $('#applyConfigBtn').prop('disabled', true);
+        })
+        .always(function() {
+            $('#testConnectionBtn').prop('disabled', false).html('<i class="fas fa-plug"></i> Test Connection');
+        });
+}
+
+function applyConfiguration() {
+    const config = getCurrentConfig();
+    
+    $('#applyConfigBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Applying...');
+    
+    if (config.is_remote) {
+        console.log('=== INITIAL SWITCH REQUEST ===');
+        console.log('Making initial switch request to remote database');
+        console.log('Config:', config);
+        console.log('================================');
+        
+        $.ajax({
+        url: '/api/switch_to_remote_database',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(config)
+    })
+            .done(function(response) {
+                if (response.success) {
+                    // Clear any existing alerts before showing success
+                    $('.alert').remove();
+                    showAlert('Successfully switched to remote database!', 'success');
+                    loadDatabaseStatus();
+                    resetWizard();
+                } else if (response.requires_confirmation) {
+                    // Show confirmation dialog for data loss warning
+                    showDataLossConfirmation(response.error, config);
+                } else {
+                    showAlert('Failed to switch to remote database: ' + response.error, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Failed to switch to remote database', 'danger');
+            })
+            .always(function() {
+                $('#applyConfigBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Apply Configuration');
+            });
+    } else {
+        $.ajax({
+            url: '/api/switch_to_local_database',
+            method: 'POST',
+            contentType: 'application/json'
+        })
+            .done(function(response) {
+                if (response.success) {
+                    showAlert('Successfully switched to local database!', 'success');
+                    loadDatabaseStatus();
+                    resetWizard();
+                } else {
+                    showAlert('Failed to switch to local database: ' + response.error, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Failed to switch to local database', 'danger');
+            })
+            .always(function() {
+                $('#applyConfigBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Apply Configuration');
+            });
+    }
+}
+
+function getCurrentConfig() {
+    const config = {
+        is_remote: selectedDbType === 'remote',
+        config_name: $('#configName').val() || 'Database Configuration'
+    };
+    
+    if (selectedDbType === 'remote') {
+        config.host = $('#host').val() || 'localhost';
+        config.port = parseInt($('#port').val()) || 5002;
+        config.licenseSerial = secureLicenseSerial;
+        config.database_name = $('#databaseName').val() || 'restaurant_db';
+    }
+    
+    return config;
+}
+
+function resetWizard() {
+    currentStep = 1;
+    selectedDbType = null;
+    
+    $('#step1 .btn').removeClass('btn-primary btn-success').addClass('btn-outline-primary btn-outline-success');
+    $('#step2').hide().removeClass('active completed');
+    $('#step3').hide().removeClass('active completed');
+    $('#applyConfigBtn').prop('disabled', true);
+}
+
+function loadDatabaseConfig() {
+    $.get('/api/get_database_server_config')
+        .done(function(response) {
+            if (response.success) {
+                currentConfig = response.config;
+                // Pre-populate wizard if already configured
+                if (currentConfig.is_remote) {
+                    selectDatabaseType('remote');
+                    // Pre-fill remote config
+                    setTimeout(() => {
+                        $('#host').val(currentConfig.host || 'localhost');
+                        $('#port').val(currentConfig.port || 5002);
+                        $('#username').val(currentConfig.username || 'database_user');
+                        $('#databaseName').val(currentConfig.database_name || 'restaurant_db');
+                        $('#configName').val(currentConfig.config_name || 'Remote Database');
+                    }, 100);
+                }
+            }
+        })
+        .fail(function() {
+            showAlert('Error loading database configuration', 'danger');
+        });
+}
+
+function loadDatabaseStatus() {
+    $('#databaseStatus').html(`
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+    `);
+    
+    $.get('/api/get_database_server_config')
+        .done(function(response) {
+            if (response.success) {
+                const config = response.config;
+                let statusHtml = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-cog"></i> Current Configuration</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Type:</strong></td>
+                                    <td>
+                                        <span class="status-indicator ${config.is_remote ? 'connected' : 'disconnected'}"></span>
+                                        ${config.is_remote ? 'Remote API Server' : 'Local SQLite'}
+                                    </td>
+                                </tr>`;
+                
+                if (config.is_remote) {
+                    statusHtml += `
+                                <tr><td><strong>Host:</strong></td><td>${config.host || 'N/A'}</td></tr>
+                                <tr><td><strong>Port:</strong></td><td>${config.port || 'N/A'}</td></tr>
+                                <tr><td><strong>Database:</strong></td><td>${config.database_name || 'N/A'}</td></tr>
+                                <tr><td><strong>Username:</strong></td><td>${config.username || 'N/A'}</td></tr>`;
+                } else {
+                    statusHtml += `
+                                <tr><td><strong>Database File:</strong></td><td>restaurant.db</td></tr>
+                                <tr><td><strong>Location:</strong></td><td>Local file system</td></tr>
+                                <tr><td><strong>Type:</strong></td><td>SQLite Database</td></tr>`;
+                }
+                
+                statusHtml += `
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-heartbeat"></i> Connection Status</h6>
+                            <div id="connectionStatus">
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="sr-only">Testing...</span>
+                                    </div>
+                                    <p class="mt-2">Testing connection...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                $('#databaseStatus').html(statusHtml);
+                
+                // Test connection
+                testConnectionForStatus();
+            }
+        })
+        .fail(function() {
+            $('#databaseStatus').html(`
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error loading database status
+                </div>
+            `);
+        });
+}
+
+function testConnectionForStatus() {
+    const config = currentConfig || {};
+    
+    $.ajax({
+        url: '/api/test_database_server_connection',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(config)
+    })
+        .done(function(response) {
+            if (response.success) {
+                $('#connectionStatus').html(`
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>Connected</strong><br>
+                        ${response.message}
+                    </div>
+                `);
+            } else {
+                $('#connectionStatus').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle"></i>
+                        <strong>Connection Failed</strong><br>
+                        ${response.error}
+                    </div>
+                `);
+            }
+        })
+        .fail(function() {
+            $('#connectionStatus').html(`
+                <div class="alert alert-warning">
+                    <i class="fas fa-question-circle"></i>
+                    <strong>Connection Test Failed</strong><br>
+                    Unable to test connection
+                </div>
+            `);
+        });
+}
+
+function downloadDatabasePackage() {
+    $('#downloadPackageBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Preparing Download...');
+    
+    window.location.href = '/api/download_database_server_package';
+    
+    setTimeout(function() {
+        $('#downloadPackageBtn').prop('disabled', false).html('<i class="fas fa-download"></i> 📦 Download EXE');
+    }, 3000);
+}
+
+function switchToLocalDatabase() {
+    if (confirm('Are you sure you want to switch to local database? This will disconnect from any remote database.')) {
+        $.ajax({
+            url: '/api/switch_to_local_database',
+            method: 'POST',
+            contentType: 'application/json'
+        })
+            .done(function(response) {
+                if (response.success) {
+                    showAlert('Switched to local database successfully', 'success');
+                    loadDatabaseStatus();
+                } else {
+                    showAlert('Error switching to local database: ' + response.error, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Error switching to local database', 'danger');
+            });
+    }
+}
+
+function switchToRemoteDatabase() {
+    if (confirm('Are you sure you want to switch to remote database? Make sure the remote server is running and accessible.')) {
+        // Use current config or default values
+        const config = currentConfig || {
+            is_remote: true,
+            host: 'localhost',
+            port: 5002,
+            username: 'database_user',
+            password: 'password',
+            database_name: 'restaurant_db',
+            config_name: 'Remote Database',
+            license_key: ''
+        };
+        
+        $.ajax({
+        url: '/api/switch_to_remote_database',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(config)
+    })
+            .done(function(response) {
+                if (response.success) {
+                    // Clear any existing alerts before showing success
+                    $('.alert').remove();
+                    showAlert('Switched to remote database successfully', 'success');
+                    loadDatabaseStatus();
+                } else if (response.requires_confirmation) {
+                    // Show confirmation dialog for data loss warning
+                    showDataLossConfirmation(response.error, config);
+                } else {
+                    showAlert('Error switching to remote database: ' + response.error, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Error switching to remote database', 'danger');
+            });
+    }
+}
+
+function showDataLossConfirmation(errorMessage, config) {
+    // Show confirmation dialog for data loss warning
+    console.log('=== DATA LOSS CONFIRMATION ===');
+    console.log('Showing data loss confirmation dialog');
+    console.log('Error message:', errorMessage);
+    console.log('Config:', config);
+    console.log('================================');
+    
+    // Create a custom modal instead of using confirm()
+    const modalHtml = `
+        <div class="modal fade" id="dataLossModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title">
+                            <i class="fas fa-exclamation-triangle"></i> Data Loss Warning
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>${errorMessage}</strong></p>
+                        <p>Are you sure you want to proceed? This will switch to the remote database and you may lose your local data.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-warning" id="confirmDataLoss">Proceed Anyway</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    $('#dataLossModal').remove();
+    
+    // Add modal to page
+    $('body').append(modalHtml);
+    
+    // Show modal
+    $('#dataLossModal').modal('show');
+    
+    // Track if user made a decision
+    let userDecisionMade = false;
+    
+    // Handle confirm button click
+    $('#confirmDataLoss').on('click', function() {
+        console.log('=== USER CONFIRMED ===');
+        console.log('User confirmed - proceeding with switch');
+        console.log('Config:', config);
+        console.log('=====================');
+        userDecisionMade = true;
+        $('#dataLossModal').modal('hide');
+        proceedWithRemoteSwitch(config);
+    });
+    
+    // Handle cancel button click
+    $('#dataLossModal .btn-secondary').on('click', function() {
+        console.log('User cancelled - keeping local data safe');
+        userDecisionMade = true;
+        $('#dataLossModal').modal('hide');
+        showAlert('Database switch cancelled. Your local data is safe.', 'info');
+    });
+    
+    // Handle modal close (only show cancelled if no decision was made)
+    $('#dataLossModal').on('hidden.bs.modal', function() {
+        if (!userDecisionMade) {
+            console.log('User cancelled - keeping local data safe');
+            showAlert('Database switch cancelled. Your local data is safe.', 'info');
+        }
+        $(this).remove();
+    });
+}
+
+function proceedWithRemoteSwitch(config) {
+    // Force the switch by bypassing the data check
+    console.log('=== PROCEEDING WITH REMOTE SWITCH ===');
+    console.log('Proceeding with remote switch with force_switch=true');
+    console.log('Config being sent:', config);
+    console.log('=====================================');
+    
+    const requestData = {
+        ...config,
+        force_switch: true  // Add flag to bypass data check
+    };
+    
+    console.log('Request data:', requestData);
+    console.log('Force switch in request data:', requestData.force_switch);
+    console.log('JSON stringified data:', JSON.stringify(requestData));
+    
+    $.ajax({
+        url: '/api/switch_to_remote_database',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(requestData)
+    })
+    .done(function(response) {
+        console.log('Switch response:', response);
+        if (response.success) {
+            // Clear any existing alerts before showing success
+            $('.alert').remove();
+            showAlert('Successfully switched to remote database!', 'success');
+            loadDatabaseStatus();
+            resetWizard();
+        } else {
+            showAlert('Failed to switch to remote database: ' + response.error, 'danger');
+        }
+    })
+    .fail(function(xhr, status, error) {
+        console.log('Switch failed:', xhr, status, error);
+        showAlert('Failed to switch to remote database: ' + error, 'danger');
+    });
+}
+
+function resetSystemData() {
+    // Multi-step confirmation for reset
+    if (!confirm('⚠️ WARNING: This will permanently delete ALL data!\n\n' +
+                'This includes:\n' +
+                '• All user accounts\n' +
+                '• All orders and transactions\n' +
+                '• All menu items and settings\n' +
+                '• All database configurations\n' +
+                '• All license information\n\n' +
+                'This action CANNOT be undone!\n\n' +
+                'Are you absolutely sure you want to continue?')) {
+        return;
+    }
+    
+    // Second confirmation
+    if (!confirm('🔴 FINAL WARNING 🔴\n\n' +
+                'You are about to PERMANENTLY DELETE all data!\n\n' +
+                'This will completely reset the system to its initial state.\n' +
+                'All your work will be lost!\n\n' +
+                'Click OK only if you are absolutely certain!')) {
+        return;
+    }
+    
+    // Show password modal
+    showPasswordModal();
+}
+
+function showPasswordModal() {
+    // Clear the password input
+    $('#resetPasswordInput').val('');
+    
+    // Show the modal
+    $('#passwordModal').modal('show');
+    
+    // Focus on password input
+    $('#passwordModal').on('shown.bs.modal', function() {
+        $('#resetPasswordInput').focus();
+    });
+}
+
+function performReset(password) {
+    console.log('performReset called with password:', password);
+    
+    // Show loading
+    showAlert('Resetting system data... This may take a moment.', 'info');
+    console.log('Loading alert shown');
+    
+    // Make API call to reset system
+    $.ajax({
+        url: '/api/reset_system_data',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            password: password
+        })
+    })
+    .done(function(response) {
+        console.log('Reset API response:', response);
+        
+        if (response.success) {
+            console.log('Reset successful, showing success alert');
+            showAlert('System data reset successfully! Please restart the application.', 'success');
+            // Optionally redirect to login or restart
+            setTimeout(function() {
+                if (confirm('Reset complete! Would you like to restart the application now?')) {
+                    window.location.href = '/login';
+                }
+            }, 2000);
+        } else {
+            console.log('Reset failed, showing error alert');
+            showAlert('Error resetting system: ' + response.error, 'danger');
+        }
+    })
+    .fail(function(xhr, status, error) {
+        console.log('Reset API failed:', xhr, status, error);
+        showAlert('Error resetting system data: ' + error, 'danger');
+    });
+}
+</script>
+{% endblock %}

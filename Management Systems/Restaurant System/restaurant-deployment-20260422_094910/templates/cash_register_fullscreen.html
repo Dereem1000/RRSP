@@ -1,0 +1,3269 @@
+{% extends "base.html" %}
+
+{% block title %}Cash Register Fullscreen - Restaurant Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Hide navigation menu on fullscreen page */
+.navbar, .sidebar {
+    display: none !important;
+}
+
+/* Prevent horizontal overflow at the page level */
+html, body {
+    overflow-x: hidden !important;
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Hide only the show/hide menu toggle switch */
+.btn-toggle, .navbar-toggler, .sidebar-toggle, .btn-toggle-menu, .toggle-menu, .menu-toggle {
+    display: none !important;
+}
+
+/* Hide the specific sidebar toggle button by ID */
+#sidebarToggle {
+    display: none !important;
+}
+
+/* Hide any button with toggle menu text */
+button:contains("Toggle Menu"), button:contains("Hide Menu"), button:contains("Show Menu") {
+    display: none !important;
+}
+
+/* Adjust main content to use full width */
+.main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Fullscreen Styles */
+.fullscreen-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    margin-top: 0;
+}
+
+/* Header Section - moved to top */
+.header-section {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+    margin-top: 0;
+}
+
+.current-time {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: white;
+}
+
+.current-date {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Main Grid */
+.main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 20px;
+    margin-bottom: 0;
+    min-height: 60vh;
+}
+
+.left-column, .center-column, .right-column {
+    min-height: 100%;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+    padding: 20px;
+}
+
+.card-body {
+    padding: 25px;
+}
+
+/* Form Elements */
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    font-size: 1.1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Quick Amount Buttons */
+.quick-amount-btn {
+    border-radius: 15px;
+    padding: 20px 10px;
+    transition: all 0.3s;
+}
+
+.quick-amount-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.amount-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.amount-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+
+
+/* Stats */
+.stats-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Order Cards */
+.order-card {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-left: 4px solid #28a745;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+.order-amount {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.order-details {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Keypad and Keyboard Styles */
+.keypad-grid .btn {
+    height: 60px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.keyboard-key {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.keyboard-key:hover {
+    background: #e9ecef;
+    transform: scale(1.05);
+}
+
+.keyboard-key.special-key {
+    width: 100px;
+    background: #6c757d;
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .left-column, .center-column, .right-column {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-section {
+        padding: 15px;
+    }
+    
+    .current-time {
+        font-size: 2rem;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+    
+    .quick-amount-btn {
+        padding: 15px 10px;
+    }
+    
+    .amount-value {
+        font-size: 1.2rem;
+    }
+}
+
+/* Auto-adjust based on window size */
+.fullscreen-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Dynamic font sizing based on viewport */
+@media (max-width: 1400px) {
+    .display-4 { font-size: 2.5rem; }
+    .current-time { font-size: 2rem; }
+    .current-date { font-size: 1rem; }
+    .card-header h3 { font-size: 1.5rem; }
+    .form-label { font-size: 1.1rem; }
+    .amount-value { font-size: 1.3rem; }
+}
+
+@media (max-width: 1000px) {
+    .display-4 { font-size: 2rem; }
+    .current-time { font-size: 1.8rem; }
+    .current-date { font-size: 0.9rem; }
+    .card-header h3 { font-size: 1.3rem; }
+    .form-label { font-size: 1rem; }
+    .amount-value { font-size: 1.1rem; }
+    .quick-amount-btn { padding: 15px 8px; }
+}
+
+@media (max-width: 768px) {
+    .display-4 { font-size: 1.8rem; }
+    .current-time { font-size: 1.5rem; }
+    .current-date { font-size: 0.8rem; }
+    .card-header h3 { font-size: 1.2rem; }
+    .form-label { font-size: 0.9rem; }
+    .amount-value { font-size: 1rem; }
+    .quick-amount-btn { padding: 12px 6px; }
+    .card-body { padding: 15px; }
+    .header-section { padding: 10px; }
+}
+
+@media (max-width: 480px) {
+    .display-4 { font-size: 1.5rem; }
+    .current-time { font-size: 1.3rem; }
+    .current-date { font-size: 0.7rem; }
+    .card-header h3 { font-size: 1.1rem; }
+    .form-label { font-size: 0.8rem; }
+    .amount-value { font-size: 0.9rem; }
+    .quick-amount-btn { padding: 10px 5px; }
+    .card-body { padding: 12px; }
+    .header-section { padding: 8px; }
+    .fullscreen-container { padding: 10px; }
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 600px) {
+    .header-section { padding: 10px; margin-bottom: 10px; }
+    .main-grid { min-height: 50vh; margin-bottom: 10px; }
+    .bottom-section { margin-bottom: 10px; }
+    .card-body { padding: 15px; }
+}
+
+/* Portrait orientation adjustments */
+@media (orientation: portrait) and (max-width: 768px) {
+    .main-grid { grid-template-columns: 1fr; gap: 10px; }
+    .quick-amount-btn { margin-bottom: 10px; }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .card { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); }
+    .quick-amount-btn:hover { box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25); }
+}
+
+/* Ultra-wide screens */
+@media (min-width: 1920px) {
+    .fullscreen-container { padding: 30px; }
+    .main-grid { gap: 30px; }
+    .card-body { padding: 35px; }
+    .header-section { padding: 30px; }
+    .display-4 { font-size: 3.5rem; }
+    .current-time { font-size: 3rem; }
+    .current-date { font-size: 1.4rem; }
+}
+
+/* View Toggle Switch */
+.view-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.3);
+    padding: 8px 16px;
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+}
+.view-toggle-label {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.view-toggle-label.active {
+    color: #fff;
+    font-weight: bold;
+}
+.form-switch .form-check-input {
+    width: 3em;
+    height: 1.5em;
+    cursor: pointer;
+}
+
+/* Quick Menu Panel */
+.quick-menu-panel {
+    display: none;
+}
+.quick-menu-panel.active {
+    display: block;
+}
+.standard-panels {
+    display: contents;
+}
+.standard-panels.hidden .center-column,
+.standard-panels.hidden .right-column {
+    display: none;
+}
+.quick-menu-panel-inner {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Category Tabs */
+.menu-category-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 15px;
+    overflow-x: auto;
+    background: rgba(0,0,0,0.15);
+    flex-wrap: nowrap;
+}
+.menu-category-tabs::-webkit-scrollbar { height: 4px; }
+.menu-category-tabs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 4px; }
+.category-tab {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 2px solid rgba(255,255,255,0.5);
+    background: transparent;
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+.category-tab:hover { background: rgba(255,255,255,0.2); }
+.category-tab.active { background: #fff; color: #764ba2; border-color: #fff; }
+
+/* Menu Item Grid */
+.menu-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(100vh - 240px);
+}
+.menu-item-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    user-select: none;
+    position: relative;
+}
+.menu-item-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+.menu-item-card:active { transform: scale(0.96); }
+.menu-item-card.adding {
+    animation: addPulse 0.3s ease;
+}
+@keyframes addPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.93); box-shadow: 0 0 0 4px rgba(40,167,69,0.4); }
+    100% { transform: scale(1); }
+}
+.menu-item-img {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    background: #f0f0f0;
+}
+.menu-item-img-placeholder {
+    width: 100%;
+    height: 90px;
+    background: linear-gradient(135deg, #667eea22, #764ba222);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #764ba2;
+}
+.menu-item-info {
+    padding: 8px;
+}
+.menu-item-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+    line-height: 1.2;
+    /* clamp to 2 lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.menu-item-price {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #28a745;
+}
+.menu-item-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #dc3545;
+    color: #fff;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Cart sidebar inside quick menu */
+.quick-cart {
+    background: #fff;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+.quick-cart-header {
+    background: #764ba2;
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 15px 15px 0 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+.quick-cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    max-height: calc(100vh - 340px);
+}
+.cart-item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 5px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.cart-item-name {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.cart-item-qty {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.cart-qty-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cart-qty-btn:hover { background: #e9ecef; }
+.cart-qty-num {
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+}
+.cart-item-subtotal {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #28a745;
+    min-width: 50px;
+    text-align: right;
+}
+.quick-cart-footer {
+    padding: 12px 15px;
+    border-top: 2px solid #f0f0f0;
+}
+.cart-total-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+.quick-menu-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+@media (max-width: 1200px) {
+    .quick-menu-grid-layout {
+        grid-template-columns: 1fr 240px;
+    }
+}
+@media (max-width: 768px) {
+    .quick-menu-grid-layout {
+        grid-template-columns: 1fr;
+    }
+    .quick-cart { max-height: 300px; }
+}
+.combo-slot-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    margin-bottom: 8px;
+}
+.combo-slot-label {
+    min-width: 90px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #764ba2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.combo-slot-select {
+    flex: 1;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.95rem;
+}
+.combo-slot-select:focus {
+    border-color: #764ba2;
+    outline: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fullscreen-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <h1 class="display-4 text-white mb-0">
+                    <i class="fas fa-cash-register me-3"></i>
+                    Cash Register
+                </h1>
+                <p class="text-white-50 mb-0">Fullscreen Touch Interface</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="current-time" id="currentTime"></div>
+                <div class="current-date" id="currentDate"></div>
+            </div>
+            <div class="col-md-4 text-end d-flex align-items-center justify-content-end gap-3">
+                <!-- View Mode Toggle -->
+                <div class="view-toggle-container">
+                    <span class="view-toggle-label active" id="standardViewLabel">Standard</span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="quickMenuToggle" onchange="localStorage.setItem('quickMenuActive', this.checked); toggleQuickMenuView(this.checked);">
+                    </div>
+                    <span class="view-toggle-label" id="quickMenuViewLabel">
+                        <i class="fas fa-th me-1"></i>Quick Menu
+                    </span>
+                </div>
+                <button class="btn btn-outline-light btn-lg" onclick="exitFullscreenMode()">
+                    <i class="fas fa-times me-2"></i>
+                    Exit Fullscreen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="main-grid">
+        <!-- Left Column: Manual Cash Register -->
+        <div class="left-column">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        Manual Cash Register
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form id="manualPaymentForm">
+                        <div class="mb-4">
+                            <label class="form-label fs-4">Amount</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text fs-3">$</span>
+                                <input type="text" class="form-control form-control-lg fs-2 text-center" 
+                                       id="manualAmount" placeholder="0.00" required
+                                       oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1'); updateChangeDisplay();">
+                                <button type="button" class="btn btn-primary btn-lg" onclick="showKeypad()">
+                                    <i class="fas fa-keyboard me-2"></i>
+                                    Keypad
+                                </button>
+                            </div>
+                            <!-- Change display -->
+                            <div id="changeDisplay" class="mt-2" style="display:none;"></div>
+
+                            <!-- Quick Amount Buttons -->
+                            <div class="mt-2">
+                                <label class="form-label fs-6 text-muted mb-1">Quick Amounts</label>
+                                <div class="row g-1">
+                                    <div class="col">
+                                        <button class="btn btn-outline-primary btn-sm py-1 px-2 quick-amount-btn" onclick="addToAmount(5.00)">
+                                            <small>$5</small>
+                                        </button>
+                                    </div>
+                                    <div class="col">
+                                        <button class="btn btn-outline-primary btn-sm py-1 px-2 quick-amount-btn" onclick="addToAmount(10.00)">
+                                            <small>$10</small>
+                                        </button>
+                                    </div>
+                                    <div class="col">
+                                        <button class="btn btn-outline-primary btn-sm py-1 px-2 quick-amount-btn" onclick="addToAmount(20.00)">
+                                            <small>$20</small>
+                                        </button>
+                                    </div>
+                                    <div class="col">
+                                        <button class="btn btn-outline-primary btn-sm py-1 px-2 quick-amount-btn" onclick="addToAmount(50.00)">
+                                            <small>$50</small>
+                                        </button>
+                                    </div>
+                                    <div class="col">
+                                        <button class="btn btn-outline-primary btn-sm py-1 px-2 quick-amount-btn" onclick="addToAmount(100.00)">
+                                            <small>$100</small>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fs-4">Payment Method</label>
+                            <select class="form-select form-select-lg" id="manualPaymentMethod" required>
+                                <option value="">Select Payment Method</option>
+                                <option value="cash" selected>Cash</option>
+                                <option value="card">Credit/Debit Card</option>
+                                <option value="mobile">Mobile Payment</option>
+                                <option value="check">Check</option>
+                                <option value="gift_card">Gift Card</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fs-4">Customer Name (Optional)</label>
+                            <div class="input-group input-group-lg">
+                                <input type="text" class="form-control" id="manualCustomerName" 
+                                       placeholder="Customer name">
+                                <button type="button" class="btn btn-outline-primary" onclick="showKeyboard('manualCustomerName')">
+                                    <i class="fas fa-keyboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fs-4">Notes</label>
+                            <div class="input-group input-group-lg">
+                                <textarea class="form-control" id="manualNotes" rows="2" 
+                                          placeholder="Any additional notes..."></textarea>
+                                <button type="button" class="btn btn-outline-primary" onclick="showKeyboard('manualNotes')">
+                                    <i class="fas fa-keyboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-3">
+                            <button type="submit" class="btn btn-success btn-lg fs-3 py-3">
+                                <i class="fas fa-check me-3"></i>
+                                Process Payment
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-lg fs-4 py-2" onclick="clearManualForm()">
+                                <i class="fas fa-eraser me-2"></i>
+                                Clear Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Column: Recent Orders -->
+        <div class="center-column" id="centerColumnPanel">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>
+                        Recent Orders Ready for Payment
+                    </h3>
+                    <button class="btn btn-outline-light btn-sm" onclick="refreshOrders()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Refresh
+                    </button>
+                    </div>
+                    <!-- Filter Toggle Switches - Paired Logic -->
+                    <div class="d-flex flex-wrap gap-2 align-items-center" style="font-size: 0.85rem;">
+                        <div class="border border-light rounded p-2 bg-light bg-opacity-25">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterReadyFullscreen" checked onchange="handleReadyToggleFullscreen()">
+                                <label class="form-check-label text-white fw-bold" for="filterReadyFullscreen" style="cursor: pointer;">Ready & Unpaid</label>
+                            </div>
+                            <small class="text-white-50 ms-4 d-block" style="font-size: 0.7rem;">Orders ready for payment</small>
+                        </div>
+                        <div class="border border-light rounded p-2 bg-light bg-opacity-25">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterServedFullscreen" onchange="handleServedToggleFullscreen()">
+                                <label class="form-check-label text-white fw-bold" for="filterServedFullscreen" style="cursor: pointer;">Served & Paid</label>
+                            </div>
+                            <small class="text-white-50 ms-4 d-block" style="font-size: 0.7rem;">Completed paid orders</small>
+                        </div>
+                        <div class="border border-light rounded p-2 bg-light bg-opacity-25">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterPendingFullscreen" onchange="applyFiltersFullscreen()">
+                                <label class="form-check-label text-white fw-bold" for="filterPendingFullscreen" style="cursor: pointer;">Pending</label>
+                            </div>
+                            <small class="text-white-50 ms-4 d-block" style="font-size: 0.7rem;">New orders waiting</small>
+                        </div>
+                        <div class="border border-light rounded p-2 bg-light bg-opacity-25">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterPreparingFullscreen" onchange="applyFiltersFullscreen()">
+                                <label class="form-check-label text-white fw-bold" for="filterPreparingFullscreen" style="cursor: pointer;">Preparing</label>
+                            </div>
+                            <small class="text-white-50 ms-4 d-block" style="font-size: 0.7rem;">Orders being prepared</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="recentOrdersList">
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+                            <p class="fs-5">Loading orders...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Table Management -->
+        <div class="right-column" id="rightColumnPanel">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-friends me-2"></i>
+                        Table Management
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5 class="mb-3">Quick Assignment</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Table</label>
+                            <select class="form-select form-select-lg" id="assignTable">
+                                <option value="">Select Table</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Waiter</label>
+                            <select class="form-select form-select-lg" id="assignWaiter">
+                                <option value="">Select Waiter</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-lg w-100" onclick="assignWaiterToTable()">
+                            <i class="fas fa-plus me-2"></i>
+                            Assign Waiter
+                        </button>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-4">
+                        <h5 class="mb-3">Current Assignments</h5>
+                        <div id="quickAssignmentsList">
+                            <small class="text-muted">Loading assignments...</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5 class="mb-3">Statistics</h5>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stats-number text-primary" id="totalTables">0</div>
+                                <div class="stats-label">Total Tables</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stats-number text-success" id="assignedTables">0</div>
+                                <div class="stats-label">Assigned</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Quick Menu Panel (right of cash register when active) -->
+        <div id="quickMenuView" class="quick-menu-panel" style="display:none;">
+            <div style="display:grid; grid-template-columns:1fr 280px; gap:12px; height:100%;">
+
+                <!-- Menu Items Section -->
+                <div class="card quick-menu-panel-inner h-100" style="overflow:hidden;">
+                    <div class="card-header bg-primary text-white py-2 px-3 d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-th me-2"></i>Quick Menu Selection
+                        </h4>
+                        <div class="input-group input-group-sm" style="max-width:200px;">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="menuSearchInput" placeholder="Search items..." oninput="filterQuickMenuItems(this.value)">
+                        </div>
+                    </div>
+                    <!-- Category Tabs -->
+                    <div class="menu-category-tabs" id="menuCategoryTabs">
+                        <button class="category-tab active" data-category="all" onclick="selectMenuCategory('all', this)">All Items</button>
+                    </div>
+                    <!-- Items Grid -->
+                    <div class="menu-items-grid" id="menuItemsGrid">
+                        <div class="text-center text-muted py-5" style="grid-column:1/-1;">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                            <p>Loading menu...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart Section -->
+                <div class="quick-cart" id="quickCart">
+                    <div class="quick-cart-header">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        Cart
+                        <span class="badge bg-white text-primary ms-2" id="cartItemCount">0</span>
+                    </div>
+                    <div class="quick-cart-items" id="quickCartItems">
+                        <div class="text-center text-muted py-4" id="emptyCartMsg">
+                            <i class="fas fa-shopping-cart fa-2x mb-2 d-block"></i>
+                            Tap items to add
+                        </div>
+                    </div>
+                    <div class="quick-cart-footer">
+                        <div class="cart-total-line">
+                            <span>Total</span>
+                            <span id="cartTotal">$0.00</span>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-danger btn-sm" onclick="clearQuickCart()">
+                                <i class="fas fa-trash me-1"></i>Clear Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <!-- /Quick Menu Panel -->
+
+    </div>
+    <!-- /Main Content Grid -->
+
+
+</div>
+
+<!-- Combo Customiser Modal -->
+<div class="modal fade" id="comboCustomiserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#764ba2,#667eea);color:white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-layer-group me-2"></i>
+                    <span id="comboCustomiserTitle">Customise Combo</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="text-muted">Total:</span>
+                        <strong class="ms-2 fs-5" id="comboCustomiserPrice">$0.00</strong>
+                        <small class="text-muted ms-2">(base $<span id="comboBasePrice">0.00</span> ± swaps)</small>
+                    </div>
+                    <div class="text-muted small" id="comboCustomiserDesc"></div>
+                </div>
+                <hr class="mt-0">
+                <!-- Slots will be injected here -->
+                <div id="comboCustomiserSlots"></div>
+                <div class="mt-3 text-muted small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Tap a dropdown to swap an item in that slot. Price stays the same.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success btn-lg px-4" onclick="confirmComboCustomiser()">
+                    <i class="fas fa-cart-plus me-2"></i>Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Virtual Keypad Modal -->
+<div class="modal fade" id="keypadModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enter Amount</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-lg text-center" id="keypadDisplay" readonly>
+                </div>
+                <div class="keypad-grid">
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('7')">7</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('8')">8</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('9')">9</button></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('4')">4</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('5')">5</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('6')">6</button></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('1')">1</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('2')">2</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('3')">3</button></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('0')">0</button></div>
+                        <div class="col-4"><button class="btn btn-outline-secondary w-100 keypad-btn" onclick="keypadInput('.')">.</button></div>
+                        <div class="col-4"><button class="btn btn-outline-danger w-100" onclick="keypadClear()">C</button></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="keypadDone()">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Virtual Keyboard Modal -->
+<div class="modal fade" id="keyboardModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enter Text</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control form-control-lg" id="keyboardDisplay" readonly>
+                </div>
+                <div class="keyboard-container">
+                    <!-- Row 1 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('1')">1</button>
+                        <button class="keyboard-key" onclick="keyboardInput('2')">2</button>
+                        <button class="keyboard-key" onclick="keyboardInput('3')">3</button>
+                        <button class="keyboard-key" onclick="keyboardInput('4')">4</button>
+                        <button class="keyboard-key" onclick="keyboardInput('5')">5</button>
+                        <button class="keyboard-key" onclick="keyboardInput('6')">6</button>
+                        <button class="keyboard-key" onclick="keyboardInput('7')">7</button>
+                        <button class="keyboard-key" onclick="keyboardInput('8')">8</button>
+                        <button class="keyboard-key" onclick="keyboardInput('9')">9</button>
+                        <button class="keyboard-key" onclick="keyboardInput('0')">0</button>
+                    </div>
+                    <!-- Row 2 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('q')">Q</button>
+                        <button class="keyboard-key" onclick="keyboardInput('w')">W</button>
+                        <button class="keyboard-key" onclick="keyboardInput('e')">E</button>
+                        <button class="keyboard-key" onclick="keyboardInput('r')">R</button>
+                        <button class="keyboard-key" onclick="keyboardInput('t')">T</button>
+                        <button class="keyboard-key" onclick="keyboardInput('y')">Y</button>
+                        <button class="keyboard-key" onclick="keyboardInput('u')">U</button>
+                        <button class="keyboard-key" onclick="keyboardInput('i')">I</button>
+                        <button class="keyboard-key" onclick="keyboardInput('o')">O</button>
+                        <button class="keyboard-key" onclick="keyboardInput('p')">P</button>
+                    </div>
+                    <!-- Row 3 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('a')">A</button>
+                        <button class="keyboard-key" onclick="keyboardInput('s')">S</button>
+                        <button class="keyboard-key" onclick="keyboardInput('d')">D</button>
+                        <button class="keyboard-key" onclick="keyboardInput('f')">F</button>
+                        <button class="keyboard-key" onclick="keyboardInput('g')">G</button>
+                        <button class="keyboard-key" onclick="keyboardInput('h')">H</button>
+                        <button class="keyboard-key" onclick="keyboardInput('j')">J</button>
+                        <button class="keyboard-key" onclick="keyboardInput('k')">K</button>
+                        <button class="keyboard-key" onclick="keyboardInput('l')">L</button>
+                    </div>
+                    <!-- Row 4 -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key" onclick="keyboardInput('z')">Z</button>
+                        <button class="keyboard-key" onclick="keyboardInput('x')">X</button>
+                        <button class="keyboard-key" onclick="keyboardInput('c')">C</button>
+                        <button class="keyboard-key" onclick="keyboardInput('v')">V</button>
+                        <button class="keyboard-key" onclick="keyboardInput('b')">B</button>
+                        <button class="keyboard-key" onclick="keyboardInput('n')">N</button>
+                        <button class="keyboard-key" onclick="keyboardInput('m')">M</button>
+                        <button class="keyboard-key" onclick="keyboardInput(' ')">Space</button>
+                    </div>
+                    <!-- Special Keys Row -->
+                    <div class="keyboard-row">
+                        <button class="keyboard-key special-key" onclick="keyboardBackspace()">←</button>
+                        <button class="keyboard-key special-key" onclick="keyboardClear()">Clear</button>
+                        <button class="keyboard-key special-key" onclick="keyboardInput('.')">.</button>
+                        <button class="keyboard-key special-key" onclick="keyboardInput('-')">-</button>
+                        <button class="keyboard-key special-key" onclick="keyboardInput('@')">@</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="keyboardDone()">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Payment Modal -->
+<div class="modal fade" id="orderPaymentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Order Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="orderPaymentForm">
+                    <input type="hidden" id="orderPaymentOrderId">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Order Details</h6>
+                            <div id="orderPaymentDetails">
+                                <!-- Order details will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>Payment Information</h6>
+                            
+                            <div class="mb-3">
+                                <label for="orderPaymentAmount" class="form-label">Amount Due</label>
+                                <input type="number" 
+                                       class="form-control form-control-lg" 
+                                       id="orderPaymentAmount" 
+                                       step="0.01" 
+                                       readonly>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="orderPaymentMethod" class="form-label">Payment Method</label>
+                                <select class="form-select form-select-lg" id="orderPaymentMethod" required>
+                                    <option value="">Select Payment Method</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="card">Credit/Debit Card</option>
+                                    <option value="mobile">Mobile Payment</option>
+                                    <option value="check">Check</option>
+                                    <option value="gift_card">Gift Card</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3" id="orderTransactionIdGroup" style="display: none;">
+                                <label for="orderTransactionId" class="form-label">Transaction ID</label>
+                                <input type="text" class="form-control form-control-lg" id="orderTransactionId" placeholder="Enter transaction ID">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="orderPaymentNotes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="orderPaymentNotes" rows="3" placeholder="Any additional notes..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success btn-lg" onclick="processOrderPayment()">
+                    <i class="fas fa-check me-2"></i>
+                    Complete Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payment Receipt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="receiptBody">
+                    <!-- Receipt content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="refundBtnFullscreen" class="btn btn-danger" onclick="showRefundModalFullscreen()" style="display: none;">
+                    <i class="fas fa-undo me-2"></i>
+                    Refund
+                </button>
+                <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                    <i class="fas fa-print me-2"></i>
+                    Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Refund Password Modal -->
+<div class="modal fade" id="pendingRefundPasswordModalFullscreen" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Verify Access</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="pendingRefundPasswordFormFullscreen">
+                    <input type="hidden" id="pendingRefundOrderIdFullscreen">
+                    <input type="hidden" id="pendingRefundRequestIdFullscreen">
+                    
+                    <div class="mb-3">
+                        <label for="pendingRefundPasswordFullscreen" class="form-label">Enter Your Password</label>
+                        <input type="password" class="form-control form-control-lg" id="pendingRefundPasswordFullscreen" placeholder="Enter password to view refund details" required autofocus>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Admin/Manager access required to view pending refund requests.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-lg" onclick="verifyPendingRefundAccessFullscreen()">
+                    <i class="fas fa-check me-2"></i>Verify
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Request Modal -->
+<div class="modal fade" id="refundRequestModalFullscreen" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="refundModalTitleFullscreen">Request Refund</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="refundRequestFormFullscreen">
+                    <input type="hidden" id="refundPaymentIdFullscreen">
+                    <input type="hidden" id="refundOrderIdFullscreen">
+                    <input type="hidden" id="refundAmountFullscreen">
+                    <input type="hidden" id="refundNeedsApprovalFullscreen">
+                    
+                    <div class="mb-3">
+                        <label for="refundAmountDisplayFullscreen" class="form-label">Refund Amount <span class="text-muted">(can be adjusted for partial refunds)</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control form-control-lg" id="refundAmountDisplayFullscreen" step="0.01" min="0.01" required>
+                        </div>
+                        <small class="text-muted">Original amount: <span id="originalAmountDisplayFullscreen"></span></small>
+                    </div>
+                    
+                    <div class="mb-3" id="refundReasonGroupFullscreen">
+                        <label for="refundReasonFullscreen" class="form-label">Reason for Refund <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="refundReasonFullscreen" rows="4" placeholder="Please provide a reason for this refund request..." required></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info" id="refundInfoMessageFullscreen" style="display: none;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="refundInfoTextFullscreen"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger btn-lg" id="submitRefundBtnFullscreen" onclick="submitRefundRequestFullscreen()">
+                    <i class="fas fa-undo me-2"></i>
+                    <span id="submitRefundTextFullscreen">Request Refund</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+{% block extra_js %}
+<script>
+let currentInputField = '';
+let keypadValue = '';
+let keyboardValue = '';
+let orders = [];
+let allOrdersFullscreen = []; // Store all orders before filtering
+let currentReceiptDataFullscreen = null; // Store current receipt data for refund
+
+// ---- Quick Menu State ----
+let quickMenuData = [];       // All menu items flat list (includes combo pseudo-items)
+let quickComboData = [];      // Full combo objects from API (for cart expansion)
+let quickCartItems = [];      // {id, name, price, qty, isCombo?, comboItems?}
+let currentMenuCategory = 'all';
+
+$(document).ready(function() {
+    updateDateTime();
+    loadRecentOrders();
+    loadTableAssignments();
+    loadTableStatistics();
+    
+    // Update time every second
+    setInterval(updateDateTime, 1000);
+    
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        loadRecentOrders();
+        loadTableAssignments();
+        loadTableStatistics();
+    }, 30000);
+    
+    // Form submission
+    $('#manualPaymentForm').on('submit', function(e) {
+        e.preventDefault();
+        processManualPayment();
+    });
+
+    // Default focus to amount field
+    setTimeout(function() { $('#manualAmount').focus(); }, 200);
+    
+    // Handle window resize for dynamic adjustments
+    $(window).on('resize', function() {
+        adjustLayoutForWindowSize();
+    });
+    
+    // Initial layout adjustment
+    adjustLayoutForWindowSize();
+    
+    // Hide the sidebar toggle button specifically
+    hideSidebarToggle();
+
+    // Restore Quick Menu toggle state across refreshes
+    const savedToggle = localStorage.getItem('quickMenuActive');
+    if (savedToggle === 'true') {
+        const toggle = document.getElementById('quickMenuToggle');
+        if (toggle) {
+            toggle.checked = true;
+            toggleQuickMenuView(true);
+        }
+    }
+});
+
+// Function to dynamically adjust layout based on window size
+function adjustLayoutForWindowSize() {
+    const windowWidth = $(window).width();
+    const windowHeight = $(window).height();
+    
+    // Only adjust grid columns when Quick Menu is NOT active
+    const isQuickMenuActive = document.getElementById('quickMenuToggle') && document.getElementById('quickMenuToggle').checked;
+    if (!isQuickMenuActive) {
+        // Adjust grid layout based on available space
+        if (windowWidth < 1200) {
+            $('.main-grid').css('grid-template-columns', '1fr');
+        } else if (windowWidth < 1600) {
+            $('.main-grid').css('grid-template-columns', '1fr 1.2fr 1fr');
+        } else {
+            $('.main-grid').css('grid-template-columns', '1fr 1.5fr 1fr');
+        }
+    } else {
+        // Quick Menu active — always 2-column: cash register | quick menu
+        $('.main-grid').css('grid-template-columns', '360px 1fr');
+    }
+    
+    // Adjust font sizes dynamically
+    if (windowWidth < 480) {
+        $('.display-4').css('font-size', '1.5rem');
+        $('.current-time').css('font-size', '1.3rem');
+        $('.current-date').css('font-size', '0.7rem');
+    } else if (windowWidth < 768) {
+        $('.display-4').css('font-size', '1.8rem');
+        $('.current-time').css('font-size', '1.5rem');
+        $('.current-date').css('font-size', '0.8rem');
+    } else if (windowWidth < 1000) {
+        $('.display-4').css('font-size', '2rem');
+        $('.current-time').css('font-size', '1.8rem');
+        $('.current-date').css('font-size', '0.9rem');
+    } else if (windowWidth < 1400) {
+        $('.display-4').css('font-size', '2.5rem');
+        $('.current-time').css('font-size', '2rem');
+        $('.current-date').css('font-size', '1rem');
+    } else {
+        $('.display-4').css('font-size', '3.5rem');
+        $('.current-time').css('font-size', '3rem');
+        $('.current-date').css('font-size', '1.4rem');
+    }
+    
+    // Adjust padding based on window size
+    if (windowWidth < 768) {
+        $('.fullscreen-container').css('padding', '10px');
+        $('.card-body').css('padding', '15px');
+        $('.header-section').css('padding', '10px');
+    } else if (windowWidth < 1200) {
+        $('.fullscreen-container').css('padding', '20px');
+        $('.card-body').css('padding', '25px');
+        $('.header-section').css('padding', '20px');
+    } else {
+        $('.fullscreen-container').css('padding', '30px');
+        $('.card-body').css('padding', '35px');
+        $('.header-section').css('padding', '30px');
+    }
+    
+    // Adjust quick amount button sizes
+    if (windowWidth < 480) {
+        $('.quick-amount-btn').css('padding', '10px 5px');
+        $('.amount-value').css('font-size', '0.9rem');
+    } else if (windowWidth < 768) {
+        $('.quick-amount-btn').css('padding', '12px 6px');
+        $('.amount-value').css('font-size', '1rem');
+    } else if (windowWidth < 1200) {
+        $('.quick-amount-btn').css('padding', '15px 8px');
+        $('.amount-value').css('font-size', '1.1rem');
+    } else {
+        $('.quick-amount-btn').css('padding', '20px 10px');
+        $('.amount-value').css('font-size', '1.5rem');
+    }
+}
+
+// Function to hide the sidebar toggle button
+function hideSidebarToggle() {
+    // Hide by ID
+    $('#sidebarToggle').hide();
+    
+    // Hide by text content
+    $('button').each(function() {
+        const buttonText = $(this).text().toLowerCase();
+        if (buttonText.includes('toggle menu') || buttonText.includes('hide menu') || buttonText.includes('show menu')) {
+            $(this).hide();
+        }
+    });
+    
+    // Hide by class if it exists
+    $('.btn-toggle, .sidebar-toggle, .navbar-toggler').hide();
+    
+    // Force hide with CSS
+    $('<style>')
+        .prop('type', 'text/css')
+        .html(`
+            #sidebarToggle, 
+            button[onclick*="toggle"], 
+            button[onclick*="menu"],
+            .btn-toggle, 
+            .sidebar-toggle, 
+            .navbar-toggler {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+            }
+        `)
+        .appendTo('head');
+}
+
+// Function to exit fullscreen and go back to previous page
+function exitFullscreenMode() {
+    // Try to go back to previous page
+    if (document.referrer && document.referrer !== window.location.href) {
+        window.history.back();
+    } else {
+        // If no previous page, redirect to cashier page
+        window.location.href = '/cashier';
+    }
+}
+
+function updateDateTime() {
+    const now = new Date();
+    $('#currentTime').text(now.toLocaleTimeString());
+    $('#currentDate').text(now.toLocaleDateString());
+}
+
+// Keypad Functions
+function showKeypad() {
+    keypadValue = $('#manualAmount').val() || '';
+    $('#keypadDisplay').val(keypadValue);
+    $('#keypadModal').modal('show');
+}
+
+function keypadInput(key) {
+    if (key === '.') {
+        if (keypadValue.includes('.')) return;
+        if (keypadValue === '') keypadValue = '0';
+    }
+    
+    if (key === '0' && keypadValue === '') return;
+    
+    keypadValue += key;
+    
+    if (keypadValue.includes('.')) {
+        const parts = keypadValue.split('.');
+        if (parts[1].length > 2) return;
+    }
+    
+    $('#keypadDisplay').val(keypadValue);
+}
+
+function keypadClear() {
+    keypadValue = '';
+    $('#keypadDisplay').val('');
+}
+
+function keypadDone() {
+    $('#manualAmount').val(keypadValue);
+    $('#keypadModal').modal('hide');
+    updateChangeDisplay();
+}
+
+// Keyboard Functions
+function showKeyboard(fieldId) {
+    currentInputField = fieldId;
+    const field = $('#' + fieldId);
+    keyboardValue = field.val() || '';
+    $('#keyboardDisplay').val(keyboardValue);
+    $('#keyboardModal').modal('show');
+}
+
+function keyboardInput(key) {
+    if (currentInputField === 'manualNotes') {
+        if (keyboardValue.length >= 200) return;
+    } else {
+        if (keyboardValue.length >= 50) return;
+    }
+    
+    keyboardValue += key;
+    $('#keyboardDisplay').val(keyboardValue);
+}
+
+function keyboardBackspace() {
+    keyboardValue = keyboardValue.slice(0, -1);
+    $('#keyboardDisplay').val(keyboardValue);
+}
+
+function keyboardClear() {
+    keyboardValue = '';
+    $('#keyboardDisplay').val('');
+}
+
+function keyboardDone() {
+    $('#' + currentInputField).val(keyboardValue);
+    $('#keyboardModal').modal('hide');
+}
+
+function addToAmount(value) {
+    const currentAmount = parseFloat($('#manualAmount').val()) || 0;
+    $('#manualAmount').val((currentAmount + value).toFixed(2));
+    updateChangeDisplay();
+}
+
+function clearManualForm() {
+    $('#manualPaymentForm')[0].reset();
+    $('#manualAmount').val('');
+}
+
+function processManualPayment() {
+    const amount = parseFloat($('#manualAmount').val());
+    const tendered = amount;  // what the cashier entered (may be > total when cart is active)
+    const paymentMethod = $('#manualPaymentMethod').val();
+    const customerName = $('#manualCustomerName').val();
+    const notes = $('#manualNotes').val();
+    
+    // Determine the actual order total from the cart (if any), else the entered amount is the total
+    const cartTotal = quickCartItems.reduce(function(s, c) { return s + c.price * c.qty; }, 0);
+    const orderTotal = cartTotal > 0 ? cartTotal : amount;
+    
+    if (!amount || amount <= 0) {
+        showAlert('Please enter a valid amount', 'warning');
+        return;
+    }
+    
+    if (!paymentMethod) {
+        showAlert('Please select a payment method', 'warning');
+        return;
+    }
+    
+    const paymentData = {
+        amount: orderTotal,
+        tendered: tendered,
+        payment_method: paymentMethod,
+        customer_name: customerName,
+        notes: notes,
+        is_manual: true
+    };
+    
+    $.ajax({
+        url: '/api/create_manual_payment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(paymentData),
+        success: function(response) {
+            if (response.success) {
+                showManualReceipt(paymentData, response.payment_id);
+                clearManualForm();
+                clearQuickCart();
+                showAlert('Manual payment processed successfully!', 'success');
+                setTimeout(function() { $('#manualAmount').focus(); }, 300);
+            } else {
+                showAlert('Error processing payment: ' + response.message, 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            showAlert('Error processing payment: ' + error, 'danger');
+        }
+    });
+}
+
+function loadRecentOrders() {
+    // Add cache-busting parameter to ensure fresh data
+    const cacheBuster = '?_=' + new Date().getTime();
+    $.get('/api/get_orders' + cacheBuster)
+        .done(function(data) {
+            allOrdersFullscreen = data.orders; // Store all orders
+            applyFiltersFullscreen(); // Apply current filter settings
+        })
+        .fail(function() {
+            $('#recentOrdersList').html(`
+                <div class="text-center text-danger py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <p class="fs-5">Failed to load orders</p>
+                </div>
+            `);
+        });
+}
+
+// Handle Ready toggle - automatically pairs with Unpaid
+function handleReadyToggleFullscreen() {
+    applyFiltersFullscreen();
+}
+
+// Handle Served toggle - automatically pairs with Paid
+function handleServedToggleFullscreen() {
+    applyFiltersFullscreen();
+}
+
+function applyFiltersFullscreen() {
+    // Get filter states
+    const showReady = $('#filterReadyFullscreen').is(':checked');
+    const showServed = $('#filterServedFullscreen').is(':checked');
+    const showPending = $('#filterPendingFullscreen').is(':checked');
+    const showPreparing = $('#filterPreparingFullscreen').is(':checked');
+    
+    // Check if at least one status filter is selected
+    const hasStatusFilter = showReady || showServed || showPending || showPreparing;
+    if (!hasStatusFilter) {
+        // If no status filter is selected, show empty
+        orders = [];
+        const container = $('#recentOrdersList');
+        container.html(`
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-filter fa-3x mb-3"></i>
+                <p class="fs-5">Please select at least one filter</p>
+            </div>
+        `);
+        return;
+    }
+    
+    // Filter orders based on toggle switches with paired logic
+    orders = allOrdersFullscreen.filter(order => {
+        // Always exclude cancelled orders
+        if (order.status === 'cancelled') return false;
+        
+        const isPaid = order.has_payment === true;
+        
+        // Ready & Unpaid (paired) - shows ready orders that are unpaid
+        if (showReady) {
+            if (order.status === 'ready' && !isPaid) {
+                return true;
+            }
+        }
+        
+        // Served & Paid (paired) - shows served orders that are paid
+        if (showServed) {
+            if (order.status === 'served' && isPaid) {
+                return true;
+            }
+        }
+        
+        // Pending - shows all pending orders (both paid and unpaid)
+        if (showPending) {
+            if (order.status === 'pending') {
+                return true;
+            }
+        }
+        
+        // Preparing - shows all preparing orders (both paid and unpaid)
+        if (showPreparing) {
+            if (order.status === 'preparing') {
+                return true;
+            }
+        }
+        
+        return false;
+    }).slice(0, 10); // Get top 10 orders (can be adjusted)
+            
+            const container = $('#recentOrdersList');
+            container.empty();
+            
+            if (orders.length === 0) {
+                container.html(`
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-credit-card fa-3x mb-3"></i>
+                <p class="fs-5">No orders match the selected filters</p>
+                    </div>
+                `);
+                return;
+            }
+            
+            orders.forEach(order => {
+                const orderCard = createOrderCard(order);
+                container.append(orderCard);
+        });
+}
+
+function createOrderCard(order) {
+    const isPaid = order.has_payment === true;
+    
+    return `
+        <div class="order-card" style="cursor: ${isPaid ? 'pointer' : 'default'};" ${isPaid ? `onclick="showOrderReceiptFromCardFullscreen(${order.id})"` : ''}>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-2">
+                        <i class="fas fa-table me-2"></i>
+                        Table ${order.table_number}
+                    </h6>
+                    <div class="order-details">
+                        <small>Order ID: ${order.id}</small><br>
+                        <small>Time: ${new Date(order.created_at).toLocaleTimeString()}</small>
+                    </div>
+                </div>
+                        <div class="text-end">
+                            <div class="order-amount">$${order.total_amount.toFixed(2)}</div>
+                            ${isPaid ? `
+                                ${order.has_pending_refund === true ? `
+                                    <button class="badge bg-warning mt-2 px-3 py-2" style="font-size: 0.9rem; border: none; cursor: pointer;" onclick="event.stopPropagation(); showPendingRefundModalFullscreen(${order.id}, ${order.refund_request_id})">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Pending Refund
+                                    </button>
+                                ` : `
+                                    <span class="badge bg-success mt-2 px-3 py-2" style="font-size: 0.9rem;">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        Paid
+                                    </span>
+                                `}
+                            ` : `
+                                <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); openPaymentModal('${order.id}')">
+                                    <i class="fas fa-credit-card me-1"></i>
+                                    Pay
+                                </button>
+                            `}
+                        </div>
+            </div>
+        </div>
+    `;
+}
+
+function refreshOrders() {
+    loadRecentOrders();
+    showAlert('Orders refreshed!', 'success');
+}
+
+function loadTableAssignments() {
+    $.get('/api/get_waiter_assignments')
+        .done(function(data) {
+            const container = $('#quickAssignmentsList');
+            container.empty();
+            
+            if (data.assignments.length === 0) {
+                container.html('<small class="text-muted">No table assignments yet</small>');
+                return;
+            }
+            
+            data.assignments.slice(0, 5).forEach(assignment => {
+                container.append(`
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                        <div>
+                            <strong>Table ${assignment.table_number}</strong><br>
+                            <small class="text-muted">${assignment.waiter_name}</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" 
+                                onclick="removeWaiterAssignment(${assignment.table_id})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `);
+            });
+        })
+        .fail(function() {
+            $('#quickAssignmentsList').html('<small class="text-danger">Failed to load assignments</small>');
+        });
+}
+
+function loadTableStatistics() {
+    $.when(
+        $.get('/api/get_tables'),
+        $.get('/api/get_waiters'),
+        $.get('/api/get_waiter_assignments')
+    ).done(function(tablesResponse, waitersResponse, assignmentsResponse) {
+        const tablesData = tablesResponse[0];
+        const waitersData = waitersResponse[0];
+        const assignmentsData = assignmentsResponse[0];
+        
+        const totalTables = tablesData.tables.length;
+        const assignedTables = assignmentsData.assignments.length;
+        
+        $('#totalTables').text(totalTables);
+        $('#assignedTables').text(assignedTables);
+    }).fail(function() {
+        console.error('Failed to load table statistics');
+    });
+}
+
+function assignWaiterToTable() {
+    const tableId = $('#assignTable').val();
+    const waiterId = $('#assignWaiter').val();
+    
+    if (!tableId || !waiterId) {
+        showAlert('Please select both table and waiter', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/assign_waiter',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: parseInt(tableId),
+            waiter_id: parseInt(waiterId)
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            $('#assignTable').val('');
+            $('#assignWaiter').val('');
+            loadTableAssignments();
+            loadTableStatistics();
+            showAlert('Waiter assigned successfully!', 'success');
+        } else {
+            showAlert('Error assigning waiter: ' + (data.message || 'Unknown error'), 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('Failed to assign waiter', 'danger');
+    });
+}
+
+function removeWaiterAssignment(tableId) {
+    if (!confirm('Remove this table assignment?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/remove_waiter_assignment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: parseInt(tableId)
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            loadTableAssignments();
+            loadTableStatistics();
+            showAlert('Assignment removed successfully!', 'success');
+        } else {
+            showAlert('Error removing assignment: ' + (data.message || 'Unknown error'), 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('Failed to remove assignment', 'danger');
+    });
+}
+
+function showManualReceipt(paymentData, paymentId) {
+    const { amount, tendered, payment_method, customer_name, notes } = paymentData;
+    const change = (tendered && tendered > amount) ? (tendered - amount) : 0;
+    const cashierName = {{ current_user.name | tojson }} || 'Unknown';
+    const cashierUsername = {{ current_user.username | tojson }} || 'unknown';
+    
+    const changeRow = (payment_method === 'cash' && change > 0)
+        ? `<strong>Change:</strong><br>` : '';
+    const changeVal = (payment_method === 'cash' && change > 0)
+        ? `<span class="text-success fw-bold">$${change.toFixed(2)}</span><br>` : '';
+    const tenderedRow = (payment_method === 'cash' && tendered && tendered !== amount)
+        ? `<strong>Tendered:</strong><br>` : '';
+    const tenderedVal = (payment_method === 'cash' && tendered && tendered !== amount)
+        ? `$${parseFloat(tendered).toFixed(2)}<br>` : '';
+    
+    $('#receiptBody').html(`
+        <div class="text-center mb-4">
+            <h4>Manual Payment Receipt</h4>
+            <p class="text-muted">Restaurant Management System</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Payment ID:</strong><br>
+                <strong>Customer:</strong><br>
+                <strong>Cashier:</strong><br>
+                <strong>Date:</strong><br>
+                <strong>Time:</strong>
+            </div>
+            <div class="col-6 text-end">
+                ${paymentId}<br>
+                ${customer_name || 'Walk-in Customer'}<br>
+                ${cashierName} (${cashierUsername})<br>
+                ${new Date().toLocaleDateString()}<br>
+                ${new Date().toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="row">
+            <div class="col-6">
+                <strong>Total:</strong><br>
+                ${tenderedRow}
+                ${changeRow}
+                <strong>Payment Method:</strong><br>
+                ${notes ? '<strong>Notes:</strong><br>' : ''}
+            </div>
+            <div class="col-6 text-end">
+                $${parseFloat(amount).toFixed(2)}<br>
+                ${tenderedVal}
+                ${changeVal}
+                ${payment_method.replace('_', ' ').toUpperCase()}<br>
+                ${notes || ''}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <p class="text-muted">Manual transaction - No order associated</p>
+        </div>
+    `);
+    
+    $('#receiptModal').modal('show');
+}
+
+function openPaymentModal(orderId) {
+    // Convert to number for consistent comparison
+    const orderIdNum = parseInt(orderId);
+    const order = orders.find(o => o.id === orderIdNum || o.id == orderId);
+    if (!order) {
+        showAlert('Order not found', 'danger');
+        return;
+    }
+    
+    $('#orderPaymentOrderId').val(order.id);
+    $('#orderPaymentAmount').val(order.total_amount.toFixed(2));
+    $('#orderPaymentMethod').val('');
+    $('#orderTransactionId').val('');
+    $('#orderPaymentNotes').val('');
+    $('#orderTransactionIdGroup').hide();
+    
+    // Show/hide transaction ID field based on payment method
+    $('#orderPaymentMethod').off('change').on('change', function() {
+        const method = $(this).val();
+        if (method === 'card' || method === 'mobile') {
+            $('#orderTransactionIdGroup').show();
+        } else {
+            $('#orderTransactionIdGroup').hide();
+        }
+    });
+    
+    // Populate order details
+    $('#orderPaymentDetails').html(`
+        <div class="mb-3">
+            <strong>Order ID:</strong> ${order.id}<br>
+            <strong>Table:</strong> ${order.table_number}<br>
+            <strong>Customer:</strong> ${order.customer_name || 'Walk-in'}<br>
+            <strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}
+        </div>
+        <div class="mb-3">
+            <h6>Items:</h6>
+            ${order.items && order.items.length > 0 ? order.items.map(item => `
+                <div class="d-flex justify-content-between p-2 bg-light rounded mb-2">
+                    <span>${escapeHtml(item.name)} x${item.quantity}</span>
+                    <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('') : '<p class="text-muted">No items</p>'}
+        </div>
+        <div class="text-end">
+            <h5 class="text-success">Total: $${order.total_amount.toFixed(2)}</h5>
+        </div>
+    `);
+    
+    $('#orderPaymentModal').modal('show');
+}
+
+function processOrderPayment() {
+    const orderId = $('#orderPaymentOrderId').val();
+    const paymentMethod = $('#orderPaymentMethod').val();
+    const transactionId = $('#orderTransactionId').val();
+    const notes = $('#orderPaymentNotes').val();
+    const amount = parseFloat($('#orderPaymentAmount').val());
+    
+    if (!paymentMethod) {
+        showAlert('Please select a payment method', 'danger');
+        return;
+    }
+    
+    if ((paymentMethod === 'card' || paymentMethod === 'mobile') && !transactionId.trim()) {
+        showAlert('Transaction ID is required for card/mobile payments', 'danger');
+        return;
+    }
+    
+    const paymentData = {
+        order_id: parseInt(orderId),
+        amount: amount,
+        payment_method: paymentMethod,
+        transaction_id: transactionId.trim(),
+        notes: notes.trim()
+    };
+    
+    $.ajax({
+        url: '/api/create_payment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(paymentData),
+        success: function(response) {
+            if (response.success) {
+                $('#orderPaymentModal').modal('hide');
+                const order = orders.find(o => o.id === parseInt(orderId) || o.id == orderId);
+                if (order) {
+                    showOrderReceipt(paymentData, order);
+                }
+                // Refresh orders list after a short delay to ensure database is updated
+                setTimeout(function() {
+                    loadRecentOrders();
+                }, 500);
+                showAlert('Payment processed successfully!', 'success');
+            } else {
+                showAlert('Error processing payment: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error processing payment';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function showOrderReceiptFromCardFullscreen(orderId) {
+    // Get order and payment data
+    const order = orders.find(o => o.id == orderId);
+    if (!order) {
+        showAlert('Order not found', 'danger');
+        return;
+    }
+    
+    // Get payment data for this order
+    $.get(`/api/get_payment_by_order/${orderId}`)
+        .done(function(response) {
+            if (response.success && response.payment) {
+                const payment = response.payment;
+                showReceiptFromPaymentFullscreen(payment, order);
+            } else {
+                showAlert('Payment not found for this order', 'warning');
+            }
+        })
+        .fail(function() {
+            showAlert('Error loading payment data', 'danger');
+        });
+}
+
+function showReceiptFromPaymentFullscreen(payment, order) {
+    currentReceiptDataFullscreen = { payment, order };
+    const amount = payment.amount;
+    const payment_method = payment.payment_method;
+    const transaction_id = payment.transaction_id || '';
+    const payment_date = payment.created_at;
+    
+    $('#receiptBody').html(`
+        <div class="text-center mb-4">
+            <h4>Payment Receipt</h4>
+            <p class="text-muted">Restaurant Management System</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Order ID:</strong><br>
+                <strong>Table:</strong><br>
+                <strong>Payment ID:</strong><br>
+                <strong>Date:</strong><br>
+                <strong>Time:</strong>
+            </div>
+            <div class="col-6 text-end">
+                ${order.id}<br>
+                ${order.table_number}<br>
+                ${payment.id}<br>
+                ${new Date(payment_date).toLocaleDateString()}<br>
+                ${new Date(payment_date).toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="mb-3">
+            <h6>Order Items:</h6>
+            ${order.items && order.items.length > 0 ? order.items.map(item => `
+                <div class="d-flex justify-content-between p-2 bg-light rounded mb-2">
+                    <span>${escapeHtml(item.name)} x${item.quantity}</span>
+                    <span>$${((item.price || item.unit_price) * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('') : '<p class="text-muted">No items</p>'}
+        </div>
+        
+        <hr>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Total Amount:</strong><br>
+                <strong>Payment Method:</strong><br>
+                ${transaction_id ? '<strong>Transaction ID:</strong><br>' : ''}
+                ${payment.notes ? '<strong>Notes:</strong>' : ''}
+            </div>
+            <div class="col-6 text-end">
+                $${amount.toFixed(2)}<br>
+                ${payment_method.charAt(0).toUpperCase() + payment_method.slice(1).replace('_', ' ')}<br>
+                ${transaction_id || ''}<br>
+                ${payment.notes ? escapeHtml(payment.notes) : ''}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4 text-muted">
+            <p class="text-muted">Please keep this receipt for your records</p>
+        </div>
+    `);
+    
+    // Show/hide refund button based on permissions and check for existing requests
+    checkRefundPermissionFullscreen(payment.id);
+    checkExistingRefundRequestFullscreen(payment.id);
+    
+    $('#receiptModal').modal('show');
+}
+
+function checkExistingRefundRequestFullscreen(paymentId) {
+    // Check if there's already a refund request for this payment
+    $.get(`/api/get_refund_requests?status=pending`)
+        .done(function(response) {
+            if (response.success && response.requests) {
+                const existingRequest = response.requests.find(req => req.payment_id === paymentId);
+                if (existingRequest) {
+                    // Show request status
+                    $('#receiptBody').append(`
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>Refund Request Pending</strong><br>
+                            <small>Request ID: ${existingRequest.id} | Status: ${existingRequest.status}<br>
+                            ${existingRequest.reason ? 'Reason: ' + escapeHtml(existingRequest.reason) : ''}</small>
+                        </div>
+                    `);
+                    $('#refundBtnFullscreen').hide();
+                }
+            }
+        })
+        .fail(function() {
+            // Silently fail - not critical
+        });
+}
+
+function showOrderReceipt(paymentData, order) {
+    // This is for payments just processed
+    currentReceiptDataFullscreen = { payment: paymentData, order };
+    const { amount, payment_method, transaction_id, notes } = paymentData;
+    
+    $('#receiptBody').html(`
+        <div class="text-center mb-4">
+            <h4>Payment Receipt</h4>
+            <p class="text-muted">Restaurant Management System</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Order ID:</strong><br>
+                <strong>Table:</strong><br>
+                <strong>Date:</strong><br>
+                <strong>Time:</strong>
+            </div>
+            <div class="col-6 text-end">
+                ${order.id}<br>
+                ${order.table_number}<br>
+                ${new Date(order.created_at).toLocaleDateString()}<br>
+                ${new Date(order.created_at).toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="mb-3">
+            <h6>Order Items:</h6>
+            ${order.items && order.items.length > 0 ? order.items.map(item => `
+                <div class="d-flex justify-content-between p-2 bg-light rounded mb-2">
+                    <span>${escapeHtml(item.name)} x${item.quantity}</span>
+                    <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('') : '<p class="text-muted">No items</p>'}
+        </div>
+        
+        <hr>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Payment Method:</strong><br>
+                ${transaction_id ? '<strong>Transaction ID:</strong><br>' : ''}
+                ${notes ? '<strong>Notes:</strong>' : ''}
+            </div>
+            <div class="col-6 text-end">
+                ${payment_method.charAt(0).toUpperCase() + payment_method.slice(1)}<br>
+                ${transaction_id ? transaction_id + '<br>' : ''}
+                ${notes ? escapeHtml(notes) : ''}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="text-end">
+            <h4 class="text-success mb-0">Total Paid: $${amount.toFixed(2)}</h4>
+        </div>
+        
+        <div class="text-center mt-4 text-muted">
+            <small>Thank you for your payment!</small>
+        </div>
+    `);
+    
+    // Hide refund button for newly processed payments
+    $('#refundBtnFullscreen').hide();
+    
+    $('#receiptModal').modal('show');
+}
+
+function checkRefundPermissionFullscreen(paymentId) {
+    // Check refund settings and user role
+    $.when(
+        $.get('/api/get_setting?key=refund_permission'),
+        $.get('/api/get_user_role')
+    )
+        .done(function(refundResponse, roleResponse) {
+            const refundSetting = (refundResponse[0].success && refundResponse[0].value) ? refundResponse[0].value : 'request_approval';
+            const userRole = (roleResponse[0] && roleResponse[0].role) ? roleResponse[0].role : 'cashier';
+            
+            // Admin/Manager can always refund
+            if (userRole === 'admin' || userRole === 'manager') {
+                $('#refundBtnFullscreen').show();
+                $('#refundBtnFullscreen').text('Refund');
+                $('#refundBtnFullscreen').removeClass('btn-warning').addClass('btn-danger');
+                return;
+            }
+            
+            // Cashier permissions based on setting
+            if (refundSetting === 'allow') {
+                $('#refundBtnFullscreen').show();
+                $('#refundBtnFullscreen').text('Refund');
+                $('#refundBtnFullscreen').removeClass('btn-warning').addClass('btn-danger');
+            } else if (refundSetting === 'request_approval') {
+                $('#refundBtnFullscreen').show();
+                $('#refundBtnFullscreen').text('Request Refund');
+                $('#refundBtnFullscreen').removeClass('btn-danger').addClass('btn-warning');
+            } else {
+                $('#refundBtnFullscreen').hide();
+            }
+        })
+        .fail(function() {
+            // Default to request approval on error
+            $('#refundBtnFullscreen').show();
+            $('#refundBtnFullscreen').text('Request Refund');
+            $('#refundBtnFullscreen').removeClass('btn-danger').addClass('btn-warning');
+        });
+}
+
+function showRefundModalFullscreen() {
+    if (!currentReceiptDataFullscreen || !currentReceiptDataFullscreen.payment) {
+        showAlert('No payment data available', 'danger');
+        return;
+    }
+    
+    const paymentId = currentReceiptDataFullscreen.payment.id || currentReceiptDataFullscreen.payment.payment_id;
+    const orderId = currentReceiptDataFullscreen.order.id;
+    const amount = currentReceiptDataFullscreen.payment.amount;
+    const needsApproval = $('#refundBtnFullscreen').hasClass('btn-warning');
+    
+    // Populate form
+    $('#refundPaymentIdFullscreen').val(paymentId);
+    $('#refundOrderIdFullscreen').val(orderId);
+    $('#refundAmountFullscreen').val(amount);
+    $('#refundNeedsApprovalFullscreen').val(needsApproval ? 'true' : 'false');
+    $('#refundAmountDisplayFullscreen').val(amount.toFixed(2));
+    $('#originalAmountDisplayFullscreen').text('$' + amount.toFixed(2));
+    $('#refundReasonFullscreen').val('');
+    
+    // Update UI based on approval status
+    if (needsApproval) {
+        $('#refundModalTitleFullscreen').text('Request Refund');
+        $('#submitRefundTextFullscreen').text('Request Refund');
+        $('#refundReasonGroupFullscreen').show();
+        $('#refundReasonFullscreen').attr('required', true);
+        $('#refundInfoMessageFullscreen').show();
+        $('#refundInfoTextFullscreen').text('This refund request will require admin/manager approval before processing.');
+    } else {
+        $('#refundModalTitleFullscreen').text('Process Refund');
+        $('#submitRefundTextFullscreen').text('Process Refund');
+        $('#refundReasonGroupFullscreen').hide();
+        $('#refundReasonFullscreen').attr('required', false);
+        $('#refundInfoMessageFullscreen').show();
+        $('#refundInfoTextFullscreen').text('This refund will be processed immediately. Click Process Refund to continue.');
+    }
+    
+    // Show modal
+    $('#refundRequestModalFullscreen').modal('show');
+    
+    // Focus on reason field if needed
+    if (needsApproval) {
+        setTimeout(() => {
+            $('#refundReasonFullscreen').focus();
+        }, 300);
+    }
+}
+
+function submitRefundRequestFullscreen() {
+    const paymentId = $('#refundPaymentIdFullscreen').val();
+    const orderId = $('#refundOrderIdFullscreen').val();
+    const originalAmount = parseFloat($('#refundAmountFullscreen').val());
+    const refundAmount = parseFloat($('#refundAmountDisplayFullscreen').val());
+    const reason = $('#refundReasonFullscreen').val().trim();
+    const needsApproval = $('#refundNeedsApprovalFullscreen').val() === 'true';
+    
+    // Validate refund amount
+    if (!refundAmount || refundAmount <= 0) {
+        showAlert('Please enter a valid refund amount', 'warning');
+        $('#refundAmountDisplayFullscreen').focus();
+        return;
+    }
+    
+    if (refundAmount > originalAmount) {
+        showAlert(`Refund amount cannot exceed original payment amount of $${originalAmount.toFixed(2)}`, 'warning');
+        $('#refundAmountDisplayFullscreen').focus();
+        return;
+    }
+    
+    // Validate reason if needed
+    if (needsApproval && !reason) {
+        showAlert('Please provide a reason for the refund request', 'warning');
+        $('#refundReasonFullscreen').focus();
+        return;
+    }
+    
+    // Show info for partial refunds (but don't block - user already sees the amount)
+    if (refundAmount < originalAmount) {
+        const partialInfo = `Processing partial refund: $${refundAmount.toFixed(2)} of $${originalAmount.toFixed(2)}`;
+        // Note: We'll show this in the info message or just proceed
+    }
+    
+    // Disable submit button
+    $('#submitRefundBtnFullscreen').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+    
+    $.ajax({
+        url: '/api/refund_payment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            payment_id: parseInt(paymentId),
+            order_id: parseInt(orderId),
+            amount: refundAmount,
+            reason: reason
+        }),
+        success: function(response) {
+            $('#refundRequestModalFullscreen').modal('hide');
+            
+            if (response.success) {
+                if (response.processed) {
+                    showAlert('Refund processed successfully!', 'success');
+                } else {
+                    showAlert('Refund request submitted. Waiting for admin/manager approval.', 'info');
+                }
+                $('#receiptModal').modal('hide');
+                loadRecentOrders(); // Refresh orders list
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error processing refund';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        },
+        complete: function() {
+            // Re-enable submit button
+            const needsApproval = $('#refundNeedsApprovalFullscreen').val() === 'true';
+            $('#submitRefundBtnFullscreen').prop('disabled', false);
+            $('#submitRefundBtnFullscreen').html(`<i class="fas fa-undo me-2"></i><span>${needsApproval ? 'Request Refund' : 'Process Refund'}</span>`);
+        }
+    });
+}
+
+function showPendingRefundModalFullscreen(orderId, refundRequestId) {
+    // Always show password verification modal - password check will verify admin/manager access
+    $('#pendingRefundOrderIdFullscreen').val(orderId);
+    $('#pendingRefundRequestIdFullscreen').val(refundRequestId);
+    $('#pendingRefundPasswordFullscreen').val('');
+    $('#pendingRefundPasswordModalFullscreen').modal('show');
+    setTimeout(() => {
+        $('#pendingRefundPasswordFullscreen').focus();
+    }, 300);
+}
+
+function verifyPendingRefundAccessFullscreen() {
+    const password = $('#pendingRefundPasswordFullscreen').val();
+    const orderId = $('#pendingRefundOrderIdFullscreen').val();
+    const refundRequestId = $('#pendingRefundRequestIdFullscreen').val();
+    
+    if (!password) {
+        showAlert('Please enter your password', 'warning');
+        $('#pendingRefundPasswordFullscreen').focus();
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/verify_password',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ password: password }),
+        success: function(response) {
+            if (response.success) {
+                // Hide password modal first
+                const passwordModal = bootstrap.Modal.getInstance(document.getElementById('pendingRefundPasswordModalFullscreen'));
+                if (passwordModal) {
+                    passwordModal.hide();
+                } else {
+                    $('#pendingRefundPasswordModalFullscreen').modal('hide');
+                }
+                
+                // Wait a bit for modal to fully close, then load refund details
+                setTimeout(function() {
+                    viewRefundRequestDetailsFullscreen(orderId, refundRequestId);
+                }, 300);
+            } else {
+                showAlert('Invalid password. Access denied.', 'danger');
+                $('#pendingRefundPasswordFullscreen').val('').focus();
+            }
+        },
+        error: function(xhr, status, error) {
+            showAlert('Error verifying password: ' + error, 'danger');
+        }
+    });
+}
+
+function viewRefundRequestDetailsFullscreen(orderId, refundRequestId) {
+    // Get refund request details
+    $.get(`/api/get_refund_requests?status=all`)
+        .done(function(response) {
+            if (response.success && response.requests) {
+                const request = response.requests.find(r => r.id == refundRequestId || r.id == parseInt(refundRequestId));
+                if (request) {
+                    // Try to get order from current filtered orders first
+                    let order = orders.find(o => o.id == orderId || o.id == parseInt(orderId));
+                    
+                    // If order not in filtered list, try to get from allOrdersFullscreen
+                    if (!order && typeof allOrdersFullscreen !== 'undefined') {
+                        order = allOrdersFullscreen.find(o => o.id == orderId || o.id == parseInt(orderId));
+                    }
+                    
+                    // If still not found, fetch from API
+                    if (!order) {
+                        $.get(`/api/get_orders`)
+                            .done(function(ordersResponse) {
+                                if (ordersResponse.orders) {
+                                    order = ordersResponse.orders.find(o => o.id == orderId || o.id == parseInt(orderId));
+                                    if (order) {
+                                        showRefundRequestModalFullscreen(request, order);
+                                    } else {
+                                        showAlert('Order not found in system', 'danger');
+                                    }
+                                } else {
+                                    showAlert('Error loading order details', 'danger');
+                                }
+                            })
+                            .fail(function() {
+                                showAlert('Error loading order details', 'danger');
+                            });
+                    } else {
+                        // Show refund request in a modal
+                        showRefundRequestModalFullscreen(request, order);
+                    }
+                } else {
+                    showAlert('Refund request not found. Request ID: ' + refundRequestId, 'danger');
+                }
+            } else {
+                showAlert('Error loading refund request: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        })
+        .fail(function(xhr, status, error) {
+            showAlert('Error loading refund request: ' + error, 'danger');
+            console.error('Error:', xhr, status, error);
+        });
+}
+
+function showRefundRequestModalFullscreen(request, order) {
+    console.log('Showing refund request modal (fullscreen):', { request, order });
+    
+    // Ensure we have valid data
+    if (!request || !order) {
+        showAlert('Missing refund request or order data', 'danger');
+        return;
+    }
+    
+    // Create a modal to show refund request details with approve/reject options
+    const requestId = request.id;
+    const orderId = order.id;
+    const status = request.status || 'pending';
+    const amount = parseFloat(request.amount || 0);
+    const paymentId = request.payment_id || 'N/A';
+    const tableNumber = order.table_number || 'N/A';
+    const reason = request.reason || '';
+    const requesterName = request.requester ? request.requester.name : 'Unknown';
+    const requesterUsername = request.requester ? request.requester.username : 'Unknown';
+    const createdAt = request.created_at ? new Date(request.created_at).toLocaleString() : 'N/A';
+    const paymentMethod = request.payment ? request.payment.payment_method : 'N/A';
+    const transactionId = request.payment && request.payment.transaction_id ? request.payment.transaction_id : '';
+    
+    const modalHtml = `
+        <div class="modal fade" id="viewRefundRequestModalFullscreen" tabindex="-1" role="dialog" aria-labelledby="viewRefundRequestModalFullscreenLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="viewRefundRequestModalFullscreenLabel">Refund Request Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Request ID:</strong> ${requestId}</p>
+                                <p><strong>Payment ID:</strong> ${paymentId}</p>
+                                <p><strong>Order ID:</strong> ${orderId} (Table ${tableNumber})</p>
+                                <p><strong>Amount:</strong> <span class="text-success fw-bold">$${amount.toFixed(2)}</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Requested By:</strong> ${escapeHtml(requesterName)} (${escapeHtml(requesterUsername)})</p>
+                                <p><strong>Requested At:</strong> ${createdAt}</p>
+                                ${request.approved_at ? `<p><strong>${request.status === 'processed' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Reviewed'} At:</strong> ${new Date(request.approved_at).toLocaleString()}</p>` : ''}
+                                ${request.approver ? `<p><strong>${request.status === 'processed' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Reviewed'} By:</strong> ${escapeHtml((request.approver.name && request.approver.name !== request.approver.role) ? request.approver.name : request.approver.username || 'Unknown')}${request.approver.username ? ` (${escapeHtml(request.approver.username)})` : ''}</p>` : ''}
+                                ${request.verified_admin ? `<p><strong>Verified with Admin:</strong> ${escapeHtml(request.verified_admin.name || request.verified_admin.username)} (${escapeHtml(request.verified_admin.username)})</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        ${reason ? `
+                            <div class="alert alert-info">
+                                <strong>Reason:</strong><br>
+                                ${escapeHtml(reason)}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="mb-3">
+                            <strong>Payment Details:</strong><br>
+                            Method: ${paymentMethod}<br>
+                            ${transactionId ? `Transaction ID: ${escapeHtml(transactionId)}` : ''}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-success btn-lg" onclick="approveRequestFromModalFullscreen(${requestId})">
+                            <i class="fas fa-check me-2"></i>Approve
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg" onclick="showRejectModalFromViewFullscreen(${requestId})">
+                            <i class="fas fa-times me-2"></i>Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    $('#viewRefundRequestModalFullscreen').remove();
+    
+    // Add modal to body
+    $('body').append(modalHtml);
+    
+    // Initialize and show modal using Bootstrap 5
+    const modalElement = document.getElementById('viewRefundRequestModalFullscreen');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        
+        // Show the modal
+        modal.show();
+        
+        // Clean up on close
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            $(this).remove();
+        });
+    } else {
+        console.error('Modal element not found after creation');
+        showAlert('Error displaying refund request modal', 'danger');
+    }
+}
+
+function approveRequestFromModalFullscreen(requestId) {
+    // No confirmation dialog - user already authenticated with password
+    $.ajax({
+        url: '/api/approve_refund_request',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ request_id: requestId }),
+        success: function(response) {
+            if (response.success) {
+                $('#viewRefundRequestModalFullscreen').modal('hide');
+                showAlert('Refund request approved and processed successfully!', 'success');
+                loadRecentOrders(); // Refresh orders list
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error approving refund request';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function showRejectModalFromViewFullscreen(requestId) {
+    // Create a reject modal inline
+    const rejectModalHtml = `
+        <div class="modal fade" id="rejectModalInlineFullscreen" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Reject Refund Request</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="rejectFormInlineFullscreen">
+                            <input type="hidden" id="rejectRequestIdInlineFullscreen" value="${requestId}">
+                            <div class="mb-3">
+                                <label for="rejectionReasonInlineFullscreen" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control form-control-lg" id="rejectionReasonInlineFullscreen" rows="3" required placeholder="Please provide a reason for rejecting this refund request..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger btn-lg" onclick="submitRejectionInlineFullscreen()">
+                            <i class="fas fa-times me-2"></i>Reject Request
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    $('#rejectModalInlineFullscreen').remove();
+    
+    // Add modal to body
+    $('body').append(rejectModalHtml);
+    
+    // Hide refund request modal and show reject modal
+    $('#viewRefundRequestModalFullscreen').modal('hide');
+    $('#rejectModalInlineFullscreen').modal('show');
+    
+    // Clean up on close
+    $('#rejectModalInlineFullscreen').on('hidden.bs.modal', function() {
+        $(this).remove();
+    });
+    
+    // Focus on reason field
+    setTimeout(() => {
+        $('#rejectionReasonInlineFullscreen').focus();
+    }, 300);
+}
+
+function submitRejectionInlineFullscreen() {
+    const requestId = $('#rejectRequestIdInlineFullscreen').val();
+    const reason = $('#rejectionReasonInlineFullscreen').val().trim();
+    
+    if (!reason) {
+        showAlert('Please provide a rejection reason', 'warning');
+        $('#rejectionReasonInlineFullscreen').focus();
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/reject_refund_request',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            request_id: parseInt(requestId),
+            rejection_reason: reason
+        }),
+        success: function(response) {
+            if (response.success) {
+                $('#rejectModalInlineFullscreen').modal('hide');
+                showAlert('Refund request rejected', 'success');
+                loadRecentOrders(); // Refresh orders list
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error rejecting refund request';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function printReceipt() {
+    const printContent = document.getElementById('receiptBody').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Receipt</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .text-center { text-align: center; }
+                    .text-end { text-align: right; }
+                    .mb-4 { margin-bottom: 1.5rem; }
+                    .mb-3 { margin-bottom: 1rem; }
+                    .mt-4 { margin-top: 1.5rem; }
+                    hr { border: 1px solid #ccc; margin: 1rem 0; }
+                    .text-muted { color: #6c757d; }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('.fullscreen-container').prepend(alertHtml);
+    
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+
+// Load tables and waiters for assignment dropdowns
+$(document).ready(function() {
+    $.when(
+        $.get('/api/get_tables'),
+        $.get('/api/get_waiters')
+    ).done(function(tablesResponse, waitersResponse) {
+        const tablesData = tablesResponse[0];
+        const waitersData = waitersResponse[0];
+        
+        // Populate tables dropdown
+        const tableSelect = $('#assignTable');
+        tableSelect.html('<option value="">Select Table</option>');
+        tablesData.tables.forEach(table => {
+            tableSelect.append(`<option value="${table.id}">Table ${table.number}</option>`);
+        });
+        
+        // Populate waiters dropdown
+        const waiterSelect = $('#assignWaiter');
+        waiterSelect.html('<option value="">Select Waiter</option>');
+        waitersData.waiters.forEach(waiter => {
+            waiterSelect.append(`<option value="${waiter.id}">${waiter.name}</option>`);
+        });
+    }).fail(function() {
+        console.error('Failed to load assignment data');
+    });
+});
+
+// ============================================================
+// QUICK MENU VIEW — Toggle & Logic
+// ============================================================
+
+function toggleQuickMenuView(isQuickMode) {
+    const centerCol = document.getElementById('centerColumnPanel');
+    const rightCol  = document.getElementById('rightColumnPanel');
+    const quickView = document.getElementById('quickMenuView');
+    const stdLabel  = document.getElementById('standardViewLabel');
+    const qmLabel   = document.getElementById('quickMenuViewLabel');
+    const grid      = document.querySelector('.main-grid');
+
+    if (isQuickMode) {
+        centerCol.style.display = 'none';
+        rightCol.style.display  = 'none';
+        quickView.style.display = 'block';   // show as a grid item
+        stdLabel.classList.remove('active');
+        qmLabel.classList.add('active');
+        // Cash register left, quick menu takes the rest
+        grid.style.gridTemplateColumns = '360px 1fr';
+        if (quickMenuData.length === 0) {
+            loadQuickMenuData();
+        }
+    } else {
+        centerCol.style.display = '';
+        rightCol.style.display  = '';
+        quickView.style.display = 'none';
+        stdLabel.classList.add('active');
+        qmLabel.classList.remove('active');
+        // Restore grid
+        grid.style.gridTemplateColumns = '';
+        adjustLayoutForWindowSize();
+    }
+}
+
+function loadQuickMenuData() {
+    const tabContainer = document.getElementById('menuCategoryTabs');
+    tabContainer.innerHTML = '<button class="category-tab active" data-category="all" onclick="selectMenuCategory(\'all\', this)">All Items</button>';
+    quickMenuData = [];
+    quickComboData = [];
+
+    // Load menu items and combos in parallel
+    $.when(
+        $.get('/api/get_menu'),
+        $.get('/api/get_meal_combos?active_only=true')
+    ).done(function(menuResp, comboResp) {
+        const menu   = menuResp[0].menu   || [];
+        const combos = comboResp[0].combos || [];
+
+        // -- Regular menu categories --
+        menu.forEach(function(cat) {
+            if (!cat.items || cat.items.length === 0) return;
+            const tab = document.createElement('button');
+            tab.className = 'category-tab';
+            tab.dataset.category = cat.id;
+            tab.textContent = cat.name;
+            tab.onclick = function() { selectMenuCategory(cat.id, this); };
+            tabContainer.appendChild(tab);
+
+            cat.items.forEach(function(item) {
+                quickMenuData.push({
+                    id: item.id,
+                    name: item.name,
+                    price: parseFloat(item.price) || 0,
+                    image_url: item.image_url || '',
+                    category_id: cat.id,
+                    category_name: cat.name,
+                    description: item.description || '',
+                    isCombo: false
+                });
+            });
+        });
+
+        // -- Meal Combos category --
+        if (combos.length > 0) {
+            quickComboData = combos;
+            const tab = document.createElement('button');
+            tab.className = 'category-tab';
+            tab.dataset.category = '__combos__';
+            tab.innerHTML = '<i class="fas fa-layer-group me-1"></i>Meal Combos';
+            tab.onclick = function() { selectMenuCategory('__combos__', this); };
+            tabContainer.insertBefore(tab, tabContainer.children[1]); // right after All
+
+            combos.forEach(function(c) {
+                const inclLines = (c.items || []).map(i =>
+                    (i.role_label ? i.role_label + ': ' : '') + i.menu_item_name + (i.quantity > 1 ? ' ×' + i.quantity : '')
+                ).join(' · ');
+                quickMenuData.push({
+                    id: 'combo_' + c.id,
+                    name: c.name,
+                    price: parseFloat(c.combo_price) || 0,
+                    image_url: c.image_url || '',
+                    category_id: '__combos__',
+                    category_name: 'Meal Combos',
+                    description: inclLines,
+                    isCombo: true,
+                    comboId: c.id,
+                    comboItems: c.items || []
+                });
+            });
+        }
+
+        renderMenuItems(quickMenuData);
+    }).fail(function() {
+        document.getElementById('menuItemsGrid').innerHTML =
+            '<div style="grid-column:1/-1; text-align:center; color:#dc3545; padding:20px;">' +
+            '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Failed to load menu</div>';
+    });
+}
+
+function selectMenuCategory(categoryId, el) {
+    currentMenuCategory = categoryId;
+    // Update active tab
+    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    // Clear search
+    document.getElementById('menuSearchInput').value = '';
+    applyQuickMenuFilter('', categoryId);
+}
+
+function filterQuickMenuItems(query) {
+    applyQuickMenuFilter(query, currentMenuCategory);
+}
+
+function applyQuickMenuFilter(query, categoryId) {
+    let filtered = quickMenuData;
+    if (categoryId && categoryId !== 'all') {
+        filtered = filtered.filter(i => String(i.category_id) === String(categoryId));
+    }
+    if (query && query.trim()) {
+        const q = query.trim().toLowerCase();
+        filtered = filtered.filter(i => i.name.toLowerCase().includes(q));
+    }
+    renderMenuItems(filtered);
+}
+
+function renderMenuItems(items) {
+    const grid = document.getElementById('menuItemsGrid');
+    if (!items || items.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888; padding:30px;">' +
+            '<i class="fas fa-search fa-2x mb-2"></i><br>No items found</div>';
+        return;
+    }
+
+    const cartMap = {};
+    quickCartItems.forEach(c => { cartMap[String(c.id)] = c.qty; });
+
+    grid.innerHTML = items.map(function(item) {
+        const qty = cartMap[String(item.id)] || 0;
+        const badge = qty > 0 ? `<div class="menu-item-badge">${qty}</div>` : '';
+
+        const iconClass = item.isCombo ? 'fas fa-layer-group' : 'fas fa-utensils';
+        const img = item.image_url
+            ? `<img class="menu-item-img" src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+               <div class="menu-item-img-placeholder" style="display:none;"><i class="${iconClass}"></i></div>`
+            : `<div class="menu-item-img-placeholder"><i class="${iconClass}"></i></div>`;
+
+        const comboTag = item.isCombo
+            ? `<div style="font-size:0.65rem;color:#764ba2;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Meal Combo</div>`
+            : '';
+        const descLine = item.description
+            ? `<div style="font-size:0.68rem;color:#888;line-height:1.2;overflow:hidden;max-height:2.4em;">${escapeHtml(item.description)}</div>`
+            : '';
+
+        const cardStyle = item.isCombo ? 'border:2px solid #764ba2;' : '';
+        const clickAction = item.isCombo ? `openComboCustomiser('${item.id}')` : `addToQuickCart('${item.id}')`;
+
+        return `<div class="menu-item-card" style="${cardStyle}" onclick="${clickAction}" data-id="${item.id}">
+            ${badge}
+            ${img}
+            <div class="menu-item-info">
+                ${comboTag}
+                <div class="menu-item-name">${escapeHtml(item.name)}</div>
+                ${descLine}
+                <div class="menu-item-price">$${item.price.toFixed(2)}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ---- Combo Customiser ----
+let activeComboCustomiser = null;
+
+function openComboCustomiser(itemId) {
+    const menuItem = quickMenuData.find(i => String(i.id) === String(itemId));
+    if (!menuItem || !menuItem.isCombo) return;
+
+    const combo = quickComboData.find(c => c.id === menuItem.comboId);
+    if (!combo) return;
+
+    const allMenuItems = quickMenuData.filter(i => !i.isCombo);
+
+    const slots = (combo.items || []).map(function(ci, idx) {
+        return {
+            slotIndex: idx,
+            roleLabel: ci.role_label || ('Item ' + (idx + 1)),
+            quantity: ci.quantity || 1,
+            originalItemId: ci.menu_item_id,
+            originalItemPrice: parseFloat(ci.menu_item_price) || 0,
+            originalItemName: ci.menu_item_name
+        };
+    });
+
+    activeComboCustomiser = { menuItem, combo, slots, allMenuItems };
+
+    document.getElementById('comboCustomiserTitle').textContent = combo.name;
+    document.getElementById('comboCustomiserDesc').textContent = combo.description || '';
+    document.getElementById('comboBasePrice').textContent = parseFloat(combo.combo_price).toFixed(2);
+
+    const slotsContainer = document.getElementById('comboCustomiserSlots');
+    slotsContainer.innerHTML = slots.map(function(slot) {
+        const options = allMenuItems.map(function(mi) {
+            const selected = String(mi.id) === String(slot.originalItemId) ? 'selected' : '';
+            return `<option value="${mi.id}" data-price="${mi.price}" ${selected}>${escapeHtml(mi.name)} — $${mi.price.toFixed(2)}</option>`;
+        }).join('');
+
+        return `<div class="combo-slot-row">
+            <div class="combo-slot-label">${escapeHtml(slot.roleLabel)}</div>
+            <select class="combo-slot-select" data-slot="${slot.slotIndex}"
+                    data-original-price="${slot.originalItemPrice}"
+                    onchange="updateComboCustomiserTotal()">
+                ${options}
+            </select>
+            ${slot.quantity > 1 ? `<span class="badge bg-secondary">×${slot.quantity}</span>` : ''}
+            <span class="combo-slot-delta" id="slotDelta_${slot.slotIndex}" style="min-width:52px;text-align:right;font-size:0.85rem;font-weight:600;"></span>
+        </div>`;
+    }).join('');
+
+    updateComboCustomiserTotal();
+
+    const modal = new bootstrap.Modal(document.getElementById('comboCustomiserModal'));
+    modal.show();
+}
+
+function updateComboCustomiserTotal() {
+    if (!activeComboCustomiser) return;
+    const { combo } = activeComboCustomiser;
+    const basePrice = parseFloat(combo.combo_price);
+    let adjustment = 0;
+
+    document.querySelectorAll('#comboCustomiserSlots .combo-slot-select').forEach(function(sel) {
+        const originalPrice = parseFloat(sel.dataset.originalPrice) || 0;
+        const selectedOpt = sel.options[sel.selectedIndex];
+        const selectedPrice = selectedOpt ? parseFloat(selectedOpt.dataset.price) || 0 : 0;
+        const delta = (selectedPrice - originalPrice) * 1; // quantity handled separately if needed
+        adjustment += delta;
+
+        // Show per-slot price delta
+        const slotIdx = sel.dataset.slot;
+        const deltaEl = document.getElementById('slotDelta_' + slotIdx);
+        if (deltaEl) {
+            if (delta > 0) {
+                deltaEl.textContent = '+$' + delta.toFixed(2);
+                deltaEl.style.color = '#dc3545';
+            } else if (delta < 0) {
+                deltaEl.textContent = '-$' + Math.abs(delta).toFixed(2);
+                deltaEl.style.color = '#28a745';
+            } else {
+                deltaEl.textContent = '';
+            }
+        }
+    });
+
+    const finalPrice = basePrice + adjustment;
+    const priceEl = document.getElementById('comboCustomiserPrice');
+    priceEl.textContent = '$' + finalPrice.toFixed(2);
+    priceEl.style.color = adjustment > 0 ? '#dc3545' : adjustment < 0 ? '#28a745' : '';
+}
+
+function confirmComboCustomiser() {
+    if (!activeComboCustomiser) return;
+    const { combo, slots, allMenuItems } = activeComboCustomiser;
+    const basePrice = parseFloat(combo.combo_price);
+    let adjustment = 0;
+
+    const selects = document.querySelectorAll('#comboCustomiserSlots .combo-slot-select');
+    const customisedSlots = slots.map(function(slot, i) {
+        const sel = selects[i];
+        const selectedId = sel ? sel.value : slot.originalItemId;
+        const selectedOpt = sel ? sel.options[sel.selectedIndex] : null;
+        const selectedPrice = selectedOpt ? parseFloat(selectedOpt.dataset.price) || 0 : slot.originalItemPrice;
+        const selectedMi = allMenuItems.find(m => String(m.id) === String(selectedId));
+        adjustment += (selectedPrice - slot.originalItemPrice);
+        return {
+            roleLabel: slot.roleLabel,
+            quantity: slot.quantity,
+            itemId: selectedId,
+            itemName: selectedMi ? selectedMi.name : slot.originalItemName,
+            itemPrice: selectedPrice
+        };
+    });
+
+    const finalPrice = basePrice + adjustment;
+    const slotDesc = customisedSlots.map(s =>
+        s.roleLabel + ': ' + s.itemName + (s.quantity > 1 ? ' ×' + s.quantity : '')
+    ).join(' · ');
+
+    quickCartItems.push({
+        id: 'combo_' + combo.id + '_' + Date.now(),
+        name: combo.name,
+        price: finalPrice,
+        qty: 1,
+        isCombo: true,
+        customised: true,
+        comboId: combo.id,
+        slotDesc: slotDesc,
+        slots: customisedSlots
+    });
+
+    bootstrap.Modal.getInstance(document.getElementById('comboCustomiserModal')).hide();
+    activeComboCustomiser = null;
+
+    renderQuickCart();
+    updateMenuItemBadges();
+}
+// ---- End Combo Customiser ----
+
+function addToQuickCart(itemId) {
+    const item = quickMenuData.find(i => String(i.id) === String(itemId));
+    if (!item) return;
+
+    // Animate card
+    const card = document.querySelector(`.menu-item-card[data-id="${itemId}"]`);
+    if (card) {
+        card.classList.add('adding');
+        setTimeout(() => card.classList.remove('adding'), 300);
+    }
+
+    const existing = quickCartItems.find(c => String(c.id) === String(itemId));
+    if (existing) {
+        existing.qty += 1;
+    } else {
+        quickCartItems.push({
+            id: itemId,
+            name: item.name,
+            price: item.price,
+            qty: 1,
+            isCombo: item.isCombo || false,
+            comboItems: item.comboItems || null
+        });
+    }
+
+    renderQuickCart();
+    updateMenuItemBadges();
+}
+
+function changeCartQty(itemId, delta) {
+    const idx = quickCartItems.findIndex(c => String(c.id) === String(itemId));
+    if (idx === -1) return;
+    quickCartItems[idx].qty += delta;
+    if (quickCartItems[idx].qty <= 0) {
+        quickCartItems.splice(idx, 1);
+    }
+    renderQuickCart();
+    updateMenuItemBadges();
+    // If an item was fully removed, clear any pre-filled manual form values
+    if (quickCartItems.length === 0) { clearManualForm(); }
+}
+
+function clearQuickCart() {
+    quickCartItems = [];
+    renderQuickCart();
+    updateMenuItemBadges();
+    clearManualForm();
+}
+
+function renderQuickCart() {
+    const container = document.getElementById('quickCartItems');
+    const emptyMsg  = document.getElementById('emptyCartMsg');
+    const totalEl   = document.getElementById('cartTotal');
+    const countEl   = document.getElementById('cartItemCount');
+
+    let total = 0;
+    let count = 0;
+
+    if (quickCartItems.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4" id="emptyCartMsg"><i class="fas fa-shopping-cart fa-2x mb-2 d-block"></i>Tap items to add</div>';
+        totalEl.textContent = '$0.00';
+        countEl.textContent = '0';
+        document.getElementById('changeDisplay').style.display = 'none';
+        return;
+    }
+
+    container.innerHTML = quickCartItems.map(function(c) {
+        const subtotal = c.price * c.qty;
+        total += subtotal;
+        count += c.qty;
+        const comboLabel = c.isCombo
+            ? `<div style="font-size:0.65rem;color:#764ba2;font-weight:700;">COMBO</div>` : '';
+        const slotLine = c.slotDesc
+            ? `<div style="font-size:0.68rem;color:#888;line-height:1.3;">${escapeHtml(c.slotDesc)}</div>` : '';
+        const idStr = JSON.stringify(String(c.id));
+        return `<div class="cart-item-row">
+            <div class="cart-item-name">${comboLabel}${escapeHtml(c.name)}${slotLine}</div>
+            <div class="cart-item-qty">
+                <button class="cart-qty-btn" onclick="changeCartQty(${idStr}, -1)">−</button>
+                <span class="cart-qty-num">${c.qty}</span>
+                <button class="cart-qty-btn" onclick="changeCartQty(${idStr}, 1)">+</button>
+            </div>
+            <div class="cart-item-subtotal">$${subtotal.toFixed(2)}</div>
+        </div>`;
+    }).join('');
+
+    totalEl.textContent = '$' + total.toFixed(2);
+    countEl.textContent = count;
+
+    // Auto-fill amount with cart total, then update change
+    $('#manualAmount').val(total.toFixed(2));
+    updateChangeDisplay();
+}
+
+function updateChangeDisplay() {
+    const cartTotal = quickCartItems.reduce(function(s, c) { return s + c.price * c.qty; }, 0);
+    const entered = parseFloat($('#manualAmount').val()) || 0;
+    const el = document.getElementById('changeDisplay');
+    if (cartTotal > 0 && entered > cartTotal) {
+        const change = entered - cartTotal;
+        el.innerHTML = '<span style="font-size:1.1rem;font-weight:700;color:#198754;"><i class="fas fa-coins me-1"></i>Change: $' + change.toFixed(2) + '</span>';
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+function updateMenuItemBadges() {
+    const cartMap = {};
+    quickCartItems.forEach(c => { cartMap[String(c.id)] = c.qty; });
+
+    document.querySelectorAll('.menu-item-card').forEach(function(card) {
+        const itemId = card.dataset.id;
+        let badge = card.querySelector('.menu-item-badge');
+        const qty = cartMap[itemId] || 0;
+        if (qty > 0) {
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'menu-item-badge';
+                card.appendChild(badge);
+            }
+            badge.textContent = qty;
+        } else if (badge) {
+            badge.remove();
+        }
+    });
+}
+
+function processQuickCartPayment() {
+    if (quickCartItems.length === 0) {
+        showAlert('Your cart is empty. Add items before checking out.', 'warning');
+        return;
+    }
+    const total = quickCartItems.reduce((s, c) => s + c.price * c.qty, 0);
+    const description = quickCartItems.map(c => `${c.qty}x ${c.name}`).join(', ');
+
+    // Pre-fill the manual payment form on the left — user reviews and clicks Process Payment
+    $('#manualAmount').val(total.toFixed(2));
+    $('#manualNotes').val('Quick Menu: ' + description);
+
+    showAlert('Cart loaded — review the total on the left and click <strong>Process Payment</strong> to confirm.', 'info');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ============================================================
+</script>
+{% endblock %}
+

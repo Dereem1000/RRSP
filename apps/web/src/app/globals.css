@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cd-950: #071525;
+  --color-cd-900: #0c2340;
+  --color-cd-800: #12345c;
+  --color-cd-700: #1a4d7a;
+  --color-cd-500: #2d8fd5;
+  --color-cd-400: #5eb3f0;
+  --color-cd-accent: #f59e0b;
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  @apply scroll-smooth;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900 antialiased;
+}

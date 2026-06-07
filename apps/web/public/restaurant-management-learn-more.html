@@ -1,0 +1,2518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Management System - Learn More | Computer Dynamics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 50px;
+            width: auto;
+            max-width: 200px;
+            margin-right: 12px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray-700);
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .back-btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .demo-btn {
+            background: var(--secondary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 16px;
+        }
+
+        .demo-btn:hover {
+            background: #d946ef;
+            transform: translateY(-2px);
+        }
+
+        .cd-live-demo-btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cd-live-demo-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .cd-live-demo-slot {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* WhatsApp Button */
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.3);
+            text-decoration: none;
+            width: 60px;
+            height: 60px;
+        }
+
+        .btn-whatsapp:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(37, 211, 102, 0.4);
+            color: white;
+        }
+
+        .btn-whatsapp i {
+            font-size: 24px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 100px;
+            padding: 60px 0;
+        }
+
+        .hero-section {
+            text-align: center;
+            margin-bottom: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-section h1 {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero-section .subtitle {
+            font-size: 20px;
+            color: var(--gray-600);
+            margin-bottom: 40px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 40px;
+        }
+
+        .hero-badge i {
+            color: var(--primary);
+        }
+
+        /* Hero Image Gallery */
+        .hero-gallery {
+            display: flex;
+            gap: 12px;
+            margin-top: 60px;
+            max-width: 100%;
+            overflow-x: auto;
+            padding: 0 20px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--gray-200);
+        }
+
+        .hero-gallery::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-track {
+            background: var(--gray-200);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        .hero-image-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 400px;
+        }
+
+        .hero-image-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .hero-image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .hero-image-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .hero-image-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
+            text-align: center;
+            margin: 0 0 6px 0;
+        }
+
+        .hero-image-card .description {
+            font-size: 13px;
+            color: var(--gray-600);
+            text-align: center;
+            line-height: 1.3;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            margin: 0;
+        }
+
+        .hero-image-card:hover .description {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .hero-image-card .role-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .hero-image-card:hover .role-badge {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modal Gallery Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: var(--gray-200);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            color: var(--gray-600);
+        }
+
+        .modal-close:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        /* Demo Modal Styles */
+        .demo-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .demo-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .demo-modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90vw;
+            position: relative;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .demo-modal-overlay.active .demo-modal-content {
+            transform: scale(1);
+        }
+
+        .demo-modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .demo-modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .demo-modal-subtitle {
+            color: var(--gray-600);
+            font-size: 16px;
+        }
+
+        .demo-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .demo-submit-btn {
+            background: var(--primary);
+            color: white;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .demo-submit-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .demo-submit-btn:disabled {
+            background: var(--gray-400);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .demo-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--gray-200);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            color: var(--gray-600);
+        }
+
+        .demo-close:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        /* Playful Badges */
+        .playful-badge {
+            position: fixed;
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+            z-index: 1000;
+            animation: float 3s ease-in-out infinite;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .playful-badge.hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+        }
+
+        .playful-badge:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+        }
+
+        .playful-badge:nth-child(1) {
+            top: 15%;
+            right: 8%;
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+            animation-delay: 0s;
+        }
+
+        .playful-badge:nth-child(1):hover {
+            box-shadow: 0 12px 35px rgba(78, 205, 196, 0.4);
+        }
+
+        .playful-badge:nth-child(2) {
+            top: 60%;
+            left: 5%;
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+            box-shadow: 0 8px 25px rgba(254, 202, 87, 0.3);
+            animation-delay: 1s;
+        }
+
+        .playful-badge:nth-child(2):hover {
+            box-shadow: 0 12px 35px rgba(254, 202, 87, 0.4);
+        }
+
+        .playful-badge:nth-child(3) {
+            bottom: 20%;
+            right: 12%;
+            background: linear-gradient(135deg, #a8e6cf, #88d8a3);
+            box-shadow: 0 8px 25px rgba(168, 230, 207, 0.3);
+            animation-delay: 2s;
+        }
+
+        .playful-badge:nth-child(3):hover {
+            box-shadow: 0 12px 35px rgba(168, 230, 207, 0.4);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-10px) rotate(1deg);
+            }
+            50% {
+                transform: translateY(-5px) rotate(-1deg);
+            }
+            75% {
+                transform: translateY(-15px) rotate(0.5deg);
+            }
+        }
+
+        /* Responsive adjustments for badges */
+        @media (max-width: 768px) {
+            .playful-badge {
+                font-size: 12px;
+                padding: 10px 16px;
+            }
+            
+            .playful-badge:nth-child(1) {
+                top: 12%;
+                right: 5%;
+            }
+            
+            .playful-badge:nth-child(2) {
+                top: 55%;
+                left: 3%;
+            }
+            
+            .playful-badge:nth-child(3) {
+                bottom: 15%;
+                right: 8%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .playful-badge {
+                font-size: 11px;
+                padding: 8px 14px;
+            }
+            
+            .playful-badge:nth-child(1) {
+                top: 10%;
+                right: 3%;
+            }
+            
+            .playful-badge:nth-child(2) {
+                top: 50%;
+                left: 2%;
+            }
+            
+            .playful-badge:nth-child(3) {
+                bottom: 12%;
+                right: 5%;
+            }
+        }
+
+        .modal-gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .featured-image-section {
+            background: var(--gray-50);
+            border-radius: 20px;
+            padding: 30px;
+            border: 2px solid var(--primary);
+            position: relative;
+        }
+
+        .featured-image-content {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
+            gap: clamp(40px, 5vw, 80px);
+            align-items: center;
+        }
+
+        .featured-image-large {
+            position: relative;
+        }
+
+        .featured-image-large img {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: min(780px, 85vh);
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+        }
+
+        .featured-image-info h3 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0 0 16px 0;
+        }
+
+        .featured-image-info .featured-role-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .featured-image-info .featured-description {
+            font-size: 16px;
+            color: var(--gray-600);
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 28px;
+        }
+
+        .modal-image-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .modal-image-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary);
+        }
+
+        .modal-image-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.2);
+        }
+
+        .modal-image-card img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+        }
+
+        .modal-image-card .modal-role-badge {
+            display: inline-block;
+            background: var(--gray-500);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-image-card.featured .modal-role-badge {
+            background: var(--primary);
+        }
+
+        .modal-image-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0 0 8px 0;
+        }
+
+        .modal-image-card .modal-description {
+            font-size: 11px;
+            color: var(--gray-600);
+            line-height: 1.4;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Featured Interface Showcase */
+        .featured-interface {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 80px 0;
+            margin: 80px 0;
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .featured-interface::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .featured-content {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
+            gap: clamp(40px, 5vw, 80px);
+            align-items: center;
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        .featured-content:has(> .featured-image:first-child) {
+            grid-template-columns: minmax(480px, 2fr) minmax(280px, 1fr);
+        }
+
+        .featured-text {
+            text-align: left;
+        }
+
+        .featured-text h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .featured-text p {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 32px;
+            line-height: 1.7;
+        }
+
+        .featured-text .cta-buttons {
+            justify-content: flex-start;
+        }
+
+        .featured-image {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .featured-image img {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: min(780px, 85vh);
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Features Grid */
+        .features-section {
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: var(--gray-600);
+            margin-bottom: 60px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 32px;
+            margin-bottom: 60px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon i {
+            font-size: 24px;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .feature-card p {
+            color: var(--gray-600);
+            line-height: 1.7;
+        }
+
+        /* Interface Showcase */
+        .interface-showcase {
+            background: var(--gray-50);
+            padding: 80px 0;
+            margin-bottom: 80px;
+        }
+
+        .interface-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 40px;
+        }
+
+        .interface-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .interface-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .interface-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .interface-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .interface-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .interface-card p {
+            color: var(--gray-600);
+            margin-bottom: 24px;
+        }
+
+        .interface-features {
+            list-style: none;
+            text-align: left;
+        }
+
+        .interface-features li {
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .interface-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* Technology Stack */
+        .tech-stack {
+            margin-bottom: 80px;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+
+        .tech-item {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .tech-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .tech-item h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .tech-item p {
+            color: var(--gray-600);
+            font-size: 14px;
+        }
+
+        /* Benefits Section */
+        .benefits-section {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 80px 0;
+            margin-bottom: 80px;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 32px;
+        }
+
+        .benefit-item {
+            text-align: center;
+        }
+
+        .benefit-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .benefit-icon i {
+            font-size: 24px;
+            color: white;
+        }
+
+        .benefit-item h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .benefit-item p {
+            opacity: 0.9;
+            line-height: 1.7;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+            padding: 80px 0;
+            background: var(--gray-50);
+        }
+
+        .cta-content h2 {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 24px;
+        }
+
+        .cta-content p {
+            font-size: 18px;
+            color: var(--gray-600);
+            margin-bottom: 40px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--gray-700);
+            border: 2px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 36px;
+            }
+
+            .hero-section .subtitle {
+                font-size: 18px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .hero-gallery {
+                gap: 8px;
+                padding: 0 10px;
+            }
+
+            .hero-image-card {
+                width: 320px;
+            }
+
+            .hero-image-card img {
+                height: 160px;
+            }
+
+            .featured-content,
+            .featured-content:has(> .featured-image:first-child) {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                text-align: center;
+            }
+
+            .featured-image img,
+            .featured-image-large img {
+                max-height: min(560px, 70vh);
+                max-width: 100%;
+            }
+
+            .featured-image-content {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+
+            .featured-text {
+                text-align: center;
+            }
+
+            .featured-text h2 {
+                font-size: 28px;
+            }
+
+            .featured-text .cta-buttons {
+                justify-content: center;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .interface-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .demo-btn {
+                margin-left: 8px;
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .btn-whatsapp {
+                width: 40px;
+                height: 40px;
+                padding: 8px;
+            }
+
+            .btn-whatsapp i {
+                font-size: 18px;
+            }
+
+            .back-btn {
+                padding: 10px 16px;
+                font-size: 14px;
+                margin-right: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-gallery {
+                gap: 6px;
+                padding: 0 5px;
+            }
+
+            .hero-image-card {
+                width: 280px;
+                padding: 8px;
+            }
+
+            .hero-image-card img {
+                height: 140px;
+            }
+
+            .hero-image-card h4 {
+                font-size: 14px;
+            }
+
+            .hero-image-card .description {
+                font-size: 12px;
+            }
+
+            .modal-content {
+                padding: 20px;
+                max-width: 95vw;
+                max-height: 95vh;
+            }
+
+            .modal-title {
+                font-size: 20px;
+            }
+
+            .featured-image-content {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .featured-image-large img {
+                min-height: 220px;
+            }
+
+            .featured-image-info h3 {
+                font-size: 20px;
+            }
+
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .modal-image-card img {
+                height: 180px;
+            }
+
+            /* Mobile Navigation Button Optimization */
+            .demo-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .btn-whatsapp {
+                width: 36px;
+                height: 36px;
+                padding: 6px;
+            }
+
+            .btn-whatsapp i {
+                font-size: 16px;
+            }
+
+            .back-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark);
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        .footer p {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Playful Badges -->
+    <div class="playful-badge">🚫 No Subscription</div>
+    <div class="playful-badge">🏠 Local</div>
+    <div class="playful-badge">⚙️ Customizable</div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <a href="index.html" class="logo">
+                <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; align-items: center;">
+                    <i class="fas fa-desktop" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
+                    <span class="logo-text">Computer Dynamics</span>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html#services">Services</a></li>
+                <li><a href="index.html#contact">Contact</a></li>
+            </ul>
+            <div style="display: flex; align-items: center;">
+                <a href="index.html" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Home
+                </a>
+                <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <a href="#" class="demo-btn" onclick="openDemoModal(); return false;">
+                        <i class="fas fa-calendar-alt"></i>
+                        Request Demo
+                    </a>
+                    <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
+                    <a href="https://wa.me/18683168851" target="_blank" class="btn-whatsapp" title="WhatsApp Chat">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-utensils"></i>
+                    Restaurant Management System
+                </div>
+                <h1>Complete Restaurant Management Solutions</h1>
+                <p class="subtitle">
+                    A comprehensive, touchscreen-friendly restaurant management system built with modern technology, 
+                    featuring modular database design and multiple user interfaces for seamless operations.
+                </p>
+            </div>
+            
+            <!-- Hero Image Gallery -->
+            <div class="hero-gallery">
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">System</div>
+                    <img src="images/restaurant-system/Login_page.png" alt="Login Page">
+                    <h4>Login Page</h4>
+                    <p class="description">Secure authentication system with role-based access for all staff members</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Admin</div>
+                    <img src="images/restaurant-system/Admin Dashboard.png" alt="Admin Dashboard">
+                    <h4>Admin Dashboard</h4>
+                    <p class="description">Complete system overview with analytics, reports, and management controls</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Kitchen</div>
+                    <img src="images/restaurant-system/Kitchen Dashboard.png" alt="Kitchen Dashboard">
+                    <h4>Kitchen Dashboard</h4>
+                    <p class="description">Order management, status updates, and chef notes for kitchen staff</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Waiter</div>
+                    <img src="images/restaurant-system/Waiter Dashboard.png" alt="Waiter Dashboard">
+                    <h4>Waiter Dashboard</h4>
+                    <p class="description">Table management, order creation, and customer service tools</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Cashier</div>
+                    <img src="images/restaurant-system/Cash register full screen Touch.png" alt="Cash Register">
+                    <h4>Touch Cash Register</h4>
+                    <p class="description">Full-screen touch interface for payment processing and receipt generation</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Customer</div>
+                    <img src="images/restaurant-system/Mobile Menu.png" alt="Mobile Menu">
+                    <h4>Customer Mobile Menu</h4>
+                    <p class="description">QR code accessible menu with ordering and order tracking capabilities</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Admin</div>
+                    <img src="images/restaurant-system/Table Management With QR Code.png" alt="Table Management">
+                    <h4>Table Management</h4>
+                    <p class="description">QR code generation, table status tracking, and capacity management</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Admin</div>
+                    <img src="images/restaurant-system/Menu Management.png" alt="Menu Management">
+                    <h4>Menu Management</h4>
+                    <p class="description">Add, edit, and organize menu items with pricing and descriptions</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Admin</div>
+                    <img src="images/restaurant-system/Staff Management.png" alt="Staff Management">
+                    <h4>Staff Management</h4>
+                    <p class="description">Employee accounts, roles, permissions, and schedule management</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Admin</div>
+                    <img src="images/restaurant-system/Inventory Management.png" alt="Inventory Management">
+                    <h4>Inventory Management</h4>
+                    <p class="description">Track ingredients, stock levels, and inventory costs</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Manager</div>
+                    <img src="images/restaurant-system/Table & Waiter Managment.png" alt="Table & Waiter Management">
+                    <h4>Table & Waiter Management</h4>
+                    <p class="description">Combined interface for managing table assignments and waiter schedules</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Manager</div>
+                    <img src="images/restaurant-system/Waiter Table Assignments.png" alt="Waiter Table Assignments">
+                    <h4>Waiter Assignments</h4>
+                    <p class="description">Assign specific tables to waiters and track service areas</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Waiter</div>
+                    <img src="images/restaurant-system/Waiter panel Mobile.png" alt="Waiter Mobile Panel">
+                    <h4>Waiter Mobile Panel</h4>
+                    <p class="description">Mobile-optimized interface for waiters to manage orders on-the-go</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Customer</div>
+                    <img src="images/restaurant-system/Mobile menue with b.png" alt="Mobile Menu with Background">
+                    <h4>Enhanced Mobile Menu</h4>
+                    <p class="description">Mobile menu with enhanced visual design and background styling</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Customer</div>
+                    <img src="images/restaurant-system/mobile review order.png" alt="Mobile Review Order">
+                    <h4>Order Review</h4>
+                    <p class="description">Customers can review their order details before final submission</p>
+                </div>
+                <div class="hero-image-card" onclick="openModal()">
+                    <div class="role-badge">Cashier</div>
+                    <img src="images/restaurant-system/Full screen manual register.png" alt="Full Screen Manual Register">
+                    <h4>Manual Register</h4>
+                    <p class="description">Alternative full-screen register interface for manual order entry</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Featured Interface Showcase -->
+        <section class="featured-interface">
+            <div class="featured-content">
+                <div class="featured-text">
+                    <h2>Multi-Interface Touch System</h2>
+                    <p>
+                        Our restaurant management system features multiple touch-optimized interfaces designed for different roles. 
+                        From mobile customer menus to full-screen cash registers, each interface is crafted for intuitive 
+                        touch interaction and seamless workflow integration.
+                    </p>
+                    <div class="cta-buttons">
+                        <a href="#features" class="btn btn-primary">
+                            <i class="fas fa-eye"></i>
+                            Explore Features
+                        </a>
+                    </div>
+                </div>
+                <div class="featured-image">
+                    <img src="images/restaurant-system/Cash register full screen Touch.png" alt="Touch Screen Cash Register">
+                    <div class="featured-badge">Touch Optimized</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Additional Touch Interface Showcase -->
+        <section class="featured-interface" style="background: linear-gradient(135deg, var(--accent), var(--primary));">
+            <div class="featured-content">
+                <div class="featured-image">
+                    <img src="images/restaurant-system/Mobile Menu.png" alt="Mobile Customer Menu">
+                    <div class="featured-badge">Mobile First</div>
+                </div>
+                <div class="featured-text">
+                    <h2>Customer Mobile Experience</h2>
+                    <p>
+                        Customers can access the full menu through QR codes on their tables, browse categories, 
+                        customize orders, and track their meal progress. The mobile interface is optimized for 
+                        touch interaction with large buttons and intuitive navigation.
+                    </p>
+                    <div class="cta-buttons">
+                        <a href="#interfaces" class="btn btn-primary">
+                            <i class="fas fa-mobile-alt"></i>
+                            View Interfaces
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Waiter Interface Showcase -->
+        <section class="featured-interface" style="background: linear-gradient(135deg, var(--success), var(--accent));">
+            <div class="featured-content">
+                <div class="featured-text">
+                    <h2>Waiter Mobile Interface</h2>
+                    <p>
+                        Waiters can manage their assigned tables, create orders, track order progress, and communicate 
+                        with the kitchen all from their mobile device. The interface is designed for quick, efficient 
+                        service with touch-optimized controls and real-time updates.
+                    </p>
+                    <div class="cta-buttons">
+                        <a href="#interfaces" class="btn btn-primary">
+                            <i class="fas fa-user-tie"></i>
+                            See All Interfaces
+                        </a>
+                    </div>
+                </div>
+                <div class="featured-image">
+                    <img src="images/restaurant-system/Waiter panel Mobile.png" alt="Waiter Mobile Panel">
+                    <div class="featured-badge">Mobile Ready</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Features -->
+        <section class="features-section container" id="features">
+            <h2 class="section-title">Core System Features</h2>
+            <p class="section-subtitle">
+                Everything you need to run a modern, efficient restaurant operation
+            </p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3>Modular SQLite Database</h3>
+                    <p>Separate tables for different entities including users, orders, menu items, tables, payments, and customers. Robust data management with SQLAlchemy ORM.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Touchscreen Optimized</h3>
+                    <p>Large buttons, responsive design, and touch-friendly interfaces. Works seamlessly on tablets, phones, and desktop computers with mobile-first design.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3>Real-time Updates</h3>
+                    <p>Live order tracking and status updates across all interfaces. Kitchen, cash register, and waiter interfaces stay synchronized in real-time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Role-based Security</h3>
+                    <p>Secure user sessions with role-based access control. Password hashing, input validation, and SQL injection protection for complete security.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3>QR Code Integration</h3>
+                    <p>Each table gets a unique QR code for easy mobile menu access. Customers can browse, order, and track their meals directly from their phones.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Analytics & Reporting</h3>
+                    <p>Comprehensive business insights with detailed reports, payment tracking, and system monitoring for data-driven decision making.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Interfaces -->
+        <section class="interface-showcase" id="interfaces">
+            <div class="container">
+                <h2 class="section-title">User Interfaces</h2>
+                <p class="section-subtitle">
+                    Specialized interfaces for every role in your restaurant
+                </p>
+                
+                <div class="interface-grid">
+                    <div class="interface-card">
+                        <div class="interface-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <h3>Kitchen Interface</h3>
+                        <p>Streamlined order management for kitchen staff</p>
+                        <ul class="interface-features">
+                            <li>View and manage active orders</li>
+                            <li>Update order item status</li>
+                            <li>Add chef notes and instructions</li>
+                            <li>Real-time order notifications</li>
+                            <li>Touch-friendly order management</li>
+                        </ul>
+                    </div>
+
+                    <div class="interface-card">
+                        <div class="interface-icon">
+                            <i class="fas fa-cash-register"></i>
+                        </div>
+                        <h3>Cash Register Interface</h3>
+                        <p>Complete payment processing solution</p>
+                        <ul class="interface-features">
+                            <li>Process payments for completed orders</li>
+                            <li>Multiple payment methods support</li>
+                            <li>Generate and print receipts</li>
+                            <li>Track payment history</li>
+                            <li>Real-time payment status updates</li>
+                        </ul>
+                    </div>
+
+                    <div class="interface-card">
+                        <div class="interface-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <h3>Waiter/Server Interface</h3>
+                        <p>Efficient table and order management</p>
+                        <ul class="interface-features">
+                            <li>Manage assigned tables</li>
+                            <li>Create new orders for customers</li>
+                            <li>Track order status and progress</li>
+                            <li>Customer service tools</li>
+                            <li>Table assignment management</li>
+                        </ul>
+                    </div>
+
+                    <div class="interface-card">
+                        <div class="interface-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3>Customer Menu (QR Code)</h3>
+                        <p>Mobile-optimized customer experience</p>
+                        <ul class="interface-features">
+                            <li>Mobile-optimized menu interface</li>
+                            <li>Browse menu by categories</li>
+                            <li>Add items to cart with quantity controls</li>
+                            <li>Place orders directly from mobile devices</li>
+                            <li>Contact waiter for assistance</li>
+                        </ul>
+                    </div>
+
+                    <div class="interface-card">
+                        <div class="interface-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <h3>Admin Dashboard</h3>
+                        <p>Complete system management and oversight</p>
+                        <ul class="interface-features">
+                            <li>System overview and statistics</li>
+                            <li>Table management</li>
+                            <li>Menu management</li>
+                            <li>Staff management</li>
+                            <li>Reports and analytics</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technology Stack -->
+        <section class="tech-stack container">
+            <h2 class="section-title">Technology Stack</h2>
+            <p class="section-subtitle">
+                Built with modern, reliable technologies
+            </p>
+            
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <h4>Flask (Python)</h4>
+                    <p>Lightweight and flexible web framework</p>
+                </div>
+                <div class="tech-item">
+                    <h4>SQLite Database</h4>
+                    <p>Reliable, file-based database with SQLAlchemy ORM</p>
+                </div>
+                <div class="tech-item">
+                    <h4>HTML5 & CSS3</h4>
+                    <p>Modern web standards with responsive design</p>
+                </div>
+                <div class="tech-item">
+                    <h4>JavaScript</h4>
+                    <p>Interactive user interfaces and real-time updates</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Bootstrap 5</h4>
+                    <p>Responsive CSS framework for mobile-first design</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Font Awesome</h4>
+                    <p>Professional icon library for enhanced UI</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits -->
+        <section class="benefits-section">
+            <div class="container">
+                <h2 class="section-title">Why Choose Our Restaurant Management System?</h2>
+                <p class="section-subtitle">
+                    Transform your restaurant operations with our comprehensive solution
+                </p>
+                
+                <div class="benefits-grid">
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3>Save Time</h3>
+                        <p>Streamline operations with automated order tracking, real-time updates, and efficient workflow management.</p>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <h3>Increase Revenue</h3>
+                        <p>Better order accuracy, faster service, and improved customer experience lead to higher satisfaction and repeat business.</p>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3>Improve Staff Efficiency</h3>
+                        <p>Role-specific interfaces help staff work more effectively with clear responsibilities and streamlined processes.</p>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h3>Data-Driven Decisions</h3>
+                        <p>Comprehensive analytics and reporting help you understand your business better and make informed decisions.</p>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3>Modern Customer Experience</h3>
+                        <p>QR code menus and mobile ordering provide a contemporary dining experience that customers expect.</p>
+                    </div>
+
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3>Secure & Reliable</h3>
+                        <p>Enterprise-grade security with role-based access control and secure data management.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-content">
+                    <h2>Ready to Transform Your Restaurant?</h2>
+                    <p>
+                        Get started with our comprehensive restaurant management system today. 
+                        Contact us for a personalized demo and see how we can help streamline your operations.
+                    </p>
+                    <div class="cta-buttons">
+                        <a href="index.html#contact" class="btn btn-primary">
+                            <i class="fas fa-phone"></i>
+                            Contact Us
+                        </a>
+                        <a href="index.html#services" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            View All Services
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Gallery -->
+    <div class="modal-overlay" id="galleryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Restaurant Management System Interfaces</h2>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-gallery">
+                <!-- Featured Image Section -->
+                <div class="featured-image-section" id="featuredSection">
+                    <div class="featured-image-content">
+                        <div class="featured-image-large">
+                            <img id="featuredImage" src="images/restaurant-system/Login_page.png" alt="Login Page">
+                        </div>
+                        <div class="featured-image-info">
+                            <div class="featured-role-badge" id="featuredBadge">System</div>
+                            <h3 id="featuredTitle">Login Page</h3>
+                            <p class="featured-description" id="featuredDescription">Secure authentication system with role-based access for all staff members. Features password protection, session management, and automatic logout for security.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gallery Grid -->
+                <div class="gallery-grid">
+                    <div class="modal-image-card featured" onclick="setFeatured(0)">
+                        <img src="images/restaurant-system/Login_page.png" alt="Login Page">
+                        <div class="modal-role-badge">System</div>
+                        <h4>Login Page</h4>
+                        <p class="modal-description">Secure authentication system with role-based access for all staff members. Features password protection, session management, and automatic logout for security.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(1)">
+                        <img src="images/restaurant-system/Admin Dashboard.png" alt="Admin Dashboard">
+                        <div class="modal-role-badge">Admin</div>
+                        <h4>Admin Dashboard</h4>
+                        <p class="modal-description">Complete system overview with analytics, reports, and management controls. Monitor sales, staff performance, and system health in real-time.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(2)">
+                        <img src="images/restaurant-system/Kitchen Dashboard.png" alt="Kitchen Dashboard">
+                        <div class="modal-role-badge">Kitchen</div>
+                        <h4>Kitchen Dashboard</h4>
+                        <p class="modal-description">Order management, status updates, and chef notes for kitchen staff. Track preparation times, manage order queues, and communicate with waiters.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(3)">
+                        <img src="images/restaurant-system/Waiter Dashboard.png" alt="Waiter Dashboard">
+                        <div class="modal-role-badge">Waiter</div>
+                        <h4>Waiter Dashboard</h4>
+                        <p class="modal-description">Table management, order creation, and customer service tools. Assign tables, create orders, and track customer requests efficiently.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(4)">
+                        <img src="images/restaurant-system/Cash register full screen Touch.png" alt="Cash Register">
+                        <div class="modal-role-badge">Cashier</div>
+                        <h4>Touch Cash Register</h4>
+                        <p class="modal-description">Full-screen touch interface for payment processing and receipt generation. Support for multiple payment methods and automatic tax calculations.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(5)">
+                        <img src="images/restaurant-system/Mobile Menu.png" alt="Mobile Menu">
+                        <div class="modal-role-badge">Customer</div>
+                        <h4>Customer Mobile Menu</h4>
+                        <p class="modal-description">QR code accessible menu with ordering and order tracking capabilities. Customers can browse, customize, and track their orders in real-time.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(6)">
+                        <img src="images/restaurant-system/Table Management With QR Code.png" alt="Table Management">
+                        <div class="modal-role-badge">Admin</div>
+                        <h4>Table Management</h4>
+                        <p class="modal-description">QR code generation, table status tracking, and capacity management. Monitor table availability and optimize seating arrangements.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(7)">
+                        <img src="images/restaurant-system/Menu Management.png" alt="Menu Management">
+                        <div class="modal-role-badge">Admin</div>
+                        <h4>Menu Management</h4>
+                        <p class="modal-description">Add, edit, and organize menu items with pricing and descriptions. Manage categories, availability, and seasonal specials.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(8)">
+                        <img src="images/restaurant-system/Staff Management.png" alt="Staff Management">
+                        <div class="modal-role-badge">Admin</div>
+                        <h4>Staff Management</h4>
+                        <p class="modal-description">Employee accounts, roles, permissions, and schedule management. Track hours, manage shifts, and control system access.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(9)">
+                        <img src="images/restaurant-system/Inventory Management.png" alt="Inventory Management">
+                        <div class="modal-role-badge">Admin</div>
+                        <h4>Inventory Management</h4>
+                        <p class="modal-description">Track ingredients, stock levels, and inventory costs. Set low-stock alerts and manage supplier relationships.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(10)">
+                        <img src="images/restaurant-system/Table & Waiter Managment.png" alt="Table & Waiter Management">
+                        <div class="modal-role-badge">Manager</div>
+                        <h4>Table & Waiter Management</h4>
+                        <p class="modal-description">Combined interface for managing table assignments and waiter schedules. Optimize service coverage and balance workloads.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(11)">
+                        <img src="images/restaurant-system/Waiter Table Assignments.png" alt="Waiter Table Assignments">
+                        <div class="modal-role-badge">Manager</div>
+                        <h4>Waiter Assignments</h4>
+                        <p class="modal-description">Assign specific tables to waiters and track service areas. Monitor performance and ensure balanced coverage.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(12)">
+                        <img src="images/restaurant-system/Waiter panel Mobile.png" alt="Waiter Mobile Panel">
+                        <div class="modal-role-badge">Waiter</div>
+                        <h4>Waiter Mobile Panel</h4>
+                        <p class="modal-description">Mobile-optimized interface for waiters to manage orders on-the-go. Access from tablets or smartphones for flexibility.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(13)">
+                        <img src="images/restaurant-system/Mobile menue with b.png" alt="Mobile Menu with Background">
+                        <div class="modal-role-badge">Customer</div>
+                        <h4>Enhanced Mobile Menu</h4>
+                        <p class="modal-description">Mobile menu with enhanced visual design and background styling. Improved user experience with better aesthetics.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(14)">
+                        <img src="images/restaurant-system/mobile review order.png" alt="Mobile Review Order">
+                        <div class="modal-role-badge">Customer</div>
+                        <h4>Order Review</h4>
+                        <p class="modal-description">Customers can review their order details before final submission. Confirm items, quantities, and special instructions.</p>
+                    </div>
+                    <div class="modal-image-card" onclick="setFeatured(15)">
+                        <img src="images/restaurant-system/Full screen manual register.png" alt="Full Screen Manual Register">
+                        <div class="modal-role-badge">Cashier</div>
+                        <h4>Manual Register</h4>
+                        <p class="modal-description">Alternative full-screen register interface for manual order entry. Backup system for when automated ordering is unavailable.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Request Modal -->
+    <div class="demo-modal-overlay" id="demoModal">
+        <div class="demo-modal-content">
+            <button class="demo-close" onclick="closeDemoModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="demo-modal-header">
+                <h2 class="demo-modal-title">Request a Demo</h2>
+                <p class="demo-modal-subtitle">Schedule a personalized demonstration of our Restaurant Management System</p>
+            </div>
+            <form class="demo-form" id="demoForm">
+                <div class="form-group">
+                    <label for="demoName">Full Name *</label>
+                    <input type="text" id="demoName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="demoEmail">Email Address *</label>
+                    <input type="email" id="demoEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="demoPhone">Contact Number *</label>
+                    <input type="tel" id="demoPhone" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="demoMessage">Additional Information</label>
+                    <textarea id="demoMessage" name="message" placeholder="Tell us about your restaurant and specific requirements..."></textarea>
+                </div>
+                <div class="form-group">
+                    <div id="captcha-container" style="margin: 20px 0; display: none;">
+                        <div class="g-recaptcha" data-sitekey="6Ld4N_krAAAAAHKQTbHareULI0Vf9GUJ9AGvqTdU"></div>
+                    </div>
+                </div>
+                <button type="submit" class="demo-submit-btn" id="demoSubmitBtn">
+                    <i class="fas fa-paper-plane"></i>
+                    Send Demo Request
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Computer Dynamics. All rights reserved. | Trinidad & Tobago</p>
+        </div>
+    </footer>
+
+    <!-- reCAPTCHA Script -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    
+    <script>
+        // Load CAPTCHA configuration
+        let captchaConfig = null;
+        
+        // Load CAPTCHA config from server
+        async function loadCaptchaConfig() {
+            try {
+                const response = await fetch('/api/public/demo-security-stats');
+                const data = await response.json();
+                console.log('CAPTCHA config response:', data);
+                
+                if (data.captchaConfig && data.captchaConfig.enabled) {
+                    captchaConfig = data.captchaConfig;
+                    console.log('CAPTCHA config loaded:', captchaConfig);
+                    
+                    // Show CAPTCHA container
+                    document.getElementById('captcha-container').style.display = 'block';
+                    console.log('CAPTCHA container displayed');
+                } else {
+                    console.log('CAPTCHA disabled in server config');
+                }
+            } catch (error) {
+                console.error('Error loading CAPTCHA config:', error);
+                
+                // Fallback: Show CAPTCHA anyway
+                console.log('Using fallback CAPTCHA setup...');
+                captchaConfig = { enabled: true, siteKey: '6Ld4N_krAAAAAHKQTbHareULI0Vf9GUJ9AGvqTdU' };
+                document.getElementById('captcha-container').style.display = 'block';
+                console.log('Fallback CAPTCHA configured');
+            }
+        }
+        
+        // Force show CAPTCHA function
+        function forceShowCaptcha() {
+            console.log('Force showing CAPTCHA...');
+            const siteKey = '6Ld4N_krAAAAAHKQTbHareULI0Vf9GUJ9AGvqTdU';
+            const captchaElement = document.querySelector('.g-recaptcha');
+            const captchaContainer = document.getElementById('captcha-container');
+            
+            if (captchaElement && captchaContainer) {
+                captchaElement.setAttribute('data-sitekey', siteKey);
+                captchaContainer.style.display = 'block';
+                captchaConfig = { enabled: true, siteKey: siteKey };
+                console.log('CAPTCHA force-displayed with site key:', siteKey);
+            } else {
+                console.error('CAPTCHA elements not found');
+            }
+        }
+        
+        // Load CAPTCHA config when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, starting CAPTCHA setup...');
+            loadCaptchaConfig();
+            
+            // Retry CAPTCHA loading after a delay if not loaded
+            setTimeout(() => {
+                console.log('Checking CAPTCHA status after delay...');
+                console.log('captchaConfig:', captchaConfig);
+                if (!captchaConfig || !captchaConfig.enabled) {
+                    console.log('Retrying CAPTCHA configuration...');
+                    loadCaptchaConfig();
+                } else {
+                    console.log('CAPTCHA already configured');
+                }
+            }, 2000);
+            
+            // Force show CAPTCHA after 3 seconds as backup
+            setTimeout(() => {
+                if (!captchaConfig || !captchaConfig.enabled) {
+                    console.log('Force showing CAPTCHA as backup...');
+                    forceShowCaptcha();
+                }
+            }, 3000);
+        });
+        
+        // Gallery data
+        const galleryData = [
+            {
+                image: 'images/restaurant-system/Login_page.png',
+                title: 'Login Page',
+                role: 'System',
+                description: 'Secure authentication system with role-based access for all staff members. Features password protection, session management, and automatic logout for security.'
+            },
+            {
+                image: 'images/restaurant-system/Admin Dashboard.png',
+                title: 'Admin Dashboard',
+                role: 'Admin',
+                description: 'Complete system overview with analytics, reports, and management controls. Monitor sales, staff performance, and system health in real-time.'
+            },
+            {
+                image: 'images/restaurant-system/Kitchen Dashboard.png',
+                title: 'Kitchen Dashboard',
+                role: 'Kitchen',
+                description: 'Order management, status updates, and chef notes for kitchen staff. Track preparation times, manage order queues, and communicate with waiters.'
+            },
+            {
+                image: 'images/restaurant-system/Waiter Dashboard.png',
+                title: 'Waiter Dashboard',
+                role: 'Waiter',
+                description: 'Table management, order creation, and customer service tools. Assign tables, create orders, and track customer requests efficiently.'
+            },
+            {
+                image: 'images/restaurant-system/Cash register full screen Touch.png',
+                title: 'Touch Cash Register',
+                role: 'Cashier',
+                description: 'Full-screen touch interface for payment processing and receipt generation. Support for multiple payment methods and automatic tax calculations.'
+            },
+            {
+                image: 'images/restaurant-system/Mobile Menu.png',
+                title: 'Customer Mobile Menu',
+                role: 'Customer',
+                description: 'QR code accessible menu with ordering and order tracking capabilities. Customers can browse, customize, and track their orders in real-time.'
+            },
+            {
+                image: 'images/restaurant-system/Table Management With QR Code.png',
+                title: 'Table Management',
+                role: 'Admin',
+                description: 'QR code generation, table status tracking, and capacity management. Monitor table availability and optimize seating arrangements.'
+            },
+            {
+                image: 'images/restaurant-system/Menu Management.png',
+                title: 'Menu Management',
+                role: 'Admin',
+                description: 'Add, edit, and organize menu items with pricing and descriptions. Manage categories, availability, and seasonal specials.'
+            },
+            {
+                image: 'images/restaurant-system/Staff Management.png',
+                title: 'Staff Management',
+                role: 'Admin',
+                description: 'Employee accounts, roles, permissions, and schedule management. Track hours, manage shifts, and control system access.'
+            },
+            {
+                image: 'images/restaurant-system/Inventory Management.png',
+                title: 'Inventory Management',
+                role: 'Admin',
+                description: 'Track ingredients, stock levels, and inventory costs. Set low-stock alerts and manage supplier relationships.'
+            },
+            {
+                image: 'images/restaurant-system/Table & Waiter Managment.png',
+                title: 'Table & Waiter Management',
+                role: 'Manager',
+                description: 'Combined interface for managing table assignments and waiter schedules. Optimize service coverage and balance workloads.'
+            },
+            {
+                image: 'images/restaurant-system/Waiter Table Assignments.png',
+                title: 'Waiter Assignments',
+                role: 'Manager',
+                description: 'Assign specific tables to waiters and track service areas. Monitor performance and ensure balanced coverage.'
+            },
+            {
+                image: 'images/restaurant-system/Waiter panel Mobile.png',
+                title: 'Waiter Mobile Panel',
+                role: 'Waiter',
+                description: 'Mobile-optimized interface for waiters to manage orders on-the-go. Access from tablets or smartphones for flexibility.'
+            },
+            {
+                image: 'images/restaurant-system/Mobile menue with b.png',
+                title: 'Enhanced Mobile Menu',
+                role: 'Customer',
+                description: 'Mobile menu with enhanced visual design and background styling. Improved user experience with better aesthetics.'
+            },
+            {
+                image: 'images/restaurant-system/mobile review order.png',
+                title: 'Order Review',
+                role: 'Customer',
+                description: 'Customers can review their order details before final submission. Confirm items, quantities, and special instructions.'
+            },
+            {
+                image: 'images/restaurant-system/Full screen manual register.png',
+                title: 'Manual Register',
+                role: 'Cashier',
+                description: 'Alternative full-screen register interface for manual order entry. Backup system for when automated ordering is unavailable.'
+            }
+        ];
+
+        // Demo Modal Functions
+        function openDemoModal() {
+            const modal = document.getElementById('demoModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDemoModal() {
+            const modal = document.getElementById('demoModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+            // Reset form
+            document.getElementById('demoForm').reset();
+        }
+
+        // Modal Gallery Functions
+        function openModal() {
+            const modal = document.getElementById('galleryModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('galleryModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function setFeatured(index) {
+            const data = galleryData[index];
+            
+            // Update featured image section
+            document.getElementById('featuredImage').src = data.image;
+            document.getElementById('featuredImage').alt = data.title;
+            document.getElementById('featuredBadge').textContent = data.role;
+            document.getElementById('featuredTitle').textContent = data.title;
+            document.getElementById('featuredDescription').textContent = data.description;
+            
+            // Update grid cards
+            const cards = document.querySelectorAll('.modal-image-card');
+            cards.forEach((card, i) => {
+                if (i === index) {
+                    card.classList.add('featured');
+                } else {
+                    card.classList.remove('featured');
+                }
+            });
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('galleryModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeDemoModal();
+            }
+        });
+
+        // Demo form submission
+        document.getElementById('demoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('demoSubmitBtn');
+            const originalText = submitBtn.innerHTML;
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            
+            try {
+                const formData = new FormData(this);
+                const data = {
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    additionalInfo: formData.get('message') || 'No additional information provided'
+                };
+                
+                // Add CAPTCHA token if available
+                if (captchaConfig && captchaConfig.enabled) {
+                    console.log('CAPTCHA is enabled, checking token...');
+                    const captchaToken = grecaptcha.getResponse();
+                    console.log('CAPTCHA token:', captchaToken ? 'Present' : 'Missing');
+                    
+                    if (!captchaToken) {
+                        alert('Please complete the CAPTCHA verification.');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                    data.captchaToken = captchaToken;
+                } else {
+                    console.log('CAPTCHA not enabled or not configured');
+                }
+                
+                // Send demo request
+                const response = await fetch('/api/public/demo-request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    // Success
+                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Request Sent!';
+                    submitBtn.style.background = 'var(--success)';
+                    
+                    // Show success message
+                    alert('Demo request sent successfully! We will contact you within 24 hours to schedule your personalized demonstration.');
+                    
+                    // Close modal after delay
+                    setTimeout(() => {
+                        closeDemoModal();
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.style.background = 'var(--primary)';
+                        submitBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to send demo request');
+                }
+            } catch (error) {
+                console.error('Error sending demo request:', error);
+                
+                // Show specific error message
+                let errorMessage = 'Sorry, there was an error sending your demo request. Please try again.';
+                
+                if (error.message.includes('CAPTCHA')) {
+                    errorMessage = 'CAPTCHA verification failed. Please complete the CAPTCHA and try again.';
+                    // Reset CAPTCHA
+                    if (captchaConfig && captchaConfig.enabled) {
+                        grecaptcha.reset();
+                    }
+                } else if (error.message.includes('rate limit') || error.message.includes('Too many') || error.message.includes('429')) {
+                    errorMessage = 'Too many requests from your location. Please wait 1 hour before trying again, or contact us directly.';
+                } else if (error.message.includes('blocked')) {
+                    errorMessage = 'Access denied. Please contact us directly for assistance.';
+                } else if (error.message.includes('bot') || error.message.includes('Automated')) {
+                    errorMessage = 'Automated requests are not allowed. Please use a regular web browser.';
+                }
+                
+                alert(errorMessage);
+                
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Close demo modal when clicking outside
+        document.getElementById('demoModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDemoModal();
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const href = this.getAttribute('href');
+                if (href && href !== '#') {
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+
+        // Add scroll effect to header and hide playful badges
+        window.addEventListener('scroll', function() {
+            const header = document.querySelector('.header');
+            const badges = document.querySelectorAll('.playful-badge');
+            
+            if (window.scrollY > 100) {
+                header.style.background = 'rgba(255, 255, 255, 0.98)';
+                header.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+                
+                // Hide badges when scrolling
+                badges.forEach(badge => {
+                    badge.classList.add('hidden');
+                });
+            } else {
+                header.style.background = 'rgba(255, 255, 255, 0.95)';
+                header.style.boxShadow = 'none';
+                
+                // Show badges when at top
+                badges.forEach(badge => {
+                    badge.classList.remove('hidden');
+                });
+            }
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all feature cards and interface cards
+        document.querySelectorAll('.feature-card, .interface-card, .tech-item, .benefit-item').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+    </script>
+    <script src="/js/multiserver-demos.js" defer></script>
+</body>
+</html>

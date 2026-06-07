@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Restaurant Management System - Home{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="text-center my-5">
+                <h1 class="display-4 mb-4">
+                    <i class="fas fa-utensils text-primary"></i>
+                    Restaurant Management System
+                </h1>
+                <p class="lead mb-5">Professional restaurant management with touchscreen interfaces</p>
+                
+                <!-- License Registration Notice - Only show if not registered -->
+                {% if not is_registered %}
+                <div class="alert alert-info mb-4" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-key fa-2x me-3"></i>
+                        <div>
+                            <h5 class="alert-heading mb-1">New Restaurant Setup</h5>
+                            <p class="mb-2">Need to register your restaurant with a license? Use our guided registration process.</p>
+                            <a href="{{ url_for('license_registration_page') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-user-plus me-2"></i>
+                                Register Restaurant
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Registration Success Notice - Only show once after registration -->
+                {% if show_success_message %}
+                <div class="alert alert-success mb-4 alert-dismissible" role="alert" id="registration-success-alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle fa-2x me-3"></i>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading mb-1">Restaurant Registered Successfully!</h5>
+                            <p class="mb-2">
+                                Welcome to {{ registration_info.company_name if registration_info else 'your restaurant' }}! 
+                                Your system is ready to use.
+                            </p>
+                            <small class="text-muted">
+                                Registered on: {{ registration_info.registration_date.strftime('%B %d, %Y') if registration_info and registration_info.registration_date else 'Recently' }}
+                            </small>
+                        </div>
+                        <button type="button" class="btn-close" onclick="dismissRegistrationSuccess()" aria-label="Close"></button>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 order-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-utensils fa-3x text-primary mb-3"></i>
+                                <h5 class="card-title">Kitchen Staff</h5>
+                                <p class="card-text">Manage orders and food preparation</p>
+                                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Kitchen Login
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card h-100 order-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-user-tie fa-3x text-success mb-3"></i>
+                                <h5 class="card-title">Waiters & Servers</h5>
+                                <p class="card-text">Manage tables and customer service</p>
+                                <a href="{{ url_for('login') }}" class="btn btn-success btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Waiter Login
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card h-100 order-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-cash-register fa-3x text-warning mb-3"></i>
+                                <h5 class="card-title">Cash Register</h5>
+                                <p class="card-text">Process payments and manage bills</p>
+                                <a href="{{ url_for('login') }}" class="btn btn-warning btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Cashier Login
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card h-100 order-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-tachometer-alt fa-3x text-info mb-3"></i>
+                                <h5 class="card-title">Administration</h5>
+                                <p class="card-text">System management and reports</p>
+                                <a href="{{ url_for('login') }}" class="btn btn-info btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Admin Login
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-5">
+                    <h3 class="mb-4">System Features</h3>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-mobile-alt fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Touchscreen Friendly</h6>
+                                    <small class="text-muted">Optimized for tablets and touch devices</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-qrcode fa-2x text-success me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">QR Code Menu</h6>
+                                    <small class="text-muted">Customers can order directly from their phones</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-database fa-2x text-warning me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Modular Database</h6>
+                                    <small class="text-muted">Efficient data organization and management</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function dismissRegistrationSuccess() {
+    fetch('/dismiss_registration_success', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide the alert
+            const alert = document.getElementById('registration-success-alert');
+            if (alert) {
+                alert.style.display = 'none';
+            }
+        } else {
+            console.error('Error dismissing registration success:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}

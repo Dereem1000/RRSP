@@ -1,0 +1,4 @@
+[tool.black]
+# Completely disable Black for this project
+[tool.black]
+exclude = '.*'  # Exclude everything

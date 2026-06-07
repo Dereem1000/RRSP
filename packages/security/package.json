@@ -1,0 +1,24 @@
+{
+  "name": "@cd-v2/security",
+  "version": "2.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/worker-cli.ts"
+  },
+  "dependencies": {
+    "@cd-v2/backup": "*",
+    "@cd-v2/database": "*",
+    "bcryptjs": "^2.4.3",
+    "sqlite3": "^6.0.1",
+    "dotenv": "^16.5.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

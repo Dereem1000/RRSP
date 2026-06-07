@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Menu - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .category-item {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .category-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .category-item.active {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .menu-item-card {
+        transition: transform 0.2s;
+    }
+    
+    .menu-item-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .image-preview {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-utensils me-2"></i>
+                Menu Management
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Categories Section -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Categories</h6>
+                    <button class="btn btn-success btn-sm" onclick="showAddCategoryForm()">
+                        <i class="fas fa-plus me-1"></i>Add Category
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="categoriesList" class="list-group mb-3">
+                        <!-- Categories will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Menu Items Section -->
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Menu Items</h6>
+                    <button class="btn btn-success btn-sm" onclick="showAddMenuItemForm()" id="addMenuItemBtn" disabled>
+                        <i class="fas fa-plus me-1"></i>Add Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="menuItemsList">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Select a category to view menu items
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Category Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categoryModalTitle">Add Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId">
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="categoryDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="categoryActive" checked>
+                            <label class="form-check-label" for="categoryActive">
+                                Active (visible to customers)
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveCategory()">Save Category</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Menu Item Modal -->
+<div class="modal fade" id="menuItemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="menuItemModalTitle">Add Menu Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="menuItemForm">
+                    <input type="hidden" id="menuItemId">
+                    <input type="hidden" id="menuItemCategoryId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="menuItemName" class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="menuItemName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="menuItemPrice" class="form-label">Price ($)</label>
+                                <input type="number" class="form-control" id="menuItemPrice" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="menuItemDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="menuItemDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="menuItemPrepTime" class="form-label">Preparation Time (minutes)</label>
+                                <input type="number" class="form-control" id="menuItemPrepTime" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="menuItemImageUrl" class="form-label">Image URL</label>
+                                <input type="url" class="form-control" id="menuItemImageUrl" placeholder="https://example.com/image.jpg">
+                                <div class="form-text">
+                                    <small>Enter a direct link to the menu item image. Recommended size: 400x300px</small>
+                                </div>
+                            </div>
+                            <div class="mb-3" id="imagePreviewContainer" style="display: none;">
+                                <label class="form-label">Image Preview</label>
+                                <div class="border rounded p-2 text-center">
+                                    <img id="imagePreview" src="" alt="Menu item preview" class="image-preview">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="menuItemAvailable" checked>
+                            <label class="form-check-label" for="menuItemAvailable">
+                                Available (visible to customers)
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveMenuItem()">Save Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSelectedCategory = null;
+let fullMenuData = [];
+
+// Load menu on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadFullMenu();
+});
+
+function loadFullMenu(preserveSelection = false) {
+    // Add cache-busting parameter to ensure fresh data
+    const cacheBuster = '?_=' + new Date().getTime();
+    const selectedCategory = preserveSelection ? currentSelectedCategory : null;
+    
+    fetch('/api/get_full_menu' + cacheBuster, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            fullMenuData = data.menu;
+            renderCategories();
+            
+            // If we should preserve selection, re-select the category
+            if (preserveSelection && selectedCategory) {
+                // Re-select the category to show updated items
+                selectCategory(selectedCategory);
+            } else {
+                renderMenuItems(null); // Clear menu items initially
+            }
+        })
+        .catch(error => {
+            console.error('Error loading menu:', error);
+            showAlert('Error loading menu data', 'danger');
+        });
+}
+
+function renderCategories() {
+    const container = document.getElementById('categoriesList');
+    container.innerHTML = '';
+    
+    if (fullMenuData.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i class="fas fa-utensils mb-2"></i><br>
+                No categories yet
+            </div>
+        `;
+        return;
+    }
+    
+    fullMenuData.forEach(category => {
+        const isActive = category.is_active;
+        const itemCount = category.items.length;
+        
+        const categoryElement = document.createElement('div');
+        categoryElement.className = `list-group-item list-group-item-action ${currentSelectedCategory === category.id ? 'active' : ''}`;
+        categoryElement.onclick = () => selectCategory(category.id);
+        
+        categoryElement.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">${category.name}</h6>
+                    <small class="text-muted">${itemCount} items</small>
+                </div>
+                <div>
+                    <span class="badge ${isActive ? 'bg-success' : 'bg-secondary'} me-2">
+                        ${isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="event.stopPropagation(); editCategory(${category.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="event.stopPropagation(); deleteCategory(${category.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(categoryElement);
+    });
+}
+
+function selectCategory(categoryId) {
+    currentSelectedCategory = categoryId;
+    renderCategories(); // Re-render to update active state
+    renderMenuItems(categoryId);
+    document.getElementById('addMenuItemBtn').disabled = false;
+}
+
+function renderMenuItems(categoryId) {
+    const container = document.getElementById('menuItemsList');
+    
+    if (!categoryId) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-arrow-left me-2"></i>
+                Select a category to view menu items
+            </div>
+        `;
+        return;
+    }
+    
+    const category = fullMenuData.find(c => c.id === categoryId);
+    if (!category) return;
+    
+    container.innerHTML = '';
+    
+    if (category.items.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-utensils mb-2"></i><br>
+                No menu items in this category yet
+            </div>
+        `;
+        return;
+    }
+    
+    category.items.forEach(item => {
+        const isAvailable = item.is_available;
+        
+        const itemElement = document.createElement('div');
+        itemElement.className = 'card mb-3 menu-item-card';
+        
+        itemElement.innerHTML = `
+            <div class="card-body">
+                <div class="row align-items-center">
+                    ${item.image_url ? `
+                        <div class="col-md-2">
+                            <img src="${item.image_url}" alt="${item.name}" 
+                                 style="width: 80px; height: 60px; object-fit: cover; border-radius: 8px;"
+                                 onerror="this.style.display='none'">
+                        </div>
+                        <div class="col-md-4">
+                    ` : `
+                        <div class="col-md-6">
+                    `}
+                        <h6 class="card-title mb-1">${item.name}</h6>
+                        <p class="card-text text-muted small mb-2">${item.description || 'No description'}</p>
+                        <div class="d-flex gap-2">
+                            <span class="badge ${isAvailable ? 'bg-success' : 'bg-secondary'}">
+                                ${isAvailable ? 'Available' : 'Unavailable'}
+                            </span>
+                            ${item.preparation_time ? `<span class="badge bg-info">${item.preparation_time} min</span>` : ''}
+                            ${item.image_url ? '' : '<span class="badge bg-warning">No Image</span>'}
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h5 class="text-success mb-0">$${parseFloat(item.price).toFixed(2)}</h5>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editMenuItem(${item.id})">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteMenuItem(${item.id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(itemElement);
+    });
+}
+
+// Category Management Functions
+function showAddCategoryForm() {
+    document.getElementById('categoryModalTitle').textContent = 'Add Category';
+    document.getElementById('categoryForm').reset();
+    document.getElementById('categoryId').value = '';
+    document.getElementById('categoryActive').checked = true;
+    new bootstrap.Modal(document.getElementById('categoryModal')).show();
+}
+
+function editCategory(categoryId) {
+    const category = fullMenuData.find(c => c.id === categoryId);
+    if (!category) return;
+    
+    document.getElementById('categoryModalTitle').textContent = 'Edit Category';
+    document.getElementById('categoryId').value = category.id;
+    document.getElementById('categoryName').value = category.name;
+    document.getElementById('categoryDescription').value = category.description || '';
+    document.getElementById('categoryActive').checked = category.is_active;
+    
+    new bootstrap.Modal(document.getElementById('categoryModal')).show();
+}
+
+function saveCategory() {
+    const formData = {
+        id: document.getElementById('categoryId').value || null,
+        name: document.getElementById('categoryName').value,
+        description: document.getElementById('categoryDescription').value,
+        is_active: document.getElementById('categoryActive').checked
+    };
+    
+    if (!formData.name.trim()) {
+        showAlert('Category name is required', 'warning');
+        return;
+    }
+    
+    fetch('/api/save_category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+            loadFullMenu();
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving category:', error);
+        showAlert('Error saving category', 'danger');
+    });
+}
+
+function deleteCategory(categoryId) {
+    const category = fullMenuData.find(c => c.id === categoryId);
+    if (!category) return;
+    
+    if (!confirm(`Are you sure you want to delete the category "${category.name}"?`)) {
+        return;
+    }
+    
+    fetch('/api/delete_category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: categoryId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadFullMenu();
+            currentSelectedCategory = null;
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting category:', error);
+        showAlert('Error deleting category', 'danger');
+    });
+}
+
+// Menu Item Management Functions
+function showAddMenuItemForm() {
+    if (!currentSelectedCategory) {
+        showAlert('Please select a category first', 'warning');
+        return;
+    }
+    
+    document.getElementById('menuItemModalTitle').textContent = 'Add Menu Item';
+    document.getElementById('menuItemForm').reset();
+    document.getElementById('menuItemId').value = '';
+    document.getElementById('menuItemCategoryId').value = currentSelectedCategory;
+    document.getElementById('menuItemAvailable').checked = true;
+    document.getElementById('menuItemPrepTime').value = 0;
+    
+    // Clear image preview
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    document.getElementById('imagePreview').src = '';
+    
+    // Add image URL change listener
+    setupImagePreview();
+    
+    new bootstrap.Modal(document.getElementById('menuItemModal')).show();
+}
+
+function editMenuItem(itemId) {
+    let item = null;
+    for (const category of fullMenuData) {
+        item = category.items.find(i => i.id === itemId);
+        if (item) break;
+    }
+    
+    if (!item) return;
+    
+    document.getElementById('menuItemModalTitle').textContent = 'Edit Menu Item';
+    document.getElementById('menuItemId').value = item.id;
+    document.getElementById('menuItemCategoryId').value = item.category_id;
+    document.getElementById('menuItemName').value = item.name;
+    document.getElementById('menuItemDescription').value = item.description || '';
+    document.getElementById('menuItemPrice').value = item.price;
+    document.getElementById('menuItemPrepTime').value = item.preparation_time || 0;
+    document.getElementById('menuItemImageUrl').value = item.image_url || '';
+    document.getElementById('menuItemAvailable').checked = item.is_available;
+    
+    // Setup image preview
+    setupImagePreview();
+    if (item.image_url) {
+        showImagePreview(item.image_url);
+    }
+    
+    new bootstrap.Modal(document.getElementById('menuItemModal')).show();
+}
+
+function saveMenuItem() {
+    const formData = {
+        id: document.getElementById('menuItemId').value || null,
+        name: document.getElementById('menuItemName').value,
+        description: document.getElementById('menuItemDescription').value,
+        price: parseFloat(document.getElementById('menuItemPrice').value),
+        category_id: parseInt(document.getElementById('menuItemCategoryId').value),
+        preparation_time: parseInt(document.getElementById('menuItemPrepTime').value) || 0,
+        image_url: document.getElementById('menuItemImageUrl').value,
+        is_available: document.getElementById('menuItemAvailable').checked
+    };
+    
+    if (!formData.name.trim()) {
+        showAlert('Item name is required', 'warning');
+        return;
+    }
+    
+    if (isNaN(formData.price) || formData.price <= 0) {
+        showAlert('Valid price is required', 'warning');
+        return;
+    }
+    
+    fetch('/api/save_menu_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('menuItemModal')).hide();
+            // Reload menu while preserving the selected category so new item appears immediately
+            setTimeout(() => {
+                loadFullMenu(true); // preserveSelection = true
+            }, 150); // Small delay to ensure cache is cleared and DB commit is complete
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving menu item:', error);
+        showAlert('Error saving menu item', 'danger');
+    });
+}
+
+function deleteMenuItem(itemId) {
+    let item = null;
+    let itemCategoryId = null;
+    for (const category of fullMenuData) {
+        item = category.items.find(i => i.id === itemId);
+        if (item) {
+            itemCategoryId = category.id;
+            break;
+        }
+    }
+    
+    if (!item) return;
+    
+    if (!confirm(`Are you sure you want to delete "${item.name}"?`)) {
+        return;
+    }
+    
+    fetch('/api/delete_menu_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: itemId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload menu while preserving the selected category so deletion is visible immediately
+            setTimeout(() => {
+                loadFullMenu(true); // preserveSelection = true
+            }, 150); // Small delay to ensure cache is cleared and DB commit is complete
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting menu item:', error);
+        showAlert('Error deleting menu item', 'danger');
+    });
+}
+
+// Image Preview Functions
+function setupImagePreview() {
+    const imageUrlInput = document.getElementById('menuItemImageUrl');
+    
+    // Remove any existing listeners
+    imageUrlInput.removeEventListener('input', handleImageUrlChange);
+    imageUrlInput.removeEventListener('blur', handleImageUrlChange);
+    
+    // Add new listeners
+    imageUrlInput.addEventListener('input', handleImageUrlChange);
+    imageUrlInput.addEventListener('blur', handleImageUrlChange);
+}
+
+function handleImageUrlChange(event) {
+    const url = event.target.value.trim();
+    if (url) {
+        showImagePreview(url);
+    } else {
+        hideImagePreview();
+    }
+}
+
+function showImagePreview(url) {
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('imagePreview');
+    
+    previewImg.onload = function() {
+        previewContainer.style.display = 'block';
+    };
+    
+    previewImg.onerror = function() {
+        hideImagePreview();
+        showAlert('Unable to load image from the provided URL', 'warning');
+    };
+    
+    previewImg.src = url;
+}
+
+function hideImagePreview() {
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    document.getElementById('imagePreview').src = '';
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}
+

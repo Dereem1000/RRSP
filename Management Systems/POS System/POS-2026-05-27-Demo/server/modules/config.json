@@ -1,0 +1,125 @@
+{
+  "pos-user-management": {
+    "name": "pos-user-management",
+    "version": "1.0.0",
+    "description": "User management module for POS system with role-based access control and PIN authentication",
+    "author": "POS System",
+    "entry": "index.js",
+    "dependencies": {
+      "bcryptjs": "^2.4.3"
+    },
+    "posDependencies": {
+      "core": ">=1.0.0"
+    },
+    "permissions": [
+      "users:read",
+      "users:write",
+      "users:delete",
+      "settings:read",
+      "settings:write",
+      "auth:manage"
+    ],
+    "settings": {
+      "pinLength": 4,
+      "pinTimeout": 300,
+      "requirePinForSettings": true,
+      "lockSettingsByRole": true,
+      "defaultPin": "0000",
+      "inactivityTimeout": 600
+    },
+    "installed": "2025-11-10T04:18:32.366Z",
+    "enabled": true
+  },
+  "pos-clock-in-out": {
+    "name": "pos-clock-in-out",
+    "version": "1.0.0",
+    "description": "Clock in/clock out system for POS with time tracking and timesheet management",
+    "author": "POS System",
+    "entry": "index.js",
+    "dependencies": {},
+    "posDependencies": {
+      "core": ">=1.0.0"
+    },
+    "permissions": [
+      "users:read",
+      "timesheets:read",
+      "timesheets:write",
+      "timesheets:edit"
+    ],
+    "settings": {
+      "showClockInPromptOnLogin": false,
+      "showClockOutPromptOnLogout": true,
+      "autoClockInOnLogin": true,
+      "autoClockOutOnLogout": false,
+      "requireClockOutBeforeClockIn": true,
+      "allowManualClockInOut": true,
+      "enableTimesheetEditing": true
+    },
+    "installed": "2025-12-08T17:12:14.485Z",
+    "enabled": true
+  },
+  "pos-advanced-reporting": {
+    "name": "pos-advanced-reporting",
+    "version": "1.0.0",
+    "description": "Advanced reporting module with enhanced filtering, analytics, export capabilities, and multi-tenant support",
+    "author": "POS System",
+    "entry": "index.js",
+    "dependencies": {},
+    "posDependencies": {
+      "core": ">=1.0.0"
+    },
+    "permissions": [
+      "sales:read",
+      "products:read",
+      "users:read",
+      "reports:read",
+      "reports:write"
+    ],
+    "settings": {
+      "enableProductAnalytics": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable product performance analytics"
+      },
+      "enableCustomerAnalytics": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable customer behavior analytics"
+      },
+      "enableInventoryReports": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable inventory movement reports"
+      },
+      "enableComparisonReports": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable period comparison reports"
+      },
+      "defaultDateRange": {
+        "type": "select",
+        "default": "30",
+        "options": [
+          "7",
+          "30",
+          "90",
+          "365",
+          "custom"
+        ],
+        "description": "Default date range for reports (days)"
+      },
+      "maxExportRows": {
+        "type": "number",
+        "default": 10000,
+        "description": "Maximum number of rows to export"
+      },
+      "enableScheduledReports": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable scheduled report generation"
+      }
+    },
+    "installed": "2025-12-18T03:39:45.150Z",
+    "enabled": true
+  }
+}

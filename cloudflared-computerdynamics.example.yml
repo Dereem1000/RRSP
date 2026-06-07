@@ -1,0 +1,11 @@
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: C:\Users\User\.cloudflared\YOUR_TUNNEL_UUID.json
+
+ingress:
+  - hostname: api.computerdynamicstt.com
+    service: http://127.0.0.1:5001
+  - hostname: computerdynamicstt.com
+    service: http://127.0.0.1:3000
+  - hostname: www.computerdynamicstt.com
+    service: http://127.0.0.1:3000
+  - service: http_status:404

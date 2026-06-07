@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Refund Requests - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .request-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #6f42c1;
+        margin-bottom: 1rem;
+    }
+    
+    .request-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .filter-btn {
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-undo me-2"></i>
+                Refund Requests
+            </h1>
+        </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary filter-btn" onclick="filterRequests('all')" id="filterAll">
+                    <i class="fas fa-list me-1"></i>All
+                </button>
+                <button type="button" class="btn btn-outline-primary filter-btn" onclick="filterRequests('pending')" id="filterPending">
+                    <i class="fas fa-clock me-1"></i>Pending
+                </button>
+                <button type="button" class="btn btn-outline-primary filter-btn" onclick="filterRequests('processed')" id="filterProcessed">
+                    <i class="fas fa-check-circle me-1"></i>Processed
+                </button>
+                <button type="button" class="btn btn-outline-primary filter-btn" onclick="filterRequests('rejected')" id="filterRejected">
+                    <i class="fas fa-times-circle me-1"></i>Rejected
+                </button>
+            </div>
+            <button class="btn btn-outline-secondary filter-btn" onclick="loadRefundRequests()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Requests List -->
+    <div class="row">
+        <div class="col-12">
+            <div id="requestsList">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                    <p>Loading refund requests...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Refund Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rejectForm">
+                    <input type="hidden" id="rejectRequestId">
+                    <div class="mb-3">
+                        <label for="rejectionReason" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejectionReason" rows="3" required placeholder="Please provide a reason for rejecting this refund request..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitRejection()">
+                    <i class="fas fa-times me-2"></i>Reject Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentFilter = 'all';
+let allRequests = [];
+
+$(document).ready(function() {
+    loadRefundRequests();
+    // Auto-refresh every 30 seconds
+    setInterval(loadRefundRequests, 30000);
+});
+
+function filterRequests(status) {
+    currentFilter = status;
+    
+    // Update button states
+    $('.filter-btn').removeClass('btn-primary').addClass('btn-outline-primary');
+    $(`#filter${status.charAt(0).toUpperCase() + status.slice(1)}`).removeClass('btn-outline-primary').addClass('btn-primary');
+    
+    displayRequests();
+}
+
+function displayRequests() {
+    const container = $('#requestsList');
+    
+    let filteredRequests = allRequests;
+    if (currentFilter !== 'all') {
+        filteredRequests = allRequests.filter(req => req.status === currentFilter);
+    }
+    
+    if (filteredRequests.length === 0) {
+        container.html(`
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p class="fs-5">No ${currentFilter === 'all' ? '' : currentFilter} refund requests found</p>
+            </div>
+        `);
+        return;
+    }
+    
+    container.empty();
+    
+    filteredRequests.forEach(request => {
+        const statusClass = getStatusClass(request.status);
+        const statusIcon = getStatusIcon(request.status);
+        
+        const card = `
+            <div class="card request-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h5 class="mb-1">Request #${request.id}</h5>
+                                    <span class="badge ${statusClass} status-badge">
+                                        <i class="${statusIcon} me-1"></i>${request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Payment ID:</strong> ${request.payment_id}</p>
+                                    ${request.order ? `<p class="mb-1"><strong>Order ID:</strong> ${request.order.id} (Table ${request.order.table_number})</p>` : ''}
+                                    <p class="mb-1"><strong>Amount:</strong> <span class="text-success fw-bold">$${parseFloat(request.amount).toFixed(2)}</span></p>
+                                    ${request.payment ? `<p class="mb-1"><strong>Payment Method:</strong> ${request.payment.payment_method}</p>` : ''}
+                                </div>
+                                <div class="col-md-6">
+                                    ${request.requester ? `<p class="mb-1"><strong>Requested By:</strong> ${request.requester.name} (${request.requester.username})</p>` : ''}
+                                    <p class="mb-1"><strong>Requested At:</strong> ${new Date(request.created_at).toLocaleString()}</p>
+                                    ${request.approved_at ? `<p class="mb-1"><strong>${request.status === 'processed' ? 'Approved' : 'Reviewed'} At:</strong> ${new Date(request.approved_at).toLocaleString()}</p>` : ''}
+                                    ${request.approver ? `<p class="mb-1"><strong>${request.status === 'processed' ? 'Approved' : 'Rejected'} By:</strong> ${escapeHtml((request.approver.name && request.approver.name !== request.approver.role) ? request.approver.name : request.approver.username || 'Unknown')}${request.approver.username ? ` (${escapeHtml(request.approver.username)})` : ''}</p>` : ''}
+                                    ${request.verified_admin ? `<p class="mb-1"><strong>Verified with Admin:</strong> ${escapeHtml(request.verified_admin.name || request.verified_admin.username)} (${escapeHtml(request.verified_admin.username)})</p>` : ''}
+                                </div>
+                            </div>
+                            
+                            ${request.reason ? `
+                                <div class="alert alert-info mt-3 mb-0">
+                                    <strong>Reason:</strong> ${escapeHtml(request.reason)}
+                                </div>
+                            ` : ''}
+                            
+                            ${request.rejection_reason ? `
+                                <div class="alert alert-danger mt-3 mb-0">
+                                    <strong>Rejection Reason:</strong> ${escapeHtml(request.rejection_reason)}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="col-md-4 text-end">
+                            ${request.status === 'pending' ? `
+                                <button class="btn btn-success btn-lg mb-2 w-100" onclick="approveRequest(${request.id})">
+                                    <i class="fas fa-check me-2"></i>Approve
+                                </button>
+                                <button class="btn btn-danger btn-lg w-100" onclick="showRejectModal(${request.id})">
+                                    <i class="fas fa-times me-2"></i>Reject
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.append(card);
+    });
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'pending': return 'bg-warning';
+        case 'processed': return 'bg-success';
+        case 'rejected': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+function getStatusIcon(status) {
+    switch(status) {
+        case 'pending': return 'fas fa-clock';
+        case 'processed': return 'fas fa-check-circle';
+        case 'rejected': return 'fas fa-times-circle';
+        default: return 'fas fa-question-circle';
+    }
+}
+
+function loadRefundRequests() {
+    $.get('/api/get_refund_requests?status=all')
+        .done(function(response) {
+            if (response.success) {
+                allRequests = response.requests;
+                displayRequests();
+            } else {
+                showAlert('Error loading refund requests: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        })
+        .fail(function(xhr, status, error) {
+            showAlert('Error loading refund requests: ' + error, 'danger');
+        });
+}
+
+function approveRequest(requestId) {
+    if (!confirm('Are you sure you want to approve this refund request? This will process the refund immediately.')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/approve_refund_request',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ request_id: requestId }),
+        success: function(response) {
+            if (response.success) {
+                showAlert('Refund request approved and processed successfully!', 'success');
+                loadRefundRequests();
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error approving refund request';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function showRejectModal(requestId) {
+    $('#rejectRequestId').val(requestId);
+    $('#rejectionReason').val('');
+    $('#rejectModal').modal('show');
+}
+
+function submitRejection() {
+    const requestId = $('#rejectRequestId').val();
+    const reason = $('#rejectionReason').val().trim();
+    
+    if (!reason) {
+        showAlert('Please provide a rejection reason', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/reject_refund_request',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            request_id: parseInt(requestId),
+            rejection_reason: reason
+        }),
+        success: function(response) {
+            if (response.success) {
+                $('#rejectModal').modal('hide');
+                showAlert('Refund request rejected', 'success');
+                loadRefundRequests();
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error rejecting refund request';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function showAlert(message, type) {
+    const alertClass = `alert-${type}`;
+    const alert = $(`
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${escapeHtml(message)}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    $('body').append(alert);
+    setTimeout(() => alert.fadeOut(() => alert.remove()), 5000);
+}
+</script>
+{% endblock %}
+
+
+

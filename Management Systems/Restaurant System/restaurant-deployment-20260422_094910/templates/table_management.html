@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}Table Management - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">
+                <i class="fas fa-user-friends text-info me-2"></i>
+                Table & Waiter Management
+            </h1>
+            <p class="text-muted">Assign waiters to tables and manage table assignments</p>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="showTableAssignmentModal()">
+                            <i class="fas fa-user-friends me-2"></i>
+                            Manage Table Assignments
+                        </button>
+                        <button class="btn btn-outline-info" onclick="refreshTableAssignments()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Refresh
+                        </button>
+                        <button class="btn btn-outline-success" onclick="showAssignWaiterForm()">
+                            <i class="fas fa-plus me-2"></i>
+                            Quick Assignment
+                        </button>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Quick Actions:</strong> Use the "Manage Table Assignments" button to view all current assignments, 
+                        or use "Quick Assignment" to quickly assign a waiter to a table. This helps ensure proper service 
+                        coverage and customer satisfaction.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Current Assignments Overview -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Current Table Assignments
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Table</th>
+                                    <th>Waiter</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignmentsTable">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>
+                                        Loading assignments...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Assignment Statistics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Assignment Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="stats-number text-primary" id="totalTables">0</div>
+                            <div class="stats-label">Total Tables</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-number text-success" id="assignedTables">0</div>
+                            <div class="stats-label">Assigned</div>
+                        </div>
+                    </div>
+                    <div class="row text-center mt-3">
+                        <div class="col-6">
+                            <div class="stats-number text-warning" id="unassignedTables">0</div>
+                            <div class="stats-label">Unassigned</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-number text-info" id="totalWaiters">0</div>
+                            <div class="stats-label">Active Waiters</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Assignment Form -->
+            <div class="card" id="quickAssignmentForm" style="display: none;">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>
+                        Quick Assignment
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="quickAssignForm">
+                        <div class="mb-3">
+                            <label for="assignTable" class="form-label">Table</label>
+                            <select class="form-select" id="assignTable" required>
+                                <option value="">Select Table</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="assignWaiter" class="form-label">Waiter</label>
+                            <select class="form-select" id="assignWaiter" required>
+                                <option value="">Select Waiter</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-check me-1"></i>
+                                Assign
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="hideAssignWaiterForm()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Assignment Management Modal -->
+<div class="modal fade" id="tableAssignmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-friends me-2"></i>
+                    Table Assignment Management
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Current Assignments -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Current Assignments</h6>
+                        <button class="btn btn-success btn-sm" onclick="showAssignWaiterForm()">
+                            <i class="fas fa-plus me-1"></i>
+                            Assign Waiter
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Table</th>
+                                    <th>Waiter</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignmentsTableModal">
+                                <!-- Assignments will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Assignment Form (hidden by default) -->
+                <div id="assignmentForm" style="display: none;">
+                    <hr>
+                    <h6>Assign New Waiter</h6>
+                    <form>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="assignTableModal" class="form-label">Table</label>
+                                <select class="form-select" id="assignTableModal" required>
+                                    <option value="">Select Table</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="assignWaiterModal" class="form-label">Waiter</label>
+                                <select class="form-select" id="assignWaiterModal" required>
+                                    <option value="">Select Waiter</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary" onclick="assignWaiterToTable()">
+                                <i class="fas fa-check me-1"></i>
+                                Assign
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="hideAssignWaiterForm()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stats-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,.075);
+}
+
+.assignment-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    loadTableAssignments();
+    loadTableStatistics();
+    
+    // Quick assignment form submission
+    $('#quickAssignForm').on('submit', function(e) {
+        e.preventDefault();
+        assignWaiterToTableQuick();
+    });
+    
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        loadTableAssignments();
+        loadTableStatistics();
+    }, 30000);
+});
+
+function loadTableAssignments() {
+    $.get('/api/get_waiter_assignments')
+        .done(function(data) {
+            const tbody = $('#assignmentsTable');
+            tbody.empty();
+            
+            if (data.assignments.length === 0) {
+                tbody.append(`
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            <i class="fas fa-user-friends mb-2"></i><br>
+                            <small>No table assignments yet</small>
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+            
+            data.assignments.forEach(assignment => {
+                tbody.append(`
+                    <tr>
+                        <td><strong>Table ${assignment.table_number}</strong></td>
+                        <td>
+                            <i class="fas fa-user me-1"></i>
+                            ${assignment.waiter_name}
+                        </td>
+                        <td>
+                            <span class="assignment-status bg-success text-white">Active</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="removeWaiterAssignment(${assignment.table_id})">
+                                <i class="fas fa-times"></i>
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        })
+        .fail(function() {
+            $('#assignmentsTable').html(`
+                <tr>
+                    <td colspan="4" class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load assignments
+                    </td>
+                </tr>
+            `);
+        });
+}
+
+function loadTableStatistics() {
+    // Load table statistics
+    $.when(
+        $.get('/api/get_tables'),
+        $.get('/api/get_waiters'),
+        $.get('/api/get_waiter_assignments')
+    ).done(function(tablesResponse, waitersResponse, assignmentsResponse) {
+        const tablesData = tablesResponse[0];
+        const waitersData = waitersResponse[0];
+        const assignmentsData = assignmentsResponse[0];
+        
+        const totalTables = tablesData.tables.length;
+        const assignedTables = assignmentsData.assignments.length;
+        const unassignedTables = totalTables - assignedTables;
+        const totalWaiters = waitersData.waiters.length;
+        
+        $('#totalTables').text(totalTables);
+        $('#assignedTables').text(assignedTables);
+        $('#unassignedTables').text(unassignedTables);
+        $('#totalWaiters').text(totalWaiters);
+    }).fail(function() {
+        console.error('Failed to load table statistics');
+    });
+}
+
+function refreshTableAssignments() {
+    loadTableAssignments();
+    loadTableStatistics();
+    showAlert('Table assignments refreshed!', 'success');
+}
+
+function showTableAssignmentModal() {
+    loadTableAssignmentsModal();
+    $('#tableAssignmentModal').modal('show');
+}
+
+function loadTableAssignmentsModal() {
+    $.get('/api/get_waiter_assignments')
+        .done(function(data) {
+            const tbody = $('#assignmentsTableModal');
+            tbody.empty();
+            
+            if (data.assignments.length === 0) {
+                tbody.append(`
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            <i class="fas fa-user-friends mb-2"></i><br>
+                            <small>No table assignments yet</small>
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+            
+            data.assignments.forEach(assignment => {
+                tbody.append(`
+                    <tr>
+                        <td><strong>Table ${assignment.table_number}</strong></td>
+                        <td>
+                            <i class="fas fa-user me-1"></i>
+                            ${assignment.waiter_name}
+                        </td>
+                        <td>
+                            <span class="assignment-status bg-success text-white">Active</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="removeWaiterAssignment(${assignment.table_id})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        })
+        .fail(function() {
+            showAlert('Failed to load table assignments', 'danger');
+        });
+}
+
+function showAssignWaiterForm() {
+    // Load tables and waiters
+    $.when(
+        $.get('/api/get_tables'),
+        $.get('/api/get_waiters')
+    ).done(function(tablesResponse, waitersResponse) {
+        const tablesData = tablesResponse[0];
+        const waitersData = waitersResponse[0];
+        
+        // Populate tables dropdown
+        const tableSelect = $('#assignTable');
+        const tableSelectModal = $('#assignTableModal');
+        
+        tableSelect.html('<option value="">Select Table</option>');
+        tableSelectModal.html('<option value="">Select Table</option>');
+        
+        tablesData.tables.forEach(table => {
+            tableSelect.append(`<option value="${table.id}">Table ${table.number}</option>`);
+            tableSelectModal.append(`<option value="${table.id}">Table ${table.number}</option>`);
+        });
+        
+        // Populate waiters dropdown
+        const waiterSelect = $('#assignWaiter');
+        const waiterSelectModal = $('#assignWaiterModal');
+        
+        waiterSelect.html('<option value="">Select Waiter</option>');
+        waiterSelectModal.html('<option value="">Select Waiter</option>');
+        
+        waitersData.waiters.forEach(waiter => {
+            waiterSelect.append(`<option value="${waiter.id}">${waiter.name}</option>`);
+            waiterSelectModal.append(`<option value="${waiter.id}">${waiter.name}</option>`);
+        });
+        
+        // Show the forms
+        $('#quickAssignmentForm').show();
+        $('#assignmentForm').show();
+    }).fail(function() {
+        showAlert('Failed to load assignment data', 'danger');
+    });
+}
+
+function hideAssignWaiterForm() {
+    $('#quickAssignmentForm').hide();
+    $('#assignmentForm').hide();
+    $('#assignTable').val('');
+    $('#assignWaiter').val('');
+    $('#assignTableModal').val('');
+    $('#assignWaiterModal').val('');
+}
+
+function assignWaiterToTableQuick() {
+    const tableId = $('#assignTable').val();
+    const waiterId = $('#assignWaiter').val();
+    
+    if (!tableId || !waiterId) {
+        showAlert('Please select both table and waiter', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/assign_waiter',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: parseInt(tableId),
+            waiter_id: parseInt(waiterId)
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            hideAssignWaiterForm();
+            loadTableAssignments();
+            loadTableStatistics();
+            showAlert('Waiter assigned successfully!', 'success');
+        } else {
+            showAlert('Error assigning waiter: ' + (data.message || 'Unknown error'), 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('Failed to assign waiter', 'danger');
+    });
+}
+
+function assignWaiterToTable() {
+    const tableId = $('#assignTableModal').val();
+    const waiterId = $('#assignWaiterModal').val();
+    
+    if (!tableId || !waiterId) {
+        showAlert('Please select both table and waiter', 'warning');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/assign_waiter',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: parseInt(tableId),
+            waiter_id: parseInt(waiterId)
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            hideAssignWaiterForm();
+            loadTableAssignmentsModal();
+            loadTableAssignments();
+            loadTableStatistics();
+            showAlert('Waiter assigned successfully!', 'success');
+        } else {
+            showAlert('Error assigning waiter: ' + (data.message || 'Unknown error'), 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('Failed to assign waiter', 'danger');
+    });
+}
+
+function removeWaiterAssignment(tableId) {
+    if (!confirm('Remove this table assignment?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/remove_waiter_assignment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: parseInt(tableId)
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            loadTableAssignmentsModal();
+            loadTableAssignments();
+            loadTableStatistics();
+            showAlert('Assignment removed successfully!', 'success');
+        } else {
+            showAlert('Error removing assignment: ' + (data.message || 'Unknown error'), 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('Failed to remove assignment', 'danger');
+    });
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('.main-content').prepend(alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+</script>
+{% endblock %}
+

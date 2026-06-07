@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Vault Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .status p {
+            color: #333;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .status strong {
+            color: #0284c7;
+        }
+        
+        .info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .info h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .info code {
+            background: #333;
+            color: #0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Master Vault</h1>
+        <p class="subtitle">Law Firm Encryption Key Management System</p>
+        
+        <div class="status">
+            <p><strong>Status:</strong> ✅ Vault Running</p>
+            <p><strong>Version:</strong> 1.0.0</p>
+            <p><strong>Port:</strong> 3333</p>
+        </div>
+        
+        <div class="info">
+            <h3>API Endpoints</h3>
+            <p>
+                <strong>Authentication:</strong><br>
+                <code>POST /api/auth/token</code>
+            </p>
+            <p style="margin-top: 10px;">
+                <strong>Secrets Management:</strong><br>
+                <code>POST /api/secrets/store</code><br>
+                <code>POST /api/secrets/get</code><br>
+                <code>DELETE /api/secrets/:name</code>
+            </p>
+            <p style="margin-top: 10px;">
+                <strong>Health Check:</strong><br>
+                <code>GET /health</code>
+            </p>
+        </div>
+        
+        <div class="info">
+            <h3>Using the Vault</h3>
+            <p>1. Authenticate with master password</p>
+            <p>2. Use JWT token for API requests</p>
+            <p>3. Store/retrieve secrets securely</p>
+            <p>4. All access is logged in audit trail</p>
+        </div>
+    </div>
+</body>
+</html>

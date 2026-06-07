@@ -1,0 +1,11 @@
+{
+  "mode": "local",
+  "local": {
+    "dbPath": "./pos_database.db"
+  },
+  "remote": {
+    "host": "localhost",
+    "port": 5002,
+    "licenseSerial": "LIC-MSP-a0dd06af-20251025-POS-20251107013327"
+  }
+}

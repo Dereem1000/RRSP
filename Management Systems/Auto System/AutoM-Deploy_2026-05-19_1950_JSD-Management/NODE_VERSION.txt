@@ -1,0 +1,12 @@
+AutoM client runtime requires Node.js 22.x LTS (64-bit Windows).
+
+Do not install Node 24 on the production server unless you also install
+Visual Studio Build Tools to compile native modules (not recommended).
+
+Download Node 22 LTS:
+https://nodejs.org/en/download
+
+After installing Node 22, run setup-server.bat once, then start.bat.
+
+The package may include node_modules from the build PC (Node 22).
+With Node 22 on the server, SQLite usually works without rebuilding.

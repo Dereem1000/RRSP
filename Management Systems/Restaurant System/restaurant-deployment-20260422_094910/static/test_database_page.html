@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Test Page</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .test-button {
+            padding: 20px;
+            margin: 10px;
+            font-size: 18px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Button Test</h1>
+    
+    <button id="chooseLocalBtn" class="test-button">
+        Local SQLite
+    </button>
+    
+    <button id="chooseRemoteBtn" class="test-button">
+        Remote API Server
+    </button>
+    
+    <div id="result"></div>
+
+    <script>
+        console.log('Test page loaded');
+        console.log('jQuery version:', $.fn.jquery);
+        
+        $(document).ready(function() {
+            console.log('Document ready');
+            console.log('Local button found:', $('#chooseLocalBtn').length);
+            console.log('Remote button found:', $('#chooseRemoteBtn').length);
+            
+            $('#chooseLocalBtn').click(function() {
+                console.log('LOCAL BUTTON CLICKED!');
+                $('#result').html('<p style="color: green;">Local button works!</p>');
+            });
+            
+            $('#chooseRemoteBtn').click(function() {
+                console.log('REMOTE BUTTON CLICKED!');
+                $('#result').html('<p style="color: green;">Remote button works!</p>');
+            });
+            
+            console.log('Event handlers attached');
+        });
+    </script>
+</body>
+</html>
+
+
+

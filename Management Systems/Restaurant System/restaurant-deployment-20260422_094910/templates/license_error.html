@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}License Error - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card mt-5">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        License Error
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-key fa-4x text-danger mb-3"></i>
+                        <h4 class="text-danger">License Validation Failed</h4>
+                    </div>
+                    
+                    <div class="alert alert-danger" role="alert">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-times-circle me-2"></i>
+                            Access Denied
+                        </h5>
+                        <p class="mb-0">
+                            {% if session.get('license_error') %}
+                                {{ session.get('license_error') }}
+                            {% else %}
+                                Your license is not valid or has expired. Please contact support for assistance.
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user-plus fa-2x text-primary mb-2"></i>
+                                    <h6>New Restaurant?</h6>
+                                    <p class="small text-muted">Register your restaurant with a valid license</p>
+                                    <a href="{{ url_for('license_registration_page') }}" class="btn btn-primary btn-sm">
+                                        Register Restaurant
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-headset fa-2x text-success mb-2"></i>
+                                    <h6>Need Help?</h6>
+                                    <p class="small text-muted">Contact support for license assistance</p>
+                                    <a href="mailto:support@computerdynamicstt.com" class="btn btn-success btn-sm">
+                                        Contact Support
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-home me-2"></i>
+                            Back to Home
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            Try Login Again
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- License Information Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        License Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Common License Issues:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>License has expired</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Serial number is invalid</li>
+                                <li><i class="fas fa-check text-success me-2"></i>License not activated</li>
+                                <li><i class="fas fa-check text-success me-2"></i>User limit exceeded</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Solutions:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-arrow-right text-primary me-2"></i>Renew your license</li>
+                                <li><i class="fas fa-arrow-right text-primary me-2"></i>Verify serial number</li>
+                                <li><i class="fas fa-arrow-right text-primary me-2"></i>Activate license</li>
+                                <li><i class="fas fa-arrow-right text-primary me-2"></i>Upgrade license tier</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Clear license error from session after displaying
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear the error message after 5 seconds
+    setTimeout(function() {
+        fetch('/api/clear_license_error', { method: 'POST' })
+            .catch(function(error) {
+                console.log('Error clearing license error:', error);
+            });
+    }, 5000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+[BACKGROUND-JOBS] Error running archive cleanup: Error: Database not initialized. Call initializeDatabase() first.
+    at getDb (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\temp\file-storage\src\metadata.ts:114:11)
+    at E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\temp\file-storage\src\metadata.ts:154:5
+    at new Promise (<anonymous>)
+    at dbAll (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\temp\file-storage\src\metadata.ts:153:10)
+    at getAllArchivedFiles (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\temp\file-storage\src\metadata.ts:241:16)
+    at cleanupOldArchives (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\temp\file-storage\src\archiveCleanup.ts:75:50)
+    at runArchiveCleanup (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\temp\file-storage\src\archiveCleanup.ts:167:34)
+    at runArchiveCleanupJob (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\server\src\services\backgroundJobs.ts:43:26)
+    at Timeout._onTimeout (E:\Law Firm System\repair_workspace\repair_LawFirm System v2_20251207_114544\working\server\src\services\backgroundJobs.ts:83:5)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)

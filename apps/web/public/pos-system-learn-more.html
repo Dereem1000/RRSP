@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS System - Learn More | Computer Dynamics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 50px;
+            width: auto;
+            max-width: 200px;
+            margin-right: 12px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .back-btn {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: var(--gray-200);
+            transform: translateY(-2px);
+        }
+
+        .demo-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 120px 0 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 60px;
+        }
+
+        .hero-text {
+            text-align: left;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 500px;
+        }
+
+        .hero-tagline {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 40px;
+            font-weight: 500;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .cd-live-demo-slot {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .cd-live-demo-btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .cd-live-demo-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--white);
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .hero-dashboard {
+            text-align: center;
+        }
+
+        .hero-dashboard-image {
+            width: auto;
+            max-width: min(960px, 100%);
+            height: auto;
+            max-height: min(720px, 80vh);
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .hero-dashboard-image:hover {
+            transform: scale(1.02);
+        }
+
+        .hero-gallery {
+            display: flex;
+            gap: 20px;
+            margin-top: 60px;
+            overflow-x: auto;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+        }
+
+        .hero-gallery::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .hero-image-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 320px;
+            min-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero-image-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .hero-image-card img {
+            width: 100%;
+            height: auto;
+            max-height: 480px;
+            object-fit: contain;
+            object-position: center top;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .hero-image-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .hero-image-card p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 80px 0;
+            background: var(--gray-50);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .feature-card p {
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            color: var(--gray-600);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Interface Showcase Sections */
+        .interface-section {
+            padding: 80px 0;
+            background: var(--white);
+        }
+
+        .interface-section:nth-child(even) {
+            background: var(--gray-50);
+        }
+
+        .interface-showcase {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
+            gap: clamp(40px, 5vw, 80px);
+            align-items: center;
+        }
+
+        .interface-showcase:has(> .interface-image:first-child) {
+            grid-template-columns: minmax(480px, 2fr) minmax(280px, 1fr);
+        }
+
+        .interface-content {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .interface-text h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .interface-text p {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .interface-features {
+            list-style: none;
+            padding: 0;
+        }
+
+        .interface-features li {
+            color: var(--gray-700);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+        }
+
+        .interface-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .interface-image {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            text-align: center;
+            width: 100%;
+        }
+
+        .showcase-image {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: min(780px, 85vh);
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .showcase-image:hover {
+            transform: scale(1.02);
+        }
+
+        /* Modules Section */
+        .modules-section {
+            padding: 80px 0;
+            background: var(--gray-50);
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 32px;
+            margin-top: 60px;
+        }
+
+        .module-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .module-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .module-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .module-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .module-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .module-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .module-description {
+            color: var(--gray-600);
+            margin-bottom: 32px;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .module-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .module-features li {
+            color: var(--gray-700);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .module-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .module-subsection {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .module-subsection h4 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .module-subsection ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .module-subsection ul li {
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .module-subsection ul li::before {
+            content: '•';
+            color: var(--primary);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .module-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .feature-note {
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--gray-100);
+            border-left: 3px solid var(--primary);
+            border-radius: 4px;
+            font-size: 0.875rem;
+            color: var(--gray-700);
+        }
+
+        .feature-note strong {
+            color: var(--primary);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .cta-content h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .cta-content p {
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--primary);
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-white:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+            text-align: center;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-500);
+            cursor: pointer;
+        }
+
+        .modal-content img {
+            width: auto;
+            max-width: 100%;
+            max-height: 85vh;
+            height: auto;
+            object-fit: contain;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-main {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                text-align: center;
+            }
+
+            .hero-text {
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.125rem;
+                max-width: 100%;
+            }
+
+            .hero-dashboard-image {
+                max-width: 100%;
+            }
+
+            .hero-gallery {
+                gap: 16px;
+                padding: 16px 0;
+            }
+
+            .hero-image-card {
+                width: 280px;
+                min-width: 280px;
+                padding: 16px;
+            }
+
+            .hero-image-card img {
+                max-height: 360px;
+            }
+
+            .interface-showcase,
+            .interface-showcase:has(> .interface-image:first-child) {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .showcase-image {
+                max-height: min(560px, 70vh);
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; align-items: center;">
+                    <i class="fas fa-desktop" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
+                    <div class="logo-text">Computer Dynamics</div>
+                </div>
+            </a>
+            <div class="nav-actions">
+                <a href="/" class="back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </a>
+                <a href="https://wa.me/18683168851?text=Hi! I'm interested in learning more about the POS System." class="demo-btn" target="_blank">
+                    <i class="fab fa-whatsapp"></i> Get Quote
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-main">
+                    <div class="hero-text">
+                        <h1>Computer Dynamics Cloud POS</h1>
+                        <p class="hero-subtitle">
+                            The only locally-developed, cloud-based POS system designed specifically for Trinidad and Tobago businesses.
+                        </p>
+                        <p class="hero-tagline">
+                            Enterprise features at competitive pricing with unmatched local support.
+                        </p>
+                        <div class="hero-buttons">
+                            <a href="http://190.213.252.119:3000" class="btn btn-primary" target="_blank">
+                                <i class="fas fa-sign-in-alt"></i> Access POS System
+                            </a>
+                            <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn btn-secondary" target="_blank">
+                                <i class="fas fa-comments"></i> Request Quote
+                            </a>
+                <a href="#modules" class="btn btn-secondary">
+                    <i class="fas fa-info-circle"></i> View Modules
+                </a>
+                            <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
+                        </div>
+                    </div>
+                    <div class="hero-dashboard">
+                        <img src="images/pos-system/POS admin home.JPG" alt="POS Admin Dashboard" class="hero-dashboard-image" onerror="this.style.display='none';">
+                    </div>
+                </div>
+
+                <!-- Hero Image Gallery -->
+                <div class="hero-gallery">
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS admin home.JPG', 'Admin Dashboard')">
+                        <img src="images/pos-system/POS admin home.JPG" alt="Admin Dashboard" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EAdmin Home%3C/text%3E%3C/svg%3E';">
+                        <h4>Admin Dashboard</h4>
+                        <p>Complete system overview</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory.JPG', 'Inventory Management')">
+                        <img src="images/pos-system/POS inventory.JPG" alt="Inventory" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EInventory%3C/text%3E%3C/svg%3E';">
+                        <h4>Inventory</h4>
+                        <p>Real-time stock tracking</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS cash balancing report.JPG', 'Cash Balancing Report')">
+                        <img src="images/pos-system/POS cash balancing report.JPG" alt="Cash Balancing" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECash Balancing%3C/text%3E%3C/svg%3E';">
+                        <h4>Cash Balancing</h4>
+                        <p>Professional cash management</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS Reports.JPG', 'Sales Reports')">
+                        <img src="images/pos-system/POS Reports.JPG" alt="Reports" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EReports%3C/text%3E%3C/svg%3E';">
+                        <h4>Sales Reports</h4>
+                        <p>Comprehensive analytics</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory valuation.JPG', 'Inventory Valuation')">
+                        <img src="images/pos-system/POS inventory valuation.JPG" alt="Valuation" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EValuation%3C/text%3E%3C/svg%3E';">
+                        <h4>Inventory Valuation</h4>
+                        <p>Cost and profit analysis</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS User Managment module.JPG', 'User Management')">
+                        <img src="images/pos-system/POS User Managment module.JPG" alt="User Management" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EUser Management%3C/text%3E%3C/svg%3E';">
+                        <h4>User Management</h4>
+                        <p>Role-based access control</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS cash balancing Cashier transactions-sessions.JPG', 'Cashier Transactions')">
+                        <img src="images/pos-system/POS cash balancing Cashier transactions-sessions.JPG" alt="Cashier Transactions" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECashier Transactions%3C/text%3E%3C/svg%3E';">
+                        <h4>Cashier Sessions</h4>
+                        <p>Transaction tracking</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS cash balancing CashierJPG.JPG', 'Cashier Interface')">
+                        <img src="images/pos-system/POS cash balancing CashierJPG.JPG" alt="Cashier Interface" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECashier Interface%3C/text%3E%3C/svg%3E';">
+                        <h4>Cashier Interface</h4>
+                        <p>Shift management</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS end of shift balance from float .JPG', 'End of Shift')">
+                        <img src="images/pos-system/POS end of shift balance from float .JPG" alt="End of Shift" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EEnd of Shift%3C/text%3E%3C/svg%3E';">
+                        <h4>End of Shift</h4>
+                        <p>Balance reconciliation</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS float setup Start of shift .JPG', 'Start of Shift')">
+                        <img src="images/pos-system/POS float setup Start of shift .JPG" alt="Start of Shift" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EStart of Shift%3C/text%3E%3C/svg%3E';">
+                        <h4>Start of Shift</h4>
+                        <p>Float setup</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory history.JPG', 'Inventory History')">
+                        <img src="images/pos-system/POS inventory history.JPG" alt="Inventory History" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EInventory History%3C/text%3E%3C/svg%3E';">
+                        <h4>Inventory History</h4>
+                        <p>Complete audit trail</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory stock adjustment.JPG', 'Stock Adjustments')">
+                        <img src="images/pos-system/POS inventory stock adjustment.JPG" alt="Stock Adjustments" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EStock Adjustments%3C/text%3E%3C/svg%3E';">
+                        <h4>Stock Adjustments</h4>
+                        <p>Inventory corrections</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS Cashout.JPG', 'Cashout')">
+                        <img src="images/pos-system/POS Cashout.JPG" alt="Cashout" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECashout%3C/text%3E%3C/svg%3E';">
+                        <h4>Cashout</h4>
+                        <p>Payment processing</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS Pin.JPG', 'PIN Protection')">
+                        <img src="images/pos-system/POS Pin.JPG" alt="PIN Protection" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EPIN Protection%3C/text%3E%3C/svg%3E';">
+                        <h4>PIN Protection</h4>
+                        <p>Secure authentication</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/pos-system/POS User selector.JPG', 'User Selector')">
+                        <img src="images/pos-system/POS User selector.JPG" alt="User Selector" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EUser Selector%3C/text%3E%3C/svg%3E';">
+                        <h4>User Selector</h4>
+                        <p>Quick user switching</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Core Features</h2>
+                <p>Essential features included with every POS system installation</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cash-register"></i>
+                    </div>
+                    <h3>Point of Sale</h3>
+                    <p>Fast and intuitive checkout process with support for multiple payment methods and receipt printing.</p>
+                    <ul class="feature-list">
+                        <li>Quick item lookup and scanning</li>
+                        <li>Multiple payment methods</li>
+                        <li>Receipt printing</li>
+                        <li>Discount and promotion support</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <h3>Inventory Management</h3>
+                    <p>Basic inventory tracking with product management and stock level monitoring.</p>
+                    <ul class="feature-list">
+                        <li>Product catalog management</li>
+                        <li>Real-time stock tracking</li>
+                        <li>Automatic stock updates from sales</li>
+                        <li>Basic inventory reports</li>
+                    </ul>
+                    <div class="feature-note">
+                        <strong>Note:</strong> Advanced features like inventory valuation, stock adjustments, purchase orders, and inventory history require additional modules.
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <h3>Cash Management</h3>
+                    <p>Basic cash handling with transaction processing and payment management.</p>
+                    <ul class="feature-list">
+                        <li>Cash payment processing</li>
+                        <li>Transaction recording</li>
+                        <li>Basic cash drawer functionality</li>
+                        <li>Payment method tracking</li>
+                    </ul>
+                    <div class="feature-note">
+                        <strong>Note:</strong> Advanced cash balancing features like shift workflows, float management, discrepancy detection, and cashier session reports are included in the base system.
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>Basic Sales Reports</h3>
+                    <p>Essential sales reporting to track your business performance.</p>
+                    <ul class="feature-list">
+                        <li>Daily, weekly, monthly sales summaries</li>
+                        <li>Basic sales transaction reports</li>
+                        <li>Payment method tracking</li>
+                        <li>Basic export functionality</li>
+                    </ul>
+                    <div class="feature-note">
+                        <strong>Note:</strong> Advanced reporting features like product performance analytics, customer behavior analytics, period comparisons, and enhanced filtering require the <strong>Advanced Reporting Module</strong>.
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Basic User System</h3>
+                    <p>Essential user management for system access and authentication.</p>
+                    <ul class="feature-list">
+                        <li>User login and authentication</li>
+                        <li>Basic user accounts</li>
+                        <li>User session management</li>
+                        <li>Basic access control</li>
+                    </ul>
+                    <div class="feature-note">
+                        <strong>Note:</strong> Advanced user management features like role-based access control (Admin/Manager/Cashier), PIN authentication, automatic lock screen, and settings locking require the <strong>User Management Module</strong>.
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <h3>Cloud-Based</h3>
+                    <p>Access your POS system from anywhere with secure cloud storage and automatic backups.</p>
+                    <ul class="feature-list">
+                        <li>Access from anywhere</li>
+                        <li>Automatic backups</li>
+                        <li>Secure cloud storage</li>
+                        <li>Multi-device support</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interface Showcase: Inventory -->
+    <section class="interface-section" id="interfaces">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Inventory Management</h3>
+                        <p>Core inventory functionality with product management and stock tracking. Manage your product catalog and monitor stock levels in real-time.</p>
+                        <ul class="interface-features">
+                            <li>Product catalog management</li>
+                            <li>Real-time stock tracking and updates</li>
+                            <li>Automatic stock updates from sales</li>
+                            <li>Basic inventory reporting</li>
+                        </ul>
+                        <div class="feature-note" style="margin-top: 24px;">
+                            <strong>Note:</strong> Advanced inventory features like inventory valuation, stock adjustments, purchase orders, inventory history, and low stock alerts are included in the base system.
+                        </div>
+                    </div>
+                </div>
+                <div class="interface-image">
+                    <img src="images/pos-system/POS inventory.JPG" alt="Inventory Management" class="showcase-image" onerror="this.style.display='none';">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interface Showcase: Cash Balancing -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="images/pos-system/POS cash balancing report.JPG" alt="Cash Balancing" class="showcase-image" onerror="this.style.display='none';">
+                </div>
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Cash Balancing & Reporting</h3>
+                        <p>Professional cash management with shift-based balancing, float setup, and comprehensive transaction reporting. Track all cash movements and maintain accurate financial records.</p>
+                        <ul class="interface-features">
+                            <li>Start and end of shift balancing</li>
+                            <li>Float setup and management</li>
+                            <li>Cashier transaction tracking</li>
+                            <li>Detailed cash balancing reports</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interface Showcase: Reports -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Sales Reports</h3>
+                        <p>Essential sales reporting to track your business performance. View sales summaries and transaction data to monitor your operations.</p>
+                        <ul class="interface-features">
+                            <li>Daily, weekly, and monthly sales summaries</li>
+                            <li>Transaction history and details</li>
+                            <li>Payment method tracking</li>
+                            <li>Basic export capabilities</li>
+                        </ul>
+                        <div class="feature-note" style="margin-top: 24px;">
+                            <strong>Note:</strong> Advanced analytics features like product performance analysis, customer behavior tracking, period comparisons, and enhanced filtering require the <strong>Advanced Reporting Module</strong>.
+                        </div>
+                    </div>
+                </div>
+                <div class="interface-image">
+                    <img src="images/pos-system/POS Reports.JPG" alt="Sales Reports" class="showcase-image" onerror="this.style.display='none';">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interface Showcase: Cashier -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="images/pos-system/POS cash balancing CashierJPG.JPG" alt="Cashier Interface" class="showcase-image" onerror="this.style.display='none';">
+                </div>
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Cashier Interface</h3>
+                        <p>Touch-friendly register workflow built for fast checkout: ring sales, apply payments, and stay in sync with inventory and shift balancing without leaving the screen.</p>
+                        <ul class="interface-features">
+                            <li>Streamlined sale entry for counter staff</li>
+                            <li>Session and transaction history per cashier</li>
+                            <li>Cashout and payment handling at the till</li>
+                            <li>Designed for portrait displays and tablets</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interface Showcase: User access & PIN -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>User Access &amp; PIN Security</h3>
+                        <p>Staff pick their user at login, authenticate with a PIN, and get only the tools their role allows—so managers, cashiers, and back-office users each see the right POS screens.</p>
+                        <ul class="interface-features">
+                            <li>User selector for quick staff sign-in</li>
+                            <li>PIN protection on sensitive actions</li>
+                            <li>Role-based access to modules and reports</li>
+                            <li>Optional lock screen between transactions</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="interface-image">
+                    <img src="images/pos-system/POS User selector.JPG" alt="User Selector" class="showcase-image" onerror="this.style.display='none';">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interface Showcase: Shift float -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="images/pos-system/POS float setup Start of shift .JPG" alt="Start of Shift Float Setup" class="showcase-image" onerror="this.style.display='none';">
+                </div>
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Shift Float &amp; End-of-Day Balance</h3>
+                        <p>Open each shift with a counted float, track every sale and payout through the day, and close with an end-of-shift balance that matches your physical drawer.</p>
+                        <ul class="interface-features">
+                            <li>Start-of-shift float setup</li>
+                            <li>End-of-shift reconciliation screens</li>
+                            <li>Cashier transaction logs per session</li>
+                            <li>Clear audit trail for managers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modules Section -->
+    <section class="modules-section" id="modules">
+        <div class="container">
+            <div class="section-header">
+                <h2>Powerful Modules</h2>
+                <p>Extendable modular architecture with specialized modules for every business need</p>
+            </div>
+            <div class="modules-grid">
+                <!-- User Management Module -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">
+                            <i class="fas fa-users-cog"></i>
+                        </div>
+                        <h3 class="module-title">User Management Module</h3>
+                    </div>
+                    <p class="module-description">
+                        Comprehensive user management with role-based access control, PIN authentication, and automatic lock screen functionality for enhanced security.
+                    </p>
+                    <ul class="module-features">
+                        <li>Create, update, and delete users with full profile management</li>
+                        <li>Three role levels: Admin, Manager, and Cashier with distinct permissions</li>
+                        <li>Individual PIN authentication for each user (4-8 digits, configurable)</li>
+                        <li>Automatic lock screen after configurable inactivity timeout (60-3600 seconds)</li>
+                        <li>Role-based settings locking to prevent unauthorized access</li>
+                        <li>PIN session management with configurable timeout</li>
+                        <li>Default PIN support for users who haven't set up their own PIN</li>
+                    </ul>
+                    <div class="module-subsection">
+                        <h4>Role Permissions:</h4>
+                        <ul>
+                            <li><strong>Admin:</strong> Full system access, user management, all settings</li>
+                            <li><strong>Manager:</strong> Limited settings access, inventory, reports, no user management</li>
+                            <li><strong>Cashier:</strong> Basic POS operations only, no settings or reports</li>
+                        </ul>
+                    </div>
+                    <div class="module-subsection">
+                        <h4>Key Features:</h4>
+                        <ul>
+                            <li>Secure PIN hashing using bcrypt</li>
+                            <li>Session persistence across page refreshes</li>
+                            <li>Manual lock button in top navigation</li>
+                            <li>Settings access control based on user roles</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Advanced Reporting Module -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="module-title">Advanced Reporting Module</h3>
+                    </div>
+                    <p class="module-description">
+                        Enhanced reporting and analytics with advanced filtering, product performance analysis, customer behavior tracking, and comprehensive export capabilities.
+                    </p>
+                    <ul class="module-features">
+                        <li>Product performance analytics with sales trends and patterns</li>
+                        <li>Customer behavior analytics and purchase history tracking</li>
+                        <li>Inventory movement reports with detailed tracking</li>
+                        <li>Period comparison reports (day, week, month, year)</li>
+                        <li>Custom date range filtering for flexible reporting</li>
+                        <li>Export to CSV/Excel for external analysis (up to 10,000 rows)</li>
+                        <li>Configurable report settings and preferences</li>
+                    </ul>
+                    <div class="module-subsection">
+                        <h4>Report Types:</h4>
+                        <ul>
+                            <li>Sales reports with revenue trends and payment method distribution</li>
+                            <li>Product performance reports identifying best sellers</li>
+                            <li>Inventory movement reports with detailed tracking</li>
+                            <li>Customer analytics with purchase history and patterns</li>
+                        </ul>
+                    </div>
+                    <div class="module-subsection">
+                        <h4>Configurable Settings:</h4>
+                        <ul>
+                            <li>Enable/disable product analytics</li>
+                            <li>Enable/disable customer analytics</li>
+                            <li>Enable/disable inventory reports</li>
+                            <li>Enable/disable comparison reports</li>
+                            <li>Default date range selection (7, 30, 90, 365 days, or custom)</li>
+                            <li>Optional scheduled report generation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Clock In/Out Module -->
+                <div class="module-card">
+                    <div class="module-header">
+                        <div class="module-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 class="module-title">Clock In/Out Module</h3>
+                    </div>
+                    <p class="module-description">
+                        Comprehensive time tracking system for employees with clock in/out functionality, timesheet management, and automatic hour calculations.
+                    </p>
+                    <ul class="module-features">
+                        <li>Automatic clock in/out prompts on login/logout (configurable)</li>
+                        <li>Manual clock in/out from timesheet page</li>
+                        <li>Optional automatic clock in/out without prompts</li>
+                        <li>Active session tracking prevents duplicate entries</li>
+                        <li>Optional notes support when clocking in or out</li>
+                        <li>Automatic calculation of total hours worked</li>
+                        <li>Date range filtering for timesheet viewing</li>
+                    </ul>
+                    <div class="module-subsection">
+                        <h4>Admin/Manager Features:</h4>
+                        <ul>
+                            <li>View all users' timesheets with user filtering</li>
+                            <li>Edit clock in/out times and notes</li>
+                            <li>Delete timesheet entries</li>
+                            <li>Bulk operations for managing multiple entries</li>
+                        </ul>
+                    </div>
+                    <div class="module-subsection">
+                        <h4>Configurable Settings:</h4>
+                        <ul>
+                            <li>Show/hide clock in prompt on login</li>
+                            <li>Show/hide clock out prompt on logout</li>
+                            <li>Auto clock in/out on login/logout</li>
+                            <li>Require clock out before new clock in</li>
+                            <li>Allow manual clock in/out operations</li>
+                            <li>Enable timesheet editing for admins/managers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Transform Your Business?</h2>
+                <p>Get started with Computer Dynamics Cloud POS today and experience the difference that local expertise makes.</p>
+                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                    <a href="http://190.213.252.119:3000" class="btn-white" target="_blank">
+                        <i class="fas fa-sign-in-alt"></i> Access POS System
+                    </a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn-white" target="_blank" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);">
+                        <i class="fab fa-whatsapp"></i> Request a Quote
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="imageModal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <img id="modalImage" src="" alt="">
+            <h3 class="modal-title" id="modalTitle"></h3>
+        </div>
+    </div>
+
+    <script>
+        function openModal(imageSrc, title) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            modalImage.src = imageSrc;
+            modalTitle.textContent = title;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+    <script src="/js/multiserver-demos.js" defer></script>
+</body>
+</html>
+
+
+

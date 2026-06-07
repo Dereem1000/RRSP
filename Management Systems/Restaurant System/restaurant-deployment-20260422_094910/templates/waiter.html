@@ -1,0 +1,1474 @@
+{% extends "base.html" %}
+
+{% block title %}Waiter Panel - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2">
+                        <i class="fas fa-user-tie text-success me-2"></i>
+                        Waiter Dashboard
+                    </h1>
+                    <p class="text-muted">Manage your assigned tables and customer service</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-danger me-2" onclick="showAssistanceRequests()" id="assistanceBtn">
+                        <i class="fas fa-bell me-1"></i>
+                        Assistance <span class="badge bg-danger ms-1" id="assistanceBadge" style="display: none;">0</span>
+                    </button>
+                    <a href="/waiter/mobile" class="btn btn-outline-primary">
+                        <i class="fas fa-mobile-alt me-1"></i>
+                        Mobile View
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="assigned-tables">0</div>
+                <div class="stats-label">Assigned Tables</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="active-orders">0</div>
+                <div class="stats-label">Active Orders</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="ready-orders">0</div>
+                <div class="stats-label">Ready to Serve</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="total-customers">0</div>
+                <div class="stats-label">Total Customers</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Table Management -->
+    <!-- Available Tables to Claim -->
+    <div class="row mb-4" id="claimableTablesSection" style="display: none;">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-hand-paper me-2"></i>
+                        Available Tables to Claim
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        These tables have orders but no assigned waiter. Click to claim them.
+                    </div>
+                    <div class="row" id="claimable-tables-container">
+                        <!-- Claimable tables will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Orders -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-utensils me-2"></i>
+                        My Orders
+                    </h5>
+                    <div>
+                        <button class="btn btn-success me-2" onclick="startNewOrder()">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            New Order
+                        </button>
+                        <button class="btn btn-outline-secondary me-2" onclick="refreshClaimableTables()">
+                            <i class="fas fa-table me-2"></i>
+                            Claim Tables
+                        </button>
+                        <button class="btn btn-primary" onclick="refreshData()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="orders-container">
+                        <!-- Orders will be loaded here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="orderModalBody">
+                <!-- Order details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="markServedBtn" style="display: none;">
+                    <i class="fas fa-check me-2"></i>
+                    Mark as Served
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Order Modal -->
+<div class="modal fade" id="newOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newOrderForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="orderTable" class="form-label">Table</label>
+                                <select class="form-select form-select-lg" id="orderTable" required>
+                                    <option value="">Select table</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="customerName" class="form-label">Customer Name</label>
+                                <input type="text" class="form-control form-control-lg" id="customerName" placeholder="Enter customer name">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="customerPhone" class="form-label">Customer Phone</label>
+                                <input type="tel" class="form-control form-control-lg" id="customerPhone" placeholder="Enter phone number">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="orderType" class="form-label">Order Type</label>
+                                <select class="form-select form-select-lg" id="orderType" required>
+                                    <option value="dine_in">Dine In</option>
+                                    <option value="takeaway">Takeaway</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="orderNotes" class="form-label">Order Notes</label>
+                                <textarea class="form-control" id="orderNotes" rows="3" placeholder="Any special instructions..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Menu Items</h6>
+                        <div id="menuItemsContainer">
+                            <!-- Menu items will be loaded here -->
+                        </div>
+                        <button type="button" class="btn btn-outline-primary mt-2" onclick="addMenuItem()">
+                            <i class="fas fa-plus me-2"></i>
+                            Add Item
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-lg" id="createOrderBtn">
+                    <i class="fas fa-check me-2"></i>
+                    Create Order
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stats-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.table-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.table-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.order-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* Ready Order Highlighting */
+.ready-order-highlight {
+    border: 3px solid #28a745 !important;
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.3) !important;
+    animation: pulse-ready 2s infinite;
+}
+
+@keyframes pulse-ready {
+    0% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(40, 167, 69, 0.6); }
+    100% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.3); }
+}
+
+/* Urgent Order Highlighting */
+.urgent-order-highlight {
+    border: 4px solid #dc3545 !important;
+    box-shadow: 0 0 25px rgba(220, 53, 69, 0.5) !important;
+    animation: pulse-urgent 1s infinite;
+    background: linear-gradient(45deg, rgba(220, 53, 69, 0.1), rgba(255, 193, 7, 0.1)) !important;
+}
+
+@keyframes pulse-urgent {
+    0% { 
+        box-shadow: 0 0 25px rgba(220, 53, 69, 0.5);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 35px rgba(220, 53, 69, 0.8);
+        transform: scale(1.02);
+    }
+    100% { 
+        box-shadow: 0 0 25px rgba(220, 53, 69, 0.5);
+        transform: scale(1);
+    }
+}
+
+.status-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.bg-warning { background-color: #ffc107 !important; }
+.bg-info { background-color: #17a2b8 !important; }
+.bg-success { background-color: #28a745 !important; }
+.bg-secondary { background-color: #6c757d !important; }
+.bg-dark { background-color: #343a40 !important; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let orders = [];
+let assignedTables = [];
+let menuItems = [];
+let refreshInterval;
+
+$(document).ready(function() {
+    // Request notification permission
+    requestNotificationPermission();
+    
+    loadData();
+    loadClaimableTables();
+    
+    // Refresh data every 30 seconds
+    refreshInterval = setInterval(() => {
+        loadData();
+        loadClaimableTables();
+        checkForNewReadyOrders();
+    }, 30000);
+    
+    // Check for ready orders every 10 seconds for faster notifications
+    setInterval(checkForNewReadyOrders, 10000);
+    
+    // Create new order
+    $('#createOrderBtn').click(function() {
+        createNewOrder();
+    });
+    
+    // Mark order as served
+    $('#markServedBtn').click(function() {
+        markOrderAsServed();
+    });
+});
+
+function loadData() {
+    // Load tables assigned to current waiter
+    $.get('/api/get_my_assigned_tables')
+        .done(function(data) {
+            assignedTables = data.tables;
+            updateStats();
+            renderTables();
+            
+            // Now load orders after tables are loaded
+            loadOrders();
+        })
+        .fail(function() {
+            console.error('Error loading assigned tables');
+            // Fallback: show empty tables
+            assignedTables = [];
+            updateStats();
+            renderTables();
+            loadOrders();
+        });
+    
+    // Load menu items
+    $.get('/api/get_menu')
+        .done(function(data) {
+            menuItems = data.menu;
+        });
+}
+
+function loadOrders() {
+    $.get('/api/get_orders')
+        .done(function(data) {
+            // Store ALL orders - we'll filter them in display functions as needed
+            orders = data.orders.filter(order => 
+                ['pending', 'confirmed', 'ready', 'served'].includes(order.status)
+            );
+            
+            updateStats();
+            renderOrders();
+            
+            // Re-render tables now that orders are loaded
+            renderTables();
+        });
+}
+
+function refreshData() {
+    loadData();
+}
+
+function refreshOrders() {
+    loadOrders();
+}
+
+function refreshClaimableTables() {
+    loadClaimableTables();
+}
+
+function startNewOrder() {
+    // This would open a modal or navigate to an order entry interface
+    alert('New Order Entry - This would open the order entry interface for manual order taking');
+    // You could implement a modal here or navigate to a dedicated order entry page
+}
+
+function loadClaimableTables() {
+    // Check if table claiming is enabled
+    $.get('/api/get_settings')
+        .done(function(data) {
+            const settings = {};
+            data.settings.forEach(setting => {
+                settings[setting.key] = setting.value;
+            });
+            
+            if (settings.allow_table_claiming === 'true') {
+                // Load unassigned tables with orders
+                $.get('/api/get_unassigned_tables_with_orders')
+                    .done(function(data) {
+                        renderClaimableTables(data.tables);
+                    })
+                    .fail(function() {
+                        console.log('Error loading claimable tables');
+                    });
+            } else {
+                // Hide the section if claiming is disabled
+                $('#claimableTablesSection').hide();
+            }
+        });
+}
+
+function renderClaimableTables(tables) {
+    const container = $('#claimable-tables-container');
+    container.empty();
+    
+    if (tables.length === 0) {
+        $('#claimableTablesSection').hide();
+        return;
+    }
+    
+    $('#claimableTablesSection').show();
+    
+    tables.forEach(table => {
+        const tableCard = `
+            <div class="col-md-4 col-lg-3 mb-3">
+                <div class="card border-warning h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fas fa-table me-2"></i>
+                            Table ${table.number}
+                        </h5>
+                        <div class="mb-2">
+                            <span class="badge bg-warning text-dark">${table.order_count} Orders</span>
+                            <span class="badge bg-success">$${table.total_amount.toFixed(2)}</span>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                ${table.customer_names.length > 0 ? 
+                                    table.customer_names.join(', ') : 
+                                    'Walk-in customers'
+                                }
+                            </small>
+                        </div>
+                        <button class="btn btn-warning btn-sm w-100" 
+                                onclick="claimTable(${table.id}, ${table.number})">
+                            <i class="fas fa-hand-paper me-2"></i>
+                            Claim Table
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.append(tableCard);
+    });
+}
+
+function claimTable(tableId, tableNumber) {
+    if (!confirm(`Are you sure you want to claim Table ${tableNumber}?`)) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/claim_table',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: tableId
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            showAlert(`Table ${tableNumber} claimed successfully!`, 'success');
+            // Refresh both claimable tables and assigned tables
+            loadClaimableTables();
+            loadData();
+        } else {
+            showAlert('Error claiming table: ' + (data.message || 'Unknown error'), 'danger');
+        }
+    })
+    .fail(function() {
+        showAlert('Error claiming table', 'danger');
+    });
+}
+
+function updateStats() {
+    const assignedTableIds = assignedTables.map(t => t.id);
+    const assignedOrders = orders.filter(order => assignedTableIds.includes(order.table_id));
+    
+    $('#assigned-tables').text(assignedTables.length);
+    $('#active-orders').text(assignedOrders.length);
+    $('#ready-orders').text(assignedOrders.filter(o => o.status === 'ready').length);
+    
+    // Calculate total customers for assigned orders
+    const totalCustomers = assignedOrders.reduce((sum, order) => {
+        return sum + (order.customer_name ? 1 : 0);
+    }, 0);
+    $('#total-customers').text(totalCustomers);
+}
+
+function renderTables() {
+    const container = $('#tables-container');
+    container.empty();
+    
+    if (assignedTables.length === 0) {
+        container.html(`
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-table fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No tables assigned</h5>
+                <p class="text-muted">Contact management to get table assignments</p>
+            </div>
+        `);
+        return;
+    }
+    
+    assignedTables.forEach(table => {
+        const tableCard = createTableCard(table);
+        container.append(tableCard);
+    });
+}
+
+function createTableCard(table) {
+    const isOccupied = table.is_occupied || false;
+    const statusClass = isOccupied ? 'bg-warning text-dark' : 'bg-success text-white';
+    const statusIcon = isOccupied ? 'fas fa-users' : 'fas fa-check-circle';
+    const statusText = isOccupied ? 'Occupied' : 'Available';
+    
+    // Find orders for this table - ensure orders array exists
+    const tableOrders = (orders || []).filter(order => order.table_id === table.id);
+    const hasActiveOrders = tableOrders.length > 0;
+    
+    return `
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card order-card h-100 ${hasActiveOrders ? 'border-warning' : ''}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Table ${table.number}
+                    </h6>
+                    <span class="status-badge ${statusClass}">
+                        <i class="${statusIcon} me-1"></i>
+                        ${statusText}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p><strong>Capacity:</strong> ${table.capacity} people</p>
+                        ${hasActiveOrders ? `
+                            <div class="alert alert-info mb-0">
+                                <strong>Active Orders:</strong> ${tableOrders.length}<br>
+                                <small>Total: $${tableOrders.reduce((sum, order) => sum + order.total_amount, 0).toFixed(2)}</small>
+                            </div>
+                        ` : `
+                            <div class="alert alert-light mb-0">
+                                <small class="text-muted">No active orders</small>
+                            </div>
+                        `}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-primary" onclick="openNewOrderModal(${table.id})">
+                            <i class="fas fa-plus me-2"></i>
+                            New Order
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="viewTableDetails(${table.id})">
+                            <i class="fas fa-eye me-2"></i>
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderOrders() {
+    const container = $('#orders-container');
+    container.empty();
+    
+    // Filter orders for assigned tables only
+    const assignedTableIds = assignedTables.map(t => t.id);
+    const assignedOrders = orders.filter(order => assignedTableIds.includes(order.table_id));
+    
+    if (assignedOrders.length === 0) {
+        container.html(`
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-list fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No active orders</h5>
+                <p class="text-muted">Orders will appear here when customers place them</p>
+            </div>
+        `);
+        return;
+    }
+    
+    assignedOrders.forEach(order => {
+        const orderCard = createOrderCard(order);
+        container.append(orderCard);
+    });
+}
+
+function createOrderCard(order) {
+    const statusClass = getStatusClass(order.status);
+    const statusIcon = getStatusIcon(order.status);
+    
+    return `
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card order-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Table ${order.table_number}
+                    </h6>
+                    <span class="status-badge ${statusClass}">
+                        <i class="${statusIcon} me-1"></i>
+                        ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Order ID: ${order.id}</small><br>
+                        <small class="text-muted">Time: ${new Date(order.created_at).toLocaleTimeString()}</small>
+                        ${order.customer_name ? `<br><strong>Customer: ${order.customer_name}</strong>` : ''}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Items:</h6>
+                        ${order.items.map(item => `
+                            <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                                <div>
+                                    <strong>${item.name}</strong><br>
+                                    <small class="text-muted">Qty: ${item.quantity}</small>
+                                    ${item.special_instructions ? `<br><small class="text-warning">${item.special_instructions}</small>` : ''}
+                                </div>
+                                <div class="text-end">
+                                    <span class="status-badge ${getStatusClass(item.status)}">
+                                        ${item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>Total: $${order.total_amount.toFixed(2)}</strong>
+                        <div>
+                            <button class="btn btn-primary me-2" onclick="openOrderModal('${order.id}')">
+                                <i class="fas fa-eye me-2"></i>
+                                View Details
+                            </button>
+                            ${order.status === 'ready' ? `
+                                <button class="btn btn-success" onclick="markOrderAsServed('${order.id}')">
+                                    <i class="fas fa-check me-2"></i>
+                                    Mark Served
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getTableStatusClass(status) {
+    switch(status) {
+        case 'available': return 'bg-success text-white';
+        case 'occupied': return 'bg-warning text-dark';
+        case 'reserved': return 'bg-info text-white';
+        case 'cleaning': return 'bg-secondary text-white';
+        default: return 'bg-secondary text-white';
+    }
+}
+
+function getTableStatusIcon(status) {
+    switch(status) {
+        case 'available': return 'fas fa-check-circle';
+        case 'occupied': return 'fas fa-users';
+        case 'reserved': return 'fas fa-calendar';
+        case 'cleaning': return 'fas fa-broom';
+        default: return 'fas fa-question';
+    }
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'pending': return 'bg-warning text-dark';
+        case 'confirmed': return 'bg-info text-white';
+        case 'ready': return 'bg-success text-white';
+        case 'served': return 'bg-primary text-white';
+        default: return 'bg-secondary text-white';
+    }
+}
+
+function getStatusIcon(status) {
+    switch(status) {
+        case 'pending': return 'fas fa-clock';
+        case 'confirmed': return 'fas fa-check';
+        case 'ready': return 'fas fa-utensils';
+        case 'served': return 'fas fa-user-check';
+        default: return 'fas fa-question';
+    }
+}
+
+function openNewOrderModal(tableId) {
+    // Populate table dropdown
+    const tableSelect = $('#orderTable');
+    tableSelect.empty().append('<option value="">Select table</option>');
+    assignedTables.forEach(table => {
+        tableSelect.append(`<option value="${table.id}" ${table.id == tableId ? 'selected' : ''}>Table ${table.table_number}</option>`);
+    });
+    
+    // Clear form
+    $('#customerName').val('');
+    $('#customerPhone').val('');
+    $('#orderType').val('dine_in');
+    $('#orderNotes').val('');
+    
+    // Load menu items
+    loadMenuItems();
+    
+    $('#newOrderModal').modal('show');
+}
+
+function loadMenuItems() {
+    const container = $('#menuItemsContainer');
+    container.empty();
+    
+    menuItems.forEach(category => {
+        const categoryHtml = `
+            <div class="mb-3">
+                <h6>${category.name}</h6>
+                ${category.items.map(item => `
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                        <div>
+                            <strong>${item.name}</strong><br>
+                            <small class="text-muted">${item.description}</small><br>
+                            <small class="text-success">$${item.price.toFixed(2)}</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <input type="number" class="form-control me-2" style="width: 80px;" 
+                                   min="0" value="0" id="qty_${item.id}">
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    onclick="addToOrder(${item.id}, '${item.name}', ${item.price})">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        container.append(categoryHtml);
+    });
+}
+
+function addToOrder(itemId, itemName, itemPrice) {
+    const quantity = parseInt($(`#qty_${itemId}`).val());
+    if (quantity > 0) {
+        // Add to order summary (this would need to be implemented)
+        showAlert(`Added ${quantity}x ${itemName} to order`, 'success');
+    }
+}
+
+function createNewOrder() {
+    const tableId = $('#orderTable').val();
+    const customerName = $('#customerName').val();
+    const customerPhone = $('#customerPhone').val();
+    const orderType = $('#orderType').val();
+    const notes = $('#orderNotes').val();
+    
+    if (!tableId) {
+        showAlert('Please select a table', 'warning');
+        return;
+    }
+    
+    // Collect items from the form
+    const items = [];
+    menuItems.forEach(category => {
+        category.items.forEach(item => {
+            const quantity = parseInt($(`#qty_${item.id}`).val());
+            if (quantity > 0) {
+                items.push({
+                    menu_item_id: item.id,
+                    quantity: quantity,
+                    special_instructions: ''
+                });
+            }
+        });
+    });
+    
+    if (items.length === 0) {
+        showAlert('Please add at least one item to the order', 'warning');
+        return;
+    }
+    
+    // Create order
+    $.ajax({
+        url: '/api/create_order',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: tableId,
+            customer_name: customerName,
+            customer_phone: customerPhone,
+            order_type: orderType,
+            notes: notes,
+            items: items
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            $('#newOrderModal').modal('hide');
+            showAlert('Order created successfully!', 'success');
+            loadData(); // Refresh data
+        } else {
+            showAlert('Error creating order: ' + data.error, 'danger');
+        }
+    })
+    .fail(function(xhr, status, error) {
+        showAlert('Error creating order: ' + error, 'danger');
+    });
+}
+
+function openOrderModal(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const modalBody = $('#orderModalBody');
+    modalBody.html(`
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Order Information</h6>
+                <p><strong>Order ID:</strong> ${order.id}</p>
+                <p><strong>Table:</strong> ${order.table_number}</p>
+                <p><strong>Customer:</strong> ${order.customer_name || 'Walk-in Customer'}</p>
+                <p><strong>Phone:</strong> ${order.customer_phone || 'N/A'}</p>
+                <p><strong>Status:</strong> ${order.status}</p>
+                <p><strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}</p>
+                <p><strong>Total:</strong> $${order.total_amount.toFixed(2)}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Items</h6>
+                ${order.items.map(item => `
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${item.name}</strong><br>
+                                <small class="text-muted">Quantity: ${item.quantity}</small>
+                            </div>
+                            <span class="status-badge ${getStatusClass(item.status)}">
+                                ${item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                            </span>
+                        </div>
+                        ${item.special_instructions ? `<p class="text-warning mt-2"><small>${item.special_instructions}</small></p>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `);
+    
+    // Show/hide mark as served button
+    if (order.status === 'ready') {
+        $('#markServedBtn').show();
+        $('#markServedBtn').attr('onclick', `markOrderAsServed('${order.id}')`);
+    } else {
+        $('#markServedBtn').hide();
+    }
+    
+    $('#orderModal').modal('show');
+}
+
+function markOrderAsServed(orderId) {
+    $.ajax({
+        url: `/api/orders/${orderId}/status`,
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            status: 'served'
+        })
+    })
+    .done(function(data) {
+        if (data.success) {
+            $('#orderModal').modal('hide');
+            showAlert('Order marked as served!', 'success');
+            loadData(); // Refresh data
+        } else {
+            showAlert('Error updating order status', 'danger');
+        }
+    })
+    .fail(function(xhr, status, error) {
+        showAlert('Error updating order status: ' + error, 'danger');
+    });
+}
+
+function viewTableDetails(tableId) {
+    // This could show table history, current status, etc.
+    showAlert('Table details feature coming soon!', 'info');
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('.main-content').prepend(alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+
+// Enhanced Notification System with Persistence
+let lastReadyOrders = [];
+let persistentNotifications = new Map(); // Track ongoing notifications
+let escalationTimers = new Map(); // Track escalation timers
+
+function requestNotificationPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().then(function (permission) {
+            if (permission === "granted") {
+                console.log("Notifications enabled for waiter alerts");
+            }
+        });
+    }
+}
+
+function checkForNewReadyOrders() {
+    // Check for new ready orders in assigned tables
+    const currentReadyOrders = orders.filter(order => 
+        order.status === 'ready' && 
+        assignedTables.some(table => table.id === order.table_id)
+    );
+    
+    // Find newly ready orders
+    const newReadyOrders = currentReadyOrders.filter(order => 
+        !lastReadyOrders.some(lastOrder => lastOrder.id === order.id)
+    );
+    
+    // Send notifications for new ready orders
+    newReadyOrders.forEach(order => {
+        startPersistentNotification(order);
+    });
+    
+    // Check for orders that are no longer ready (served/cancelled)
+    const removedOrders = lastReadyOrders.filter(lastOrder =>
+        !currentReadyOrders.some(order => order.id === lastOrder.id)
+    );
+    
+    // Stop persistent notifications for served/cancelled orders
+    removedOrders.forEach(order => {
+        stopPersistentNotification(order.id);
+    });
+    
+    // Update persistent notifications for existing ready orders
+    currentReadyOrders.forEach(order => {
+        if (persistentNotifications.has(order.id)) {
+            updatePersistentNotification(order);
+        }
+    });
+    
+    // Update last ready orders
+    lastReadyOrders = [...currentReadyOrders];
+}
+
+function sendOrderReadyNotification(order) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        const notification = new Notification("Order Ready! 🔔", {
+            body: `Table ${order.table_number} - Order #${order.id} is ready for service!`,
+            icon: "/static/img/bell-icon.png",
+            tag: `order-${order.id}`, // Prevent duplicate notifications
+            requireInteraction: true // Keep notification visible until clicked
+        });
+        
+        notification.onclick = function() {
+            window.focus();
+            notification.close();
+            // Scroll to the ready order
+            highlightReadyOrder(order);
+        };
+        
+        // Auto-close after 10 seconds
+        setTimeout(() => notification.close(), 10000);
+    }
+}
+
+function playNotificationSound() {
+    // Create and play notification sound
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmYdCjuZ4OyrcSAELYPP+9+KOQgRX7zr77BdGAg+ltryxnkpBSl+zPLaizsIGGS57OOYTgwKUarm7bllHgg2jdXzzn0vBSF1xe/eizELElyx6OyrWBUIQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJQ5zd8sFuIAUtg8/73Ik2CRJiuuvquFYUCUOc3fLBbiAFLYPP+9yJNgkSYrrr6rhWFAlDnN3ywW4gBS2Dz/vciTYJEmK66+q4VhQJ');
+    audio.volume = 0.3; // Not too loud for restaurant environment
+    audio.play().catch(e => console.log('Audio play failed:', e));
+}
+
+function highlightReadyOrder(order) {
+    // Add visual highlighting to ready orders
+    const orderCards = $('.order-card');
+    orderCards.each(function() {
+        const cardOrderId = $(this).find('[data-order-id]').data('order-id');
+        if (cardOrderId === order.id) {
+            $(this).addClass('ready-order-highlight');
+            // Keep highlight until order is served (no auto-removal)
+        }
+    });
+    
+    // Show prominent alert
+    showAlert(`🔔 Table ${order.table_number} - Order #${order.id} is ready for service!`, 'success');
+}
+
+// Persistent Notification System
+function startPersistentNotification(order) {
+    const orderId = order.id;
+    const readyTime = new Date();
+    
+    // Initial notification
+    sendOrderReadyNotification(order);
+    playNotificationSound();
+    highlightReadyOrder(order);
+    
+    // Track this notification
+    persistentNotifications.set(orderId, {
+        order: order,
+        startTime: readyTime,
+        reminderCount: 0,
+        isUrgent: false
+    });
+    
+    // Set up escalation schedule
+    scheduleEscalation(orderId);
+}
+
+function scheduleEscalation(orderId) {
+    // Clear any existing timer
+    if (escalationTimers.has(orderId)) {
+        clearTimeout(escalationTimers.get(orderId));
+    }
+    
+    const notification = persistentNotifications.get(orderId);
+    if (!notification) return;
+    
+    const reminderCount = notification.reminderCount;
+    let nextReminderDelay;
+    
+    // Escalation schedule:
+    // 2 minutes: First reminder
+    // 5 minutes: Second reminder (urgent)
+    // 10 minutes: Final urgent reminder
+    // Then every 5 minutes until served
+    
+    switch(reminderCount) {
+        case 0: nextReminderDelay = 2 * 60 * 1000; break;  // 2 minutes
+        case 1: nextReminderDelay = 3 * 60 * 1000; break;  // +3 minutes (5 total)
+        case 2: nextReminderDelay = 5 * 60 * 1000; break;  // +5 minutes (10 total)
+        default: nextReminderDelay = 5 * 60 * 1000; break; // Every 5 minutes after
+    }
+    
+    const timerId = setTimeout(() => {
+        sendReminderNotification(orderId);
+    }, nextReminderDelay);
+    
+    escalationTimers.set(orderId, timerId);
+}
+
+function sendReminderNotification(orderId) {
+    const notification = persistentNotifications.get(orderId);
+    if (!notification) return;
+    
+    const order = notification.order;
+    const reminderCount = notification.reminderCount + 1;
+    const waitTime = Math.floor((new Date() - notification.startTime) / 60000); // minutes
+    
+    // Update notification data
+    notification.reminderCount = reminderCount;
+    notification.isUrgent = reminderCount >= 2;
+    
+    // Determine urgency level and message
+    let urgencyIcon, urgencyText, alertType;
+    if (reminderCount === 1) {
+        urgencyIcon = "⚠️";
+        urgencyText = "REMINDER";
+        alertType = "warning";
+    } else if (reminderCount === 2) {
+        urgencyIcon = "🚨";
+        urgencyText = "URGENT";
+        alertType = "danger";
+    } else {
+        urgencyIcon = "🔥";
+        urgencyText = "CRITICAL";
+        alertType = "danger";
+    }
+    
+    // Send escalated notification
+    if ("Notification" in window && Notification.permission === "granted") {
+        const browserNotification = new Notification(`${urgencyIcon} ${urgencyText}: Order Still Waiting!`, {
+            body: `Table ${order.table_number} - Order #${order.id} has been ready for ${waitTime} minutes!`,
+            icon: "/static/img/urgent-bell.png",
+            tag: `urgent-order-${order.id}`,
+            requireInteraction: true,
+            silent: false
+        });
+        
+        browserNotification.onclick = function() {
+            window.focus();
+            browserNotification.close();
+            highlightReadyOrder(order);
+        };
+    }
+    
+    // Play escalated sound
+    playEscalatedNotificationSound(reminderCount);
+    
+    // Show escalated visual alert
+    showAlert(`${urgencyIcon} ${urgencyText}: Table ${order.table_number} - Order #${order.id} waiting ${waitTime} minutes!`, alertType);
+    
+    // Add urgent styling to the order card
+    if (notification.isUrgent) {
+        addUrgentHighlight(order);
+    }
+    
+    // Schedule next reminder
+    scheduleEscalation(orderId);
+}
+
+function playEscalatedNotificationSound(reminderCount) {
+    let soundIntensity = Math.min(reminderCount, 3); // Cap at 3 for volume
+    
+    // Play multiple beeps for urgent orders
+    for (let i = 0; i < soundIntensity; i++) {
+        setTimeout(() => {
+            playNotificationSound();
+        }, i * 200); // 200ms between beeps
+    }
+}
+
+function addUrgentHighlight(order) {
+    const orderCards = $('.order-card');
+    orderCards.each(function() {
+        const cardOrderId = $(this).find('[data-order-id]').data('order-id');
+        if (cardOrderId === order.id) {
+            $(this).removeClass('ready-order-highlight').addClass('urgent-order-highlight');
+        }
+    });
+}
+
+function stopPersistentNotification(orderId) {
+    // Clear escalation timer
+    if (escalationTimers.has(orderId)) {
+        clearTimeout(escalationTimers.get(orderId));
+        escalationTimers.delete(orderId);
+    }
+    
+    // Remove from persistent notifications
+    persistentNotifications.delete(orderId);
+    
+    // Remove visual highlights
+    const orderCards = $('.order-card');
+    orderCards.each(function() {
+        const cardOrderId = $(this).find('[data-order-id]').data('order-id');
+        if (cardOrderId === orderId) {
+            $(this).removeClass('ready-order-highlight urgent-order-highlight');
+        }
+    });
+}
+
+function updatePersistentNotification(order) {
+    const notification = persistentNotifications.get(order.id);
+    if (notification) {
+        notification.order = order; // Update order data
+    }
+}
+
+// Assistance Requests Functionality
+let assistanceRequests = [];
+let unassignedAssistanceRequests = [];
+let assistanceCheckInterval;
+
+function startAssistanceCheck() {
+    assistanceCheckInterval = setInterval(checkAssistanceRequests, 5000); // Check every 5 seconds
+}
+
+function checkAssistanceRequests() {
+    // Check assigned table assistance requests
+    $.get('/api/get_assistance_requests')
+        .done(function(response) {
+            const newRequests = response.requests || [];
+            
+            // Show notifications for new requests
+            newRequests.forEach(request => {
+                if (!assistanceRequests.find(r => r.timestamp === request.timestamp)) {
+                    console.log('Desktop - New assigned assistance request:', request);
+                    showAssistanceNotification(request, 'assigned');
+                }
+            });
+            
+            // Update assistance requests
+            assistanceRequests = newRequests;
+            updateAssistanceBadge();
+        })
+        .fail(function() {
+            console.error('Failed to load assigned assistance requests');
+        });
+    
+    // Check unassigned table assistance requests
+    $.get('/api/get_unassigned_assistance_requests')
+        .done(function(response) {
+            const newUnassignedRequests = response.requests || [];
+            
+            // Show notifications for new unassigned requests
+            newUnassignedRequests.forEach(request => {
+                if (!unassignedAssistanceRequests.find(r => r.timestamp === request.timestamp)) {
+                    console.log('Desktop - New unassigned assistance request:', request);
+                    showAssistanceNotification(request, 'unassigned');
+                }
+            });
+            
+            // Update unassigned assistance requests
+            unassignedAssistanceRequests = newUnassignedRequests;
+            updateAssistanceBadge();
+        })
+        .fail(function() {
+            console.error('Failed to load unassigned assistance requests');
+        });
+}
+
+function showAssistanceNotification(request, type = 'assigned') {
+    const typeIndicator = type === 'unassigned' ? ' (Unassigned Table)' : '';
+    
+    // Show browser notification
+    if (Notification.permission === 'granted') {
+        new Notification(`Table ${request.table_number} needs assistance${typeIndicator}`, {
+            body: request.message,
+            icon: '/static/favicon.ico'
+        });
+    }
+    
+    // Show toast notification with different styling based on type
+    const toastType = type === 'unassigned' ? 'danger' : 'warning';
+    const toastMessage = type === 'unassigned' 
+        ? `🚨 Unassigned Table ${request.table_number} needs assistance: ${request.message}`
+        : `Table ${request.table_number} needs assistance: ${request.message}`;
+    
+    showToast(toastMessage, toastType);
+}
+
+function updateAssistanceBadge() {
+    const badge = $('#assistanceBadge');
+    const totalRequests = assistanceRequests.length + unassignedAssistanceRequests.length;
+    
+    if (totalRequests > 0) {
+        badge.text(totalRequests).show();
+        $('#assistanceBtn').addClass('btn-outline-danger').removeClass('btn-outline-secondary');
+    } else {
+        badge.hide();
+        $('#assistanceBtn').removeClass('btn-outline-danger').addClass('btn-outline-secondary');
+    }
+}
+
+function showAssistanceRequests() {
+    const totalRequests = assistanceRequests.length + unassignedAssistanceRequests.length;
+    
+    if (totalRequests === 0) {
+        showToast('No assistance requests at this time', 'info');
+        return;
+    }
+    
+    const modal = `
+        <div class="modal fade" id="assistanceModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-bell text-danger me-2"></i>
+                            Customer Assistance Requests
+                            <span class="badge bg-secondary ms-2">${totalRequests}</span>
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${unassignedAssistanceRequests.length > 0 ? `
+                            <div class="mb-3">
+                                <h6 class="text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Unassigned Tables (${unassignedAssistanceRequests.length})
+                                </h6>
+                                ${unassignedAssistanceRequests.map(request => `
+                                    <div class="alert alert-danger d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="alert-heading">
+                                                <i class="fas fa-table me-1"></i>
+                                                Table ${request.table_number}
+                                                <span class="badge bg-warning text-dark ms-2">Unassigned</span>
+                                            </h6>
+                                            <p class="mb-1">${request.message}</p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                ${new Date(request.timestamp).toLocaleString()}
+                                            </small>
+                                        </div>
+                                        <div class="ms-2">
+                                            <button class="btn btn-sm btn-success" onclick="claimTableFromAssistance(${request.table_id})">
+                                                <i class="fas fa-plus me-1"></i>
+                                                Claim Table
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${assistanceRequests.length > 0 ? `
+                            <div>
+                                <h6 class="text-warning">
+                                    <i class="fas fa-user-tie me-1"></i>
+                                    Assigned Tables (${assistanceRequests.length})
+                                </h6>
+                                ${assistanceRequests.map(request => `
+                                    <div class="alert alert-warning d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="alert-heading">
+                                                <i class="fas fa-table me-1"></i>
+                                                Table ${request.table_number}
+                                                <span class="badge bg-info text-white ms-2">Assigned to ${request.waiter_assigned || 'Unknown'}</span>
+                                            </h6>
+                                            <p class="mb-1">${request.message}</p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                ${new Date(request.timestamp).toLocaleString()}
+                                            </small>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" onclick="clearAllAssistanceRequests()">
+                            <i class="fas fa-check me-1"></i>
+                            Mark All as Handled
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    $('#assistanceModal').remove();
+    
+    // Add and show modal
+    $('body').append(modal);
+    const modalInstance = new bootstrap.Modal(document.getElementById('assistanceModal'));
+    modalInstance.show();
+}
+
+function claimTableFromAssistance(tableId) {
+    // Find the request data
+    const request = unassignedAssistanceRequests.find(r => r.table_id == tableId);
+    if (!request) {
+        showToast('Request not found', 'error');
+        return;
+    }
+    
+    // Claim the table
+    $.ajax({
+        url: '/api/claim_table_from_assistance',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            table_id: tableId
+        })
+    })
+    .done(function(response) {
+        if (response.success) {
+            showToast(`Table ${request.table_number} claimed successfully!`, 'success');
+            
+            // Move request from unassigned to assigned
+            const index = unassignedAssistanceRequests.findIndex(r => r.table_id == tableId);
+            if (index > -1) {
+                const claimedRequest = unassignedAssistanceRequests.splice(index, 1)[0];
+                claimedRequest.is_assigned = true;
+                claimedRequest.waiter_assigned = 'You';
+                assistanceRequests.push(claimedRequest);
+            }
+            
+            // Refresh the modal and update badge
+            showAssistanceRequests();
+            updateAssistanceBadge();
+        } else {
+            showToast('Error claiming table: ' + response.message, 'error');
+        }
+    })
+    .fail(function() {
+        showToast('Error claiming table', 'error');
+    });
+}
+
+function clearAllAssistanceRequests() {
+    $.post('/api/clear_assistance_requests')
+        .done(function(response) {
+            if (response.success) {
+                assistanceRequests = [];
+                unassignedAssistanceRequests = [];
+                updateAssistanceBadge();
+                $('#assistanceModal').modal('hide');
+                showToast('All assistance requests cleared', 'success');
+            }
+        })
+        .fail(function() {
+            console.error('Failed to clear assistance requests');
+        });
+}
+
+function showToast(message, type = 'info') {
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'error' ? 'danger' : 'primary'} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    let toastContainer = $('#toast-container');
+    if (toastContainer.length === 0) {
+        toastContainer = $('<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>');
+        $('body').append(toastContainer);
+    }
+    
+    const toastElement = $(toastHtml);
+    toastContainer.append(toastElement);
+    
+    const toast = new bootstrap.Toast(toastElement[0]);
+    toast.show();
+    
+    // Remove toast element after it's hidden
+    toastElement.on('hidden.bs.toast', function() {
+        $(this).remove();
+    });
+}
+
+// Start assistance checking when page loads
+$(document).ready(function() {
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    startAssistanceCheck();
+});
+
+// Cleanup on page unload
+$(window).on('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    if (assistanceCheckInterval) {
+        clearInterval(assistanceCheckInterval);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+
+{% block title %}Waiter Assignments - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .assignment-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .assignment-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .assignment-card.active {
+        border-left-color: #28a745;
+    }
+    
+    .assignment-card.inactive {
+        border-left-color: #6c757d;
+    }
+    
+    .waiter-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #17a2b8;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-user-friends me-2"></i>
+                Waiter Table Assignments
+            </h1>
+        </div>
+    </div>
+
+    <!-- Assignment Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">Assignment Overview</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary" id="total-assignments">0</h5>
+                                    <p class="card-text">Total Assignments</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success" id="active-assignments">0</h5>
+                                    <p class="card-text">Active Assignments</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info" id="assigned-tables">0</h5>
+                                    <p class="card-text">Assigned Tables</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-warning" id="unassigned-tables">0</h5>
+                                    <p class="card-text">Unassigned Tables</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waiter Assignments Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-friends me-2"></i>
+                        Current Assignments
+                    </h5>
+                    <button class="btn btn-success" onclick="showAssignWaiterModal()">
+                        <i class="fas fa-plus me-2"></i>
+                        Assign Waiter
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Table Number</th>
+                                    <th>Assigned Waiter</th>
+                                    <th>Assignment Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="waiterAssignmentsTable">
+                                <!-- Assignments will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Tables Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">Available Tables</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="availableTablesGrid">
+                        <!-- Available tables will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Waiter Assignment Modal -->
+<div class="modal fade" id="waiterAssignmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Waiter to Table</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="waiterAssignmentForm">
+                    <div class="mb-3">
+                        <label for="assignTable" class="form-label">Table</label>
+                        <select class="form-select" id="assignTable" required>
+                            <option value="">Select Table</option>
+                            <!-- Tables will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assignWaiter" class="form-label">Waiter</label>
+                        <select class="form-select" id="assignWaiter" required>
+                            <option value="">Select Waiter</option>
+                            <!-- Waiters will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assignmentNotes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="assignmentNotes" rows="3" placeholder="Any special instructions or notes for this assignment"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="assignWaiterToTable()">Assign</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Details Modal -->
+<div class="modal fade" id="assignmentDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assignment Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="assignmentDetailsContent">
+                <!-- Assignment details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let assignmentsData = [];
+let tablesData = [];
+let waitersData = [];
+
+// Load data on page load
+// Load tables first so we can use table data to fill in missing table_number values
+document.addEventListener('DOMContentLoaded', function() {
+    // Load tables first, then assignments and waiters
+    Promise.all([
+        fetch('/api/get_tables').then(r => r.json()).then(data => {
+            if (data.tables) {
+                tablesData = data.tables.map(table => ({
+                    id: parseInt(table.id) || table.id, // Normalize to integer
+                    number: table.number,
+                    capacity: table.capacity,
+                    is_occupied: table.is_occupied,
+                    location: table.location || "Main Floor"
+                }));
+            }
+        }).catch((error) => {
+            console.error('Error loading tables:', error);
+            // Don't use mock data - just leave tablesData empty
+            tablesData = [];
+        }),
+        fetch('/api/get_waiters').then(r => r.json()).then(data => {
+            if (data.waiters) {
+                waitersData = data.waiters.map(waiter => ({
+                    id: waiter.id,
+                    name: waiter.name,
+                    status: "active",
+                    experience: "2+ years"
+                }));
+            }
+        }).catch((error) => {
+            console.error('Error loading waiters:', error);
+            // Don't use mock data - just leave waitersData empty
+            waitersData = [];
+        })
+    ]).then(() => {
+        // Load assignments after tables and waiters are loaded
+        loadWaiterAssignments();
+        updateAvailableTablesDisplay();
+    });
+});
+
+function loadWaiterAssignments() {
+    // Fetch real data from API
+    fetch('/api/get_waiter_assignments')
+        .then(response => response.json())
+        .then(data => {
+            if (data.assignments) {
+                assignmentsData = data.assignments.map(assignment => {
+                    // Normalize table_id to integer for consistent comparison
+                    const tableId = parseInt(assignment.table_id);
+                    // Try to find table data to get table number if missing
+                    const tableData = tablesData.find(t => parseInt(t.id) === tableId);
+                    return {
+                        id: tableId, // Using table_id as assignment id
+                        table_id: tableId, // Ensure it's an integer
+                        table_number: assignment.table_number || tableData?.number || null,
+                        waiter_id: parseInt(assignment.waiter_id) || assignment.waiter_id,
+                        waiter_name: assignment.waiter_name || null, // Handle null/undefined
+                        assignment_date: new Date().toISOString().split('T')[0], // Current date
+                        status: "active",
+                        notes: "Active assignment"
+                    };
+                });
+            }
+            // Update display after assignments are loaded
+            updateAssignmentsDisplay();
+            updateAssignmentCounts();
+            updateAvailableTablesDisplay(); // Refresh available tables to exclude newly loaded assignments
+        })
+        .catch(error => {
+            console.error('Error loading waiter assignments:', error);
+            showAlert('Error loading waiter assignments: ' + (error.message || 'Please check your connection and try again'), 'danger');
+            // Don't use mock data - just leave assignmentsData empty
+            assignmentsData = [];
+            updateAssignmentsDisplay();
+            updateAssignmentCounts();
+            updateAvailableTablesDisplay();
+        });
+}
+
+function loadTables() {
+    // Fetch real data from API
+    fetch('/api/get_tables')
+        .then(response => response.json())
+        .then(data => {
+            if (data.tables) {
+                tablesData = data.tables.map(table => ({
+                    id: parseInt(table.id) || table.id, // Normalize to integer
+                    number: table.number,
+                    capacity: table.capacity,
+                    is_occupied: table.is_occupied,
+                    location: table.location || "Main Floor"
+                }));
+            }
+            // Update assignments display in case we can now populate missing table numbers
+            updateAssignmentsDisplay();
+            updateAvailableTablesDisplay();
+        })
+        .catch(error => {
+            console.error('Error loading tables:', error);
+            showAlert('Error loading tables: ' + (error.message || 'Please check your connection and try again'), 'danger');
+            // Don't use mock data - just leave tablesData empty
+            tablesData = [];
+            updateAvailableTablesDisplay();
+        });
+}
+
+function loadWaiters() {
+    // Fetch real data from API
+    fetch('/api/get_waiters')
+        .then(response => response.json())
+        .then(data => {
+            if (data.waiters) {
+                waitersData = data.waiters.map(waiter => ({
+                    id: waiter.id,
+                    name: waiter.name,
+                    status: "active",
+                    experience: "2+ years"
+                }));
+            }
+            // Update assignments display in case we can now populate missing waiter names
+            updateAssignmentsDisplay();
+        })
+        .catch(error => {
+            console.error('Error loading waiters:', error);
+            showAlert('Error loading waiters: ' + (error.message || 'Please check your connection and try again'), 'danger');
+            // Don't use mock data - just leave waitersData empty
+            waitersData = [];
+            // Update assignments display in case we can now populate missing waiter names
+            updateAssignmentsDisplay();
+        });
+}
+
+function updateAssignmentsDisplay() {
+    const tbody = document.getElementById('waiterAssignmentsTable');
+    tbody.innerHTML = '';
+    
+    if (assignmentsData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    <i class="fas fa-user-friends fa-2x mb-2"></i><br>
+                    No waiter assignments yet
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    assignmentsData.forEach(assignment => {
+        const row = document.createElement('tr');
+        row.className = `assignment-card ${assignment.status}`;
+        
+        const statusBadge = assignment.status === 'active' ? 
+            '<span class="badge bg-success">Active</span>' : 
+            '<span class="badge bg-secondary">Inactive</span>';
+        
+        const tableData = tablesData.find(t => parseInt(t.id) === parseInt(assignment.table_id));
+        const tableNumber = assignment.table_number || tableData?.number || assignment.table_id || '?';
+        const tableCapacity = tableData?.capacity || 'N/A';
+        
+        row.innerHTML = `
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="waiter-avatar me-3">T${tableNumber}</div>
+                    <div>
+                        <h6 class="mb-0">Table ${tableNumber}</h6>
+                        <small class="text-muted">Capacity: ${tableCapacity}</small>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="waiter-avatar me-3">${assignment.waiter_name && assignment.waiter_name.charAt ? assignment.waiter_name.charAt(0).toUpperCase() : (waitersData.find(w => w.id === assignment.waiter_id)?.name?.charAt(0).toUpperCase() || '?')}</div>
+                    <div>
+                        <h6 class="mb-0">${assignment.waiter_name || waitersData.find(w => w.id === assignment.waiter_id)?.name || 'Unassigned'}</h6>
+                        <small class="text-muted">${waitersData.find(w => w.id === assignment.waiter_id)?.experience || 'N/A'}</small>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <small class="text-muted">${formatDate(assignment.assignment_date)}</small>
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="viewAssignmentDetails(${assignment.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="editAssignment(${assignment.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="removeWaiterAssignment(${assignment.id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+function updateAvailableTablesDisplay() {
+    const container = document.getElementById('availableTablesGrid');
+    container.innerHTML = '';
+    
+    // Return early if tables data is not loaded yet
+    if (!tablesData || tablesData.length === 0) {
+        return;
+    }
+    
+    // Get all assigned table IDs (convert to numbers for consistent comparison)
+    const assignedTableIds = assignmentsData
+        .filter(a => a && a.status === 'active' && a.table_id != null)
+        .map(a => {
+            const id = parseInt(a.table_id);
+            return isNaN(id) ? null : id;
+        })
+        .filter(id => id !== null);
+    
+    // Filter out tables that are already assigned
+    const availableTables = tablesData.filter(t => {
+        if (!t || !t.id) return false;
+        const tableId = parseInt(t.id);
+        if (isNaN(tableId)) return false;
+        return !assignedTableIds.includes(tableId);
+    });
+    
+    if (availableTables.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center text-muted py-4">
+                <i class="fas fa-table fa-2x mb-2"></i><br>
+                All tables are currently assigned
+            </div>
+        `;
+        return;
+    }
+    
+    availableTables.forEach(table => {
+        const tableElement = document.createElement('div');
+        tableElement.className = 'col-md-4 col-sm-6 mb-3';
+        
+        tableElement.innerHTML = `
+            <div class="card assignment-card inactive">
+                <div class="card-body text-center">
+                    <div class="waiter-avatar mx-auto mb-3">T${table.number}</div>
+                    <h6 class="card-title">Table ${table.number}</h6>
+                    <p class="card-text">
+                        <i class="fas fa-users me-1"></i>Capacity: ${table.capacity}
+                        ${table.location ? `<br><i class="fas fa-map-marker-alt me-1"></i>${table.location}` : ''}
+                    </p>
+                    <span class="badge bg-secondary">Unassigned</span>
+                    <div class="mt-3">
+                        <button class="btn btn-success btn-sm" onclick="assignWaiterToTable(${table.id})">
+                            <i class="fas fa-user-plus me-1"></i>Assign Waiter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(tableElement);
+    });
+}
+
+function updateAssignmentCounts() {
+    const totalAssignments = assignmentsData.length;
+    const activeAssignments = assignmentsData.filter(a => a.status === 'active').length;
+    const assignedTables = activeAssignments;
+    const unassignedTables = tablesData.length - assignedTables;
+    
+    document.getElementById('total-assignments').textContent = totalAssignments;
+    document.getElementById('active-assignments').textContent = activeAssignments;
+    document.getElementById('assigned-tables').textContent = assignedTables;
+    document.getElementById('unassigned-tables').textContent = unassignedTables;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleDateString();
+    } catch (e) {
+        return 'N/A';
+    }
+}
+
+// Waiter Assignment Management Functions
+function showAssignWaiterModal() {
+    // Populate tables dropdown
+    const tableSelect = document.getElementById('assignTable');
+    tableSelect.innerHTML = '<option value="">Select Table</option>';
+    
+    // Get all assigned table IDs (convert to numbers for consistent comparison)
+    const assignedTableIds = assignmentsData
+        .filter(a => a.status === 'active')
+        .map(a => parseInt(a.table_id))
+        .filter(id => !isNaN(id));
+    
+    // Filter out tables that are already assigned
+    const availableTables = tablesData.filter(t => {
+        const tableId = parseInt(t.id);
+        return !isNaN(tableId) && !assignedTableIds.includes(tableId);
+    });
+    
+    availableTables.forEach(table => {
+        tableSelect.innerHTML += `<option value="${table.id}">Table ${table.number} (${table.capacity} seats)</option>`;
+    });
+    
+    // Populate waiters dropdown
+    const waiterSelect = document.getElementById('assignWaiter');
+    waiterSelect.innerHTML = '<option value="">Select Waiter</option>';
+    waitersData.filter(w => w.status === 'active').forEach(waiter => {
+        waiterSelect.innerHTML += `<option value="${waiter.id}">${waiter.name} (${waiter.experience})</option>`;
+    });
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('waiterAssignmentModal')).show();
+}
+
+function assignWaiterToTable() {
+    const tableId = document.getElementById('assignTable').value;
+    const waiterId = document.getElementById('assignWaiter').value;
+    const notes = document.getElementById('assignmentNotes').value;
+    
+    if (!tableId || !waiterId) {
+        showAlert('Please select both table and waiter', 'warning');
+        return;
+    }
+    
+    // For now, show success message - would need API implementation
+    const table = tablesData.find(t => t.id == tableId);
+    const waiter = waitersData.find(w => w.id == waiterId);
+    
+    if (table && waiter) {
+        const newAssignment = {
+            id: Math.max(...assignmentsData.map(a => a.id)) + 1,
+            table_id: parseInt(tableId),
+            table_number: table.number,
+            waiter_id: parseInt(waiterId),
+            waiter_name: waiter.name,
+            assignment_date: new Date().toISOString().split('T')[0],
+            status: 'active',
+            notes: notes
+        };
+        
+        assignmentsData.push(newAssignment);
+        updateAssignmentsDisplay();
+        updateAvailableTablesDisplay();
+        updateAssignmentCounts();
+        
+        showAlert('Waiter assigned successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('waiterAssignmentModal')).hide();
+    }
+}
+
+function removeWaiterAssignment(assignmentId) {
+    if (!confirm('Are you sure you want to remove this waiter assignment?')) {
+        return;
+    }
+    
+    // For now, show success message - would need API implementation
+    assignmentsData = assignmentsData.filter(a => a.id !== assignmentId);
+    updateAssignmentsDisplay();
+    updateAvailableTablesDisplay();
+    updateAssignmentCounts();
+    showAlert('Waiter assignment removed successfully!', 'success');
+}
+
+function editAssignment(assignmentId) {
+    const assignment = assignmentsData.find(a => a.id === assignmentId);
+    if (!assignment) return;
+    
+    // For now, just show the assignment details
+    viewAssignmentDetails(assignmentId);
+}
+
+function viewAssignmentDetails(assignmentId) {
+    const assignment = assignmentsData.find(a => a.id === assignmentId);
+    if (!assignment) return;
+    
+    const table = tablesData.find(t => parseInt(t.id) === parseInt(assignment.table_id));
+    const waiter = waitersData.find(w => parseInt(w.id) === parseInt(assignment.waiter_id));
+    const tableNumber = assignment.table_number || table?.number || assignment.table_id || '?';
+    
+    const content = document.getElementById('assignmentDetailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Table Information</h6>
+                <p><strong>Table Number:</strong> ${tableNumber}</p>
+                <p><strong>Capacity:</strong> ${table?.capacity || 'N/A'} seats</p>
+                <p><strong>Location:</strong> ${table?.location || 'N/A'}</p>
+                <p><strong>Status:</strong> ${table?.is_occupied ? 'Occupied' : 'Available'}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Waiter Information</h6>
+                <p><strong>Name:</strong> ${assignment.waiter_name || waiter?.name || 'Unassigned'}</p>
+                <p><strong>Experience:</strong> ${waiter?.experience || 'N/A'}</p>
+                <p><strong>Status:</strong> ${waiter?.status || 'N/A'}</p>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Assignment Details</h6>
+                <p><strong>Assignment Date:</strong> ${formatDate(assignment.assignment_date)}</p>
+                <p><strong>Status:</strong> ${assignment.status}</p>
+                <p><strong>Assignment ID:</strong> ${assignment.id}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Notes</h6>
+                <p class="text-muted">${assignment.notes || 'No notes available'}</p>
+            </div>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('assignmentDetailsModal')).show();
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

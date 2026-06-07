@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Document Management &amp; Security | Computer Dynamics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 50px;
+            width: auto;
+            max-width: 200px;
+            margin-right: 12px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray-700);
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-700);
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 120px 0 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 60px;
+        }
+
+        .hero-text {
+            text-align: left;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            line-height: 1.1;
+        }
+
+        .hero-title-tagline {
+            display: block;
+            font-size: 0.5em;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #ffffff;
+            margin-top: 0.4em;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 24px rgba(0, 0, 0, 0.2);
+            opacity: 0.98;
+        }
+
+        .hero-dashboard {
+            text-align: center;
+        }
+
+        .hero-dashboard-image {
+            width: 100%;
+            max-width: 720px;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .hero-dashboard-image:hover {
+            transform: scale(1.02);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-primary {
+            background: var(--white);
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Open Live Demo — injected by multiserver-demos.js; distinct from primary/secondary */
+        .hero-cta-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-buttons .cd-live-demo-btn {
+            flex-shrink: 0;
+        }
+
+        .cd-live-demo-slot {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .cd-live-demo-btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .cd-live-demo-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Hero Image Gallery */
+        .hero-gallery {
+            display: flex;
+            gap: 12px;
+            margin-top: 60px;
+            max-width: 100%;
+            overflow-x: auto;
+            padding: 0 20px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--gray-200);
+        }
+
+        .hero-gallery::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-track {
+            background: var(--gray-200);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        .hero-image-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 400px;
+        }
+
+        .hero-image-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .hero-image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .hero-image-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .hero-image-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
+            text-align: center;
+            margin: 0 0 6px 0;
+        }
+
+        .hero-image-card .description {
+            font-size: 13px;
+            color: var(--gray-600);
+            text-align: center;
+            line-height: 1.3;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            margin: 0;
+        }
+
+        .hero-image-card:hover .description {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .hero-image-card .role-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .hero-image-card:hover .role-badge {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modal Gallery Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: var(--gray-200);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            color: var(--gray-600);
+        }
+
+        .modal-close:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        /* Demo Modal Styles */
+        .demo-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .demo-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .demo-modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .demo-modal-overlay.active .demo-modal-content {
+            transform: scale(1);
+        }
+
+        .demo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .demo-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .demo-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .demo-description {
+            color: var(--gray-600);
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .demo-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* WhatsApp Button */
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.3);
+            text-decoration: none;
+            width: 60px;
+            height: 60px;
+        }
+
+        .btn-whatsapp:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(37, 211, 102, 0.4);
+            color: white;
+        }
+
+        .btn-whatsapp i {
+            font-size: 24px;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 80px 0;
+            background: var(--gray-50);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon i {
+            font-size: 24px;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .feature-card p {
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* Security Section */
+        .security-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--gray-800) 100%);
+            color: white;
+        }
+
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 50px;
+        }
+
+        .security-feature {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .security-feature:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .security-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .security-icon i {
+            font-size: 24px;
+            color: white;
+        }
+
+        .security-feature h3 {
+            color: white;
+            margin-bottom: 16px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .security-feature p {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .security-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .security-list li {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .security-list i {
+            color: var(--success);
+            margin-right: 10px;
+            font-size: 0.9rem;
+        }
+
+        /* Development Status */
+        .development-section {
+            padding: 80px 0;
+            background: var(--white);
+            text-align: center;
+        }
+
+        .development-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .development-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--warning), #f97316);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 32px;
+        }
+
+        .development-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .development-content h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .development-content p {
+            color: var(--gray-600);
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .btn-development {
+            background: linear-gradient(135deg, var(--warning), #f97316);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-development:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Interface Showcase Sections */
+        .interface-section,
+        .workstation-section,
+        .security-dashboard-section,
+        .archive-section,
+        .logs-section {
+            padding: 80px 0;
+        }
+
+        .interface-section {
+            background: var(--gray-50);
+        }
+
+        .workstation-section {
+            background: var(--white);
+        }
+
+        .security-dashboard-section {
+            background: var(--gray-50);
+        }
+
+        .archive-section {
+            background: var(--white);
+        }
+
+        .logs-section {
+            background: var(--gray-50);
+        }
+
+        .workstation-features-section {
+            padding: 80px 0;
+            background: var(--white);
+        }
+
+        .workstation-features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .workstation-feature-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .workstation-feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .workstation-feature-image {
+            position: relative;
+            overflow: hidden;
+            height: 600px;
+            transition: box-shadow 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        .workstation-feature-card:hover .workstation-feature-image {
+            box-shadow: 0 28px 56px rgba(15, 23, 42, 0.2), 0 8px 16px rgba(99, 102, 241, 0.1);
+        }
+
+        .feature-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
+        }
+
+        .workstation-feature-card:hover .feature-image {
+            transform: scale(1.1);
+        }
+
+        .workstation-feature-content {
+            padding: 30px;
+        }
+
+        .workstation-feature-content h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .workstation-feature-content p {
+            color: var(--gray-600);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .workstation-feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .workstation-feature-list li {
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .workstation-feature-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .interface-showcase,
+        .workstation-showcase,
+        .security-showcase,
+        .archive-showcase,
+        .logs-showcase {
+            margin-top: 50px;
+        }
+
+        .interface-content,
+        .workstation-content,
+        .security-content,
+        .archive-content,
+        .logs-content {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
+            gap: clamp(40px, 5vw, 80px);
+            align-items: center;
+        }
+
+        .workstation-content {
+            grid-template-columns: minmax(480px, 2fr) minmax(280px, 1fr);
+        }
+
+        .archive-content {
+            grid-template-columns: minmax(480px, 2fr) minmax(280px, 1fr);
+        }
+
+        .logs-content {
+            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
+        }
+
+        .interface-text,
+        .workstation-text,
+        .security-text,
+        .archive-text,
+        .logs-text {
+            padding: 20px 0;
+        }
+
+        .interface-text h3,
+        .workstation-text h3,
+        .security-text h3,
+        .archive-text h3,
+        .logs-text h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .interface-text p,
+        .workstation-text p,
+        .security-text p,
+        .archive-text p,
+        .logs-text p {
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        .interface-features,
+        .workstation-features,
+        .security-features,
+        .archive-features,
+        .logs-features {
+            list-style: none;
+            padding: 0;
+        }
+
+        .interface-features li,
+        .workstation-features li,
+        .security-features li,
+        .archive-features li,
+        .logs-features li {
+            color: var(--gray-600);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+        }
+
+        .interface-features li::before,
+        .workstation-features li::before,
+        .security-features li::before,
+        .archive-features li::before,
+        .logs-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .showcase-image {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: min(780px, 85vh);
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.45s ease;
+            border: 1px solid var(--gray-200);
+        }
+
+        .interface-image,
+        .workstation-image,
+        .security-image,
+        .archive-image,
+        .logs-image {
+            position: relative;
+            overflow: visible;
+            border-radius: 16px;
+            transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.45s ease;
+            z-index: 0;
+            cursor: pointer;
+        }
+
+        .interface-image:hover,
+        .workstation-image:hover,
+        .security-image:hover,
+        .archive-image:hover,
+        .logs-image:hover {
+            transform: translateY(-16px) scale(1.04);
+            box-shadow: 0 36px 80px rgba(15, 23, 42, 0.24), 0 12px 28px rgba(99, 102, 241, 0.14);
+            z-index: 5;
+        }
+
+        .interface-image:hover .showcase-image,
+        .workstation-image:hover .showcase-image,
+        .security-image:hover .showcase-image,
+        .archive-image:hover .showcase-image,
+        .logs-image:hover .showcase-image {
+            transform: scale(1.02);
+            box-shadow: 0 28px 72px rgba(0, 0, 0, 0.22);
+        }
+
+        .interface-image::before,
+        .workstation-image::before,
+        .security-image::before,
+        .archive-image::before,
+        .logs-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border-radius: 16px;
+        }
+
+        .interface-image:hover::before,
+        .workstation-image:hover::before,
+        .security-image:hover::before,
+        .archive-image:hover::before,
+        .logs-image:hover::before {
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .hero-main {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                text-align: center;
+            }
+
+            .hero-text {
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.125rem;
+            }
+
+            .hero-dashboard-image {
+                max-width: 100%;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .security-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-gallery {
+                padding: 0 10px;
+            }
+
+            .hero-image-card {
+                width: 320px;
+            }
+
+            .hero-image-card img {
+                height: 160px;
+            }
+
+            .showcase-image {
+                max-height: min(560px, 70vh);
+            }
+
+            .interface-content,
+            .workstation-content,
+            .security-content,
+            .archive-content,
+            .logs-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .workstation-content {
+                grid-template-columns: 1fr;
+            }
+
+            .archive-content {
+                grid-template-columns: 1fr;
+            }
+
+            .logs-content {
+                grid-template-columns: 1fr;
+            }
+
+            .workstation-features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .workstation-feature-image {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; align-items: center;">
+                    <i class="fas fa-desktop" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
+                    <div class="logo-text">Computer Dynamics</div>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#cases">Cases</a></li>
+                <li><a href="#client-management">Clients</a></li>
+                <li><a href="#user-roles">Security</a></li>
+                <li><a href="#security">Compliance</a></li>
+                <li><a href="#development">Status</a></li>
+            </ul>
+            <button class="mobile-menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-main">
+                    <div class="hero-text">
+                        <h1>Secure Document Management System<span class="hero-title-tagline">Designed for lawyers</span></h1>
+                        <p>Give your firm one place for matters, documents, workstations, and billing—with strong encryption, clear access rules, and visibility your partners can trust.</p>
+                        <div class="hero-buttons">
+                            <button class="btn btn-primary" id="learnMoreBtn">
+                                <i class="fas fa-info-circle"></i>
+                                Learn More
+                            </button>
+                            <div class="hero-cta-row">
+                                <button class="btn btn-secondary" id="viewDemoBtn">
+                                    <i class="fas fa-play"></i>
+                                    Request a Demo
+                                </button>
+                                <a href="https://wa.me/18683168851" target="_blank" class="btn-whatsapp" title="WhatsApp Chat">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                                <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-dashboard">
+                        <img src="images/document-manager/login.JPG" alt="Document Management System Login" class="hero-dashboard-image">
+                    </div>
+                </div>
+                
+                <!-- Hero Image Gallery -->
+                <div class="hero-gallery">
+                    <div class="hero-image-card" data-image="images/document-manager/Dashboard.JPG">
+                        <img src="images/document-manager/Dashboard.JPG" alt="Web application dashboard">
+                        <h4>Web App Dashboard</h4>
+                        <div class="description">Counts, matters, security pulse, bulletins, and intake queue</div>
+                        <div class="role-badge">Admin</div>
+                    </div>
+                    <div class="hero-image-card" data-image="images/document-manager/Documents.JPG">
+                        <img src="images/document-manager/Documents.JPG" alt="Document Manager">
+                        <h4>Document Manager</h4>
+                        <div class="description">Browse and manage all files across workstations</div>
+                        <div class="role-badge">User</div>
+                    </div>
+                    <div class="hero-image-card" data-image="images/document-manager/workstation.JPG">
+                        <img src="images/document-manager/workstation.JPG" alt="Workstation Management">
+                        <h4>Workstation Management</h4>
+                        <div class="description">Monitor and manage connected workstations</div>
+                        <div class="role-badge">Admin</div>
+                    </div>
+                    <div class="hero-image-card" data-image="images/document-manager/security center dashboard.JPG">
+                        <img src="images/document-manager/security center dashboard.JPG" alt="Security Dashboard">
+                        <h4>Security Dashboard</h4>
+                        <div class="description">Real-time security monitoring and threat detection</div>
+                        <div class="role-badge">Security</div>
+                    </div>
+                    <div class="hero-image-card" data-image="images/document-manager/Archive%20Documents.JPG">
+                        <img src="images/document-manager/Archive%20Documents.JPG" alt="Archived documents in document manager">
+                        <h4>Archive System</h4>
+                        <div class="description">Local and server-based file archiving</div>
+                        <div class="role-badge">Storage</div>
+                    </div>
+                    <div class="hero-image-card" data-image="images/document-manager/security center recent activitys.JPG">
+                        <img src="images/document-manager/security center recent activitys.JPG" alt="System Logs">
+                        <h4>System Logs</h4>
+                        <div class="description">Comprehensive activity and security logging</div>
+                        <div class="role-badge">Admin</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Secure Document Management Features</h2>
+                <p>Everything your practice needs to stay organized, protected, and audit-ready—without slowing people down</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3>Automatic File Encryption</h3>
+                    <p>Sensitive work deserves modern cryptography. The platform supports AES-256-GCM protection at rest so authorized staff open files normally while your firm stays ahead of client confidentiality expectations.</p>
+                    <ul class="feature-list">
+                        <li>Industry-standard AES-256-GCM for protected documents</li>
+                        <li>Authenticated encryption—confidentiality and integrity together</li>
+                        <li>Transparent to daily work: no clunky manual encrypt steps</li>
+                        <li>Built for the formats firms use every day—PDF, Word, images, text</li>
+                        <li>Encryption works hand-in-hand with client and matter structure</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-folder-lock"></i>
+                    </div>
+                    <h3>Secure File Access</h3>
+                    <p>Every document lives in context: tied to the right client and matter, with access that follows your team&rsquo;s real responsibilities—not a messy pile of anonymous attachments.</p>
+                    <ul class="feature-list">
+                        <li>Role-based control over who can use billing, matters, documents, and security tools</li>
+                        <li>Matter-aware access so the right lawyers and staff work on the right files</li>
+                        <li>Administrative oversight when you need firm-wide visibility</li>
+                        <li>Rich activity insight: uploads, downloads, and security events captured for review</li>
+                        <li>Archived versions stay available when matters evolve or files are superseded</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3>Virtual Drive Sync</h3>
+                    <p>Keep paralegals and attorneys in the tools they already use while the firm maintains a single source of truth—approved client folders stay in step with the server.</p>
+                    <ul class="feature-list">
+                        <li>Monitored client folders on each workstation</li>
+                        <li>Smooth upload and download between desk and data center</li>
+                        <li>Authorized users get working copies where they need them</li>
+                        <li>Automatic preservation of prior versions when files change</li>
+                        <li>Flexible handling when server and desktop need to stay aligned on deletes</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-archive"></i>
+                    </div>
+                    <h3>Smart Archive Access</h3>
+                    <p>Matters run for years. When a pleading is revised or a file is retired, prior versions remain discoverable—without cluttering today&rsquo;s working set.</p>
+                    <ul class="feature-list">
+                        <li>Server-side archives for superseded and removed documents</li>
+                        <li>One-click visibility into archived matter files from the document manager</li>
+                        <li>Secure, authenticated retrieval—same discipline as live documents</li>
+                        <li>Encryption carries through to archived downloads</li>
+                        <li>Smart coordination when a workstation still holds a copy the firm wants to reconcile</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3>Multi-Workstation Support</h3>
+                    <p>Support for multiple workstations (desktops/laptops) with centralized file management</p>
+                    <ul class="feature-list">
+                        <li>Remote workstation monitoring</li>
+                        <li>Automatic client discovery</li>
+                        <li>Connection management</li>
+                        <li>Status monitoring</li>
+                        <li>Secure workstation sign-in with rotating credentials</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Enterprise Security</h3>
+                    <p>Layered protection that scales with your risk profile—from strong document encryption to intelligent monitoring and tamper-aware logging.</p>
+                    <ul class="feature-list">
+                        <li>AES-256-GCM encryption for protected firm content</li>
+                        <li>Executive-ready security dashboard with live scoring</li>
+                        <li>AI-assisted anomaly and threat insight for proactive response</li>
+                        <li>Searchable security event history</li>
+                        <li>Built-in safeguards such as rate limiting on high-value actions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Document Manager Interface Section -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Secure Document Manager Interface</h2>
+                <p>One elegant workspace for everything on the server, everything still arriving from the field, and everything you have put in long-term archive—plus one-click open on the desktop where staff already work</p>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Centralized Document Browser</h3>
+                        <p>See the full picture: finalized uploads, items still syncing from monitored folders, and documents you can open in native desktop apps—not only in the browser. Select a file in the Document Manager and the connected Workstation Monitor opens it from the firm&rsquo;s mounted virtual drive (for example <code>Z:\clients\Client_Name\contract.pdf</code>) in Word, Acrobat, or your configured default program.</p>
+                        <ul class="interface-features">
+                            <li>Unified queue of firm documents and workstation-sourced files</li>
+                            <li><strong>Open on desktop:</strong> click a document in the web app to queue an open request for your registered workstation</li>
+                            <li>Server builds the correct virtual-drive path per client and filename; the monitor picks it up and launches the file locally</li>
+                            <li>Automatic file locking while a document is open so two users do not overwrite each other&rsquo;s edits</li>
+                            <li>AES-256-GCM protection at rest on the server; the workstation receives decrypted working copies on the virtual drive</li>
+                            <li>If a file is not on that desk yet, the sync engine pulls it from encrypted server storage (often uploaded earlier from another workstation) and places it on the virtual drive</li>
+                            <li>Live refresh, search, and filters by client, matter, and more</li>
+                            <li>Inline preview for images; browser upload for counsel on the road</li>
+                            <li>Optional AI-assisted sensitivity labeling to spotlight high-risk files</li>
+                        </ul>
+                    </div>
+                    <div class="interface-image">
+                        <img src="images/document-manager/Documents.JPG" alt="Document Manager Interface" class="showcase-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Workstation Management Section -->
+    <section class="workstation-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Workstation Management</h2>
+                <p>Monitor and manage all connected workstations from a central location with secure sync</p>
+            </div>
+
+            <div class="workstation-showcase">
+                <div class="workstation-content">
+                    <div class="workstation-image">
+                        <img src="images/document-manager/workstation.JPG" alt="Workstation Management" class="showcase-image">
+                    </div>
+                    <div class="workstation-text">
+                        <h3>Centralized Workstation Control</h3>
+                        <p>Each desk runs the Workstation Monitor agent: it mounts a virtual drive, keeps client folders in sync with the server, and answers &ldquo;open this document&rdquo; requests from the web app. The server is the firm&rsquo;s encrypted hub—files may arrive from any workstation upload or monitored folder—and every other machine downloads decrypted copies to its virtual drive for fast local access.</p>
+                        <ul class="workstation-features">
+                            <li>Real-time workstation monitoring and connection status</li>
+                            <li>Virtual drive mount (e.g. <code>Z:</code>) mapped to a local sync folder such as <code>C:\LAWFIRM\clients\</code></li>
+                            <li>Bidirectional sync: upload changes from the virtual drive; download updates from encrypted server storage</li>
+                            <li>Polls for open requests from the browser and launches files with the default or assigned program</li>
+                            <li>Decrypt-on-download so staff edit normal files while the server keeps AES-256-GCM at rest</li>
+                            <li>Monitored-folder intake: new client folders and loose files can be discovered and uploaded automatically</li>
+                            <li>File locking, conflict handling, and activity logging across the network</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Dashboard Section -->
+    <section class="security-dashboard-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Real-Time Security Monitoring</h2>
+                <p>Advanced security dashboard with live threat detection and AES-256 encryption monitoring</p>
+            </div>
+
+            <div class="security-showcase">
+                <div class="security-content">
+                    <div class="security-text">
+                        <h3>Live Security Dashboard</h3>
+                        <p>Give management and IT a live pulse on the firm: risk scoring, notable events, and document activity in one command center—so issues surface before they become headlines.</p>
+                        <ul class="security-features">
+                            <li>Real-time threat detection</li>
+                            <li>Live security scoring</li>
+                            <li>Encryption monitoring (AES-256-GCM)</li>
+                            <li>Connection monitoring</li>
+                            <li>Security event alerts</li>
+                            <li>Automated threat response</li>
+                        </ul>
+                    </div>
+                    <div class="security-image">
+                        <img src="images/document-manager/security center dashboard.JPG" alt="Security Dashboard" class="showcase-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Archive System Section -->
+    <section class="archive-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Dual Archive System</h2>
+                <p>Combine resilient server archives with intelligent workstation awareness—nothing important slips through the cracks</p>
+            </div>
+
+            <div class="archive-showcase">
+                <div class="archive-content">
+                    <div class="archive-image">
+                        <img src="images/document-manager/Archive%20Documents.JPG" alt="Archived documents in document manager" class="showcase-image">
+                    </div>
+                    <div class="archive-text">
+                        <h3>Smart Archive Management</h3>
+                        <p>Flip on archived view to revisit earlier drafts, closed-matter files, or anything superseded—downloads respect the same firm rules as active work product.</p>
+                        <ul class="archive-features">
+                            <li>Central archive of prior versions and retired files</li>
+                            <li>Permission-aware retrieval tied to clients and matters</li>
+                            <li>Automatic versioning when teams upload replacements</li>
+                            <li>Encrypted delivery when files are protected at rest</li>
+                            <li>Graceful restore paths when desktop and server briefly disagree</li>
+                            <li>Full traceability every time someone pulls an archived document</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- System Logs Section -->
+    <section class="logs-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Comprehensive Activity Logging</h2>
+                <p>Detailed logging and monitoring of all system activities, security events, and encryption operations</p>
+            </div>
+
+            <div class="logs-showcase">
+                <div class="logs-content">
+                    <div class="logs-text">
+                        <h3>Complete Activity Tracking</h3>
+                        <p>Demonstrate diligence to clients, auditors, and courts: who touched what, when, and from where—backed by deep security analytics when you enable the AI layer.</p>
+                        <ul class="logs-features">
+                            <li>Document access and denied-access trails</li>
+                            <li>Continuous security event stream with optional AI enrichment</li>
+                            <li>User-attributed actions across sensitive workflows</li>
+                            <li>Fast filtering inside the security dashboard</li>
+                            <li>Export-friendly event data for counsel and compliance partners</li>
+                            <li>Automatic throttling that protects APIs from abuse</li>
+                        </ul>
+                    </div>
+                    <div class="logs-image">
+                        <img src="images/document-manager/security center recent activitys.JPG" alt="System Logs" class="showcase-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Workstation Features Section -->
+    <section class="workstation-features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Web dashboard &amp; workstation file activity</h2>
+                <p>Live firm metrics in the browser, plus what is happening on each desktop—kept separate from clients, matters, and permissions below</p>
+            </div>
+
+            <div class="workstation-features-grid">
+                <div class="workstation-feature-card">
+                    <div class="workstation-feature-image">
+                        <img src="images/document-manager/Dashboard.JPG" alt="Web application dashboard" class="feature-image">
+                    </div>
+                    <div class="workstation-feature-content">
+                        <h3>Web App Dashboard</h3>
+                        <p>One screen after sign-in: how busy the firm is, which matters need attention, whether systems look healthy, and what staff should read first.</p>
+                        <ul class="workstation-feature-list">
+                            <li>Summary counts for clients, active cases, and documents</li>
+                            <li>System health and optional AI security readout, with a link to the Security Center</li>
+                            <li>Deadlines, overdue and urgent cases, status summaries, recent matters, and calendar</li>
+                            <li>Bulletin board for announcements; optional AI case summary; quick add for clients and matters</li>
+                            <li>Pending monitored-folder client requests from workstations (search, approve, bulk approve)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workstation-feature-card">
+                    <div class="workstation-feature-image">
+                        <img src="images/document-manager/workstation.JPG" alt="File Activity Monitor" class="feature-image">
+                    </div>
+                    <div class="workstation-feature-content">
+                        <h3>Workstation Monitor &amp; open-on-desktop</h3>
+                        <p>When someone selects a document in the web app, the request goes to their workstation—not as a browser download, but as an open command on the virtual drive. The monitor checks whether the file is already local; if not, the scheduled sync pulls it from the server&rsquo;s encrypted store (including copies that originated on another desk) and saves a decrypted working file ready to open.</p>
+                        <ul class="workstation-feature-list">
+                            <li>Open-request queue between browser and workstation (typically within one sync/poll cycle)</li>
+                            <li>Opens from <code>{drive}\clients\{client}\{filename}</code> with optional per-type program mapping</li>
+                            <li>Background sync from server: list all documents, download missing or updated files, decrypt to virtual drive</li>
+                            <li>Background sync to server: encrypt and upload edits from the virtual drive</li>
+                            <li>File activity and transfer logging in the monitor and Security Center</li>
+                            <li>System tray GUI, heartbeats, and alerts when clients or uploads need attention</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Clients, matters & access (single narrative: data model + who can use it) -->
+    <section class="interface-section" id="client-management">
+        <div class="container">
+            <div class="section-header">
+                <h2>Clients, matters &amp; firm access</h2>
+                <p>One story: who you represent, how matters are run, and which staff can open billing, documents, security tools, and more</p>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Client &amp; case records</h3>
+                        <p>Run the firm from a single system of record—clients, matters, deadlines, and ownership stay aligned so nothing gets lost between departments.</p>
+                        <ul class="interface-features">
+                            <li>360&deg; client profiles with lead-attorney visibility</li>
+                            <li>Matters that carry docket numbers, courts, opponents, and key dates</li>
+                            <li>Flexible staffing with per-matter and per-client assignments</li>
+                            <li>Documents automatically filed against the right client and matter</li>
+                            <li>Lifecycle statuses from active work through pending holds to closed files</li>
+                            <li>Fast search and filters for high-volume practices</li>
+                        </ul>
+                    </div>
+                    <div class="interface-image">
+                        <img src="images/document-manager/Clients.JPG" alt="Client & Case Management" class="showcase-image">
+                    </div>
+                </div>
+            </div>
+
+            <div class="workstation-showcase" id="user-roles" style="margin-top: 3rem;">
+                <div class="workstation-content">
+                    <div class="workstation-image">
+                        <img src="images/document-manager/Role Managment.JPG" alt="Role and permission settings" class="showcase-image">
+                    </div>
+                    <div class="workstation-text">
+                        <h3>Roles, sign-in &amp; MFA</h3>
+                        <p>Match each hire to the modules they need. Administrators control security settings and MFA policy; everyone signs in with sessions built for long days; workstation agents use their own trust path.</p>
+                        <ul class="workstation-features">
+                            <li>Granular module access by role, enforced on the server</li>
+                            <li>Personas for admin, attorney, secretary, and associate</li>
+                            <li>TOTP-based MFA, firm-wide required or optional</li>
+                            <li>Session refresh for extended browser use</li>
+                            <li>Separate credentials for workstation sync (not staff passwords)</li>
+                            <li>Document access follows client and matter ownership</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Case management: list, matter workspace, calendar (Law Firm app) -->
+    <section class="interface-section" id="cases">
+        <div class="container">
+            <div class="section-header">
+                <h2>Case management</h2>
+                <p>Matters are a first-class module: find them on the docket, drill into a full workspace per case, and watch deadlines on a shared calendar</p>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Cases list &amp; docket controls</h3>
+                        <p>The Cases screen is where firms search the active docket, slice by type and status, and jump straight into any matter—without losing context on who is assigned.</p>
+                        <ul class="interface-features">
+                            <li>Live search across cases with short debounce for fast typing</li>
+                            <li>Filters for matter type, lifecycle status (active, pending, closed), and assigned lawyer</li>
+                            <li>Create new matters, update records, and manage the list from one place</li>
+                            <li>Practice-area styling so teams spot criminal, civil, family, corporate, and other files quickly</li>
+                        </ul>
+                    </div>
+                    <div class="interface-image">
+                        <img src="images/document-manager/Cases.JPG" alt="Cases list and filters in the law firm application" class="showcase-image">
+                    </div>
+                </div>
+            </div>
+
+            <div class="workstation-showcase" style="margin-top: 3rem;">
+                <div class="workstation-content">
+                    <div class="workstation-image">
+                        <img src="images/document-manager/Case%20View.JPG" alt="Case detail workspace with tabs" class="showcase-image">
+                    </div>
+                    <div class="workstation-text">
+                        <h3>Inside each matter</h3>
+                        <p>Open a case to work the file end to end: the same tabs your team sees in production—counts on each tab, shortcuts to the global document list, and breadcrumbs back to the docket.</p>
+                        <ul class="workstation-features">
+                            <li>Overview, Documents, Important Dates, Notes, Checklist, Legal Research, Witnesses, and Case Summary &amp; Report (with optional Groq status when AI is wired up)</li>
+                            <li>Matter-scoped documents, uploads and downloads, plus suggested-document hints on the Documents tab when enabled</li>
+                            <li>Jump to the client profile or open all documents pre-filtered to this case</li>
+                            <li>Firm calendar: month or list view of important dates aggregated from cases</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Financial Tracking Section -->
+    <section class="security-dashboard-section" id="financial">
+        <div class="container">
+            <div class="section-header">
+                <h2>Financial Tracking</h2>
+                <p>Record and monitor payments with real-time revenue statistics</p>
+            </div>
+
+            <div class="security-showcase">
+                <div class="security-content">
+                    <div class="security-text">
+                        <h3>Payment Management</h3>
+                        <p>Track all client payments and financial transactions in one place. Support multiple payment methods including cash, check, bank transfer, and credit card. Get real-time revenue and payment statistics.</p>
+                        <ul class="security-features">
+                            <li>Multi-payment method support</li>
+                            <li>Real-time revenue tracking</li>
+                            <li>Payment history logging</li>
+                            <li>Financial statistics dashboard</li>
+                            <li>Transaction audit trails</li>
+                        </ul>
+                    </div>
+                    <div class="security-image">
+                        <img src="images/document-manager/Billing and payments.JPG" alt="Financial Tracking" class="showcase-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Compliance Section -->
+    <section class="archive-section" id="compliance">
+        <div class="container">
+            <div class="section-header">
+                <h2>Compliance & Standards</h2>
+                <p>Controls that help you demonstrate reasonable care—encryption, logging, and monitoring your auditors expect to see</p>
+            </div>
+
+            <div class="archive-showcase">
+                <div class="archive-content">
+                    <div class="archive-image">
+                        <img src="images/document-manager/security center recent activitys.JPG" alt="Compliance" class="showcase-image">
+                    </div>
+                    <div class="archive-text">
+                        <h3>Regulatory Compliance</h3>
+                        <p>Pair enterprise-grade technical controls with your firm&rsquo;s policies to satisfy insurance questionnaires, enterprise clients, and regulatory frameworks—without bolting on a dozen point products.</p>
+                        <ul class="archive-features">
+                            <li>Structured evidence of document access and denials</li>
+                            <li>Configurable encryption and sensitivity workflows</li>
+                            <li>Optional AI-assisted threat correlation for deeper assurance</li>
+                            <li>Rich operational logs ready for counsel or outside assessors</li>
+                            <li>Built-in rate limiting to keep hostile traffic from overwhelming APIs</li>
+                            <li>Flexible retention and export strategies tailored to your jurisdiction</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section class="security-section" id="security">
+        <div class="container">
+            <div class="section-header">
+                <h2 style="color: white;">Enterprise-Grade Security</h2>
+                <p style="color: rgba(255, 255, 255, 0.8);">Layered encryption, monitoring, and integrity controls designed for high-stakes legal work</p>
+            </div>
+
+            <div class="security-grid">
+                <div class="security-feature">
+                    <div class="security-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Military-Grade Encryption</h3>
+                    <p>Protect crown-jewel matters with AES-256-GCM at rest and hardened key derivation—including PBKDF2 with one hundred thousand iterations for MFA secrets—so brute-force attacks stay impractical.</p>
+                    <ul class="security-list">
+                        <li><i class="fas fa-check"></i> AES-256-GCM for sensitive documents at rest</li>
+                        <li><i class="fas fa-check"></i> PBKDF2-hardened keys for multi-factor flows</li>
+                        <li><i class="fas fa-check"></i> Secure random IV generation</li>
+                        <li><i class="fas fa-check"></i> File destruction during transit</li>
+                    </ul>
+                </div>
+
+                <div class="security-feature">
+                    <div class="security-icon">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    <h3>Chunked File Encryption</h3>
+                    <p>Large discovery productions and trial binders do not choke the pipeline—intelligent chunking keeps encryption fast while preserving integrity end to end.</p>
+                    <ul class="security-list">
+                        <li><i class="fas fa-check"></i> Streaming-friendly handling for oversized files</li>
+                        <li><i class="fas fa-check"></i> Authenticated AES-GCM on every protected segment</li>
+                        <li><i class="fas fa-check"></i> Built-in integrity verification on reassembly</li>
+                        <li><i class="fas fa-check"></i> Policy-driven fail-secure or supervised fail-open modes</li>
+                    </ul>
+                </div>
+
+                <div class="security-feature">
+                    <div class="security-icon">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <h3>Real-Time Security Monitoring</h3>
+                    <p>Live security dashboard with threat detection and automated security scoring</p>
+                    <ul class="security-list">
+                        <li><i class="fas fa-check"></i> Real-time threat detection</li>
+                        <li><i class="fas fa-check"></i> Live security scoring</li>
+                        <li><i class="fas fa-check"></i> Connection monitoring</li>
+                        <li><i class="fas fa-check"></i> Automated security alerts</li>
+                    </ul>
+                </div>
+
+                <div class="security-feature">
+                    <div class="security-icon">
+                        <i class="fas fa-fingerprint"></i>
+                    </div>
+                    <h3>Workstation Security</h3>
+                    <p>Secure workstation identification and activation system to prevent unauthorized access</p>
+                    <ul class="security-list">
+                        <li><i class="fas fa-check"></i> Trusted workstation enrollment</li>
+                        <li><i class="fas fa-check"></i> Secure activation system</li>
+                        <li><i class="fas fa-check"></i> Organization isolation</li>
+                        <li><i class="fas fa-check"></i> Token-based authentication</li>
+                    </ul>
+                </div>
+
+                <div class="security-feature">
+                    <div class="security-icon">
+                        <i class="fas fa-hash"></i>
+                    </div>
+                    <h3>File Integrity & Verification</h3>
+                    <p>SHA-256 hash verification and comprehensive audit trails for all file operations</p>
+                    <ul class="security-list">
+                        <li><i class="fas fa-check"></i> SHA-256 hash verification</li>
+                        <li><i class="fas fa-check"></i> File integrity monitoring</li>
+                        <li><i class="fas fa-check"></i> Complete audit trails</li>
+                        <li><i class="fas fa-check"></i> Transfer logging</li>
+                    </ul>
+                </div>
+
+                <div class="security-feature">
+                    <div class="security-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Secure Server Architecture</h3>
+                    <p>Centralized security with AI-powered threat detection and comprehensive logging</p>
+                    <ul class="security-list">
+                        <li><i class="fas fa-check"></i> AI Security Core system</li>
+                        <li><i class="fas fa-check"></i> Emergency override controls</li>
+                        <li><i class="fas fa-check"></i> Security event logging</li>
+                        <li><i class="fas fa-check"></i> System health monitoring</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Get Started Section -->
+    <section class="development-section" id="development">
+        <div class="container">
+            <div class="development-content">
+                <div class="development-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h2>Get Started Today</h2>
+                <p>Whether you are modernizing a boutique practice or standardizing a multi-office firm, Computer Dynamics delivers the implementation, training, and ongoing support to go live with confidence.</p>
+                <a href="https://wa.me/18683168851" target="_blank" class="btn-development">
+                    <i class="fab fa-whatsapp"></i>
+                    Contact Us
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Image Modal -->
+    <div class="modal-overlay" id="imageModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Image Preview</h3>
+                <button class="modal-close" id="modalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <img id="modalImage" src="" alt="" style="width: 100%; border-radius: 12px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Modal -->
+    <div class="demo-modal-overlay" id="demoModal">
+        <div class="demo-modal-content">
+            <div class="demo-icon">
+                <i class="fas fa-code"></i>
+            </div>
+            <h3 class="demo-title">See it with your team</h3>
+            <p class="demo-description">We will walk your stakeholders through a live environment tailored to your workflows—documents, security center, billing, and workstation sync—so you can evaluate fit quickly.</p>
+            <div class="demo-buttons">
+                <a href="https://wa.me/18683168851" target="_blank" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fab fa-whatsapp"></i>
+                    Book a session
+                </a>
+                <button class="btn btn-secondary" id="demoClose">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Image modal functionality
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalClose = document.getElementById('modalClose');
+        const imageCards = document.querySelectorAll('.hero-image-card');
+        const showcaseImages = document.querySelectorAll('.showcase-image');
+        const featureImages = document.querySelectorAll('.feature-image');
+
+        // Handle hero gallery cards
+        imageCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const img = card.querySelector('img');
+                const title = card.querySelector('h4').textContent;
+                
+                modalImage.src = img.src;
+                modalImage.alt = img.alt;
+                modalTitle.textContent = title;
+                imageModal.classList.add('active');
+            });
+        });
+
+        // Handle showcase images
+        showcaseImages.forEach(img => {
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => {
+                modalImage.src = img.src;
+                modalImage.alt = img.alt;
+                modalTitle.textContent = img.alt || 'Image Preview';
+                imageModal.classList.add('active');
+            });
+        });
+
+        // Handle feature images in sections
+        featureImages.forEach(img => {
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => {
+                modalImage.src = img.src;
+                modalImage.alt = img.alt;
+                modalTitle.textContent = img.alt || 'Image Preview';
+                imageModal.classList.add('active');
+            });
+        });
+
+        modalClose.addEventListener('click', () => {
+            imageModal.classList.remove('active');
+        });
+
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                imageModal.classList.remove('active');
+            }
+        });
+
+        // Demo modal functionality
+        const demoModal = document.getElementById('demoModal');
+        const viewDemoBtn = document.getElementById('viewDemoBtn');
+        const demoClose = document.getElementById('demoClose');
+        const developmentBtn = document.getElementById('developmentBtn');
+
+        if (viewDemoBtn && demoModal) {
+            viewDemoBtn.addEventListener('click', () => {
+                demoModal.classList.add('active');
+            });
+        }
+
+        if (developmentBtn && demoModal) {
+            developmentBtn.addEventListener('click', () => {
+                demoModal.classList.add('active');
+            });
+        }
+
+        demoClose.addEventListener('click', () => {
+            demoModal.classList.remove('active');
+        });
+
+        demoModal.addEventListener('click', (e) => {
+            if (e.target === demoModal) {
+                demoModal.classList.remove('active');
+            }
+        });
+
+        // Learn more button
+        document.getElementById('learnMoreBtn').addEventListener('click', () => {
+            document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // Mobile menu toggle
+        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+        const navLinks = document.querySelector('.nav-links');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+    <script src="/js/multiserver-demos.js" defer></script>
+</body>
+</html>

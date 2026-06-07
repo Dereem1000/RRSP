@@ -1,0 +1,19 @@
+{
+  "api_url": "https://zenlaw.online/api",
+  "api_key": "fernet:emFJeWstN29WY1lZNHVSVU9KR3I4ZENOMUFBZHBESUxseGFyS0lFdE5Wdz0=:Z0FBQUFBQnA0RlJqb0FFMjdnWlVRRzZTMW5YQVFsb0p0cDVqazdHUzVob3R1SnpyM0tSTU9qSktfTlFnOThTRHZuTndkR09Ub0pyU21mVjlYVDViX3EtaktTOGR1amFTY1ZmZG9mQVVDWl9kRkxvcVdVQXpZbUZ2VjZQeklsbjRnV2drbnJWdHBYXzg1OWhOaS1tWHFFNS1ScVVEV3VOV2pIQU5xVXM0YUNoX2lXWDBvaTFiYVpzPQ==",
+  "workstation_id": 2,
+  "workstation_name": "HOME",
+  "monitored_folders": [
+    "C:/Users/User/Documents"
+  ],
+  "virtual_drive_letter": "Z",
+  "virtual_drive_path": "C:/LAWFIRM",
+  "check_interval": 60,
+  "virtual_drive_sync_interval": 60,
+  "file_lock_check_interval": 10,
+  "conflict_resolution": "timestamp",
+  "default_programs": {},
+  "enable_notifications": true,
+  "notification_level": "errors_only",
+  "sync_delete_to_server": false
+}

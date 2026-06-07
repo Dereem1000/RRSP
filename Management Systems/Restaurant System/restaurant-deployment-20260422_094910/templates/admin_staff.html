@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Staff - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .staff-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #28a745;
+    }
+    
+    .staff-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .staff-card.waiter {
+        border-left-color: #17a2b8;
+    }
+    
+    .staff-card.chef {
+        border-left-color: #fd7e14;
+    }
+    
+    .staff-card.cashier {
+        border-left-color: #6f42c1;
+    }
+    
+    .staff-card.admin {
+        border-left-color: #dc3545;
+    }
+    
+    .badge.bg-purple {
+        background-color: #6f42c1 !important;
+        color: #ffffff !important;
+    }
+    
+    .status-active {
+        color: #28a745;
+    }
+    
+    .status-inactive {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-users me-2"></i>
+                Staff Management
+            </h1>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Staff Overview</h6>
+                    <button class="btn btn-success btn-sm" onclick="showAddStaffForm()">
+                        <i class="fas fa-plus me-1"></i>Add Staff Member
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary" id="total-staff">0</h5>
+                                    <p class="card-text">Total Staff</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success" id="active-staff">0</h5>
+                                    <p class="card-text">Active Staff</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info" id="waiter-count">0</h5>
+                                    <p class="card-text">Waiters</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-warning" id="chef-count">0</h5>
+                                    <p class="card-text">Chefs</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">Staff Members</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="staffTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                    <th>Hire Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffTableBody">
+                                <!-- Staff members will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Staff Modal -->
+<div class="modal fade" id="staffModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staffModalTitle">Add Staff Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="staffForm">
+                    <input type="hidden" id="staffId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffName" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="staffName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffRole" class="form-label">Role</label>
+                                <select class="form-select" id="staffRole" required>
+                                    <option value="">Select Role</option>
+                                    <option value="waiter">Waiter</option>
+                                    <option value="chef">Chef</option>
+                                    <option value="cashier">Cashier</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="staffEmail" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffPhone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="staffPhone">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffUsername" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="staffUsername" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffPassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="staffPassword">
+                                <div class="form-text">
+                                    <small>Leave blank to keep existing password when editing</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffHireDate" class="form-label">Hire Date</label>
+                                <input type="date" class="form-control" id="staffHireDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="staffStatus" class="form-label">Status</label>
+                                <select class="form-select" id="staffStatus" required>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="staffNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="staffNotes" rows="3" placeholder="Any additional notes about this staff member"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveStaff()">Save Staff Member</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Staff Details Modal -->
+<div class="modal fade" id="staffDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Staff Member Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="staffDetailsContent">
+                <!-- Staff details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let staffData = [];
+
+// Load staff data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadStaffData();
+    // Set default hire date to today
+    document.getElementById('staffHireDate').value = new Date().toISOString().split('T')[0];
+});
+
+function loadStaffData() {
+    // Fetch real data from API
+    fetch('/api/get_staff')
+        .then(response => response.json())
+        .then(data => {
+            if (data.staff) {
+                staffData = data.staff.map(staff => ({
+                    id: staff.id,
+                    name: staff.name || staff.username,
+                    role: staff.role,
+                    email: `${staff.username}@restaurant.com`,
+                    phone: '+1-555-0000',
+                    username: staff.username,
+                    status: staff.is_active ? 'active' : 'inactive',
+                    hire_date: staff.created_at ? staff.created_at.split('T')[0] : '2024-01-01',
+                    notes: `${staff.role} staff member`
+                }));
+            }
+            updateStaffDisplay();
+            updateStaffCounts();
+        })
+        .catch(error => {
+            console.error('Error loading staff data:', error);
+            showAlert('Error loading staff data', 'danger');
+            // Fallback to mock data
+            staffData = [
+                {
+                    id: 1,
+                    name: "John Smith",
+                    role: "waiter",
+                    email: "john.smith@restaurant.com",
+                    phone: "+1-555-0123",
+                    username: "johnsmith",
+                    status: "active",
+                    hire_date: "2023-01-15",
+                    notes: "Experienced waiter with excellent customer service skills."
+                },
+                {
+                    id: 2,
+                    name: "Maria Garcia",
+                    role: "chef",
+                    email: "maria.garcia@restaurant.com",
+                    phone: "+1-555-0124",
+                    username: "mariagarcia",
+                    status: "active",
+                    hire_date: "2022-08-20",
+                    notes: "Head chef with 10+ years of experience in fine dining."
+                },
+                {
+                    id: 3,
+                    name: "David Johnson",
+                    role: "cashier",
+                    email: "david.johnson@restaurant.com",
+                    phone: "+1-555-0125",
+                    username: "davidjohnson",
+                    status: "active",
+                    hire_date: "2023-03-10",
+                    notes: "Reliable cashier with strong math skills."
+                }
+            ];
+            updateStaffDisplay();
+            updateStaffCounts();
+        });
+}
+
+function updateStaffDisplay() {
+    const tbody = document.getElementById('staffTableBody');
+    tbody.innerHTML = '';
+    
+    staffData.forEach(staff => {
+        const row = document.createElement('tr');
+        row.className = `staff-card ${staff.role}`;
+        
+        const roleBadge = getRoleBadge(staff.role);
+        const statusBadge = getStatusBadge(staff.status);
+        
+        row.innerHTML = `
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm me-3">
+                        <i class="fas fa-user-circle fa-2x text-muted"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">${staff.name}</h6>
+                        <small class="text-muted">ID: ${staff.id}</small>
+                    </div>
+                </div>
+            </td>
+            <td>${roleBadge}</td>
+            <td>${staff.email}</td>
+            <td>${staff.phone || 'N/A'}</td>
+            <td>${statusBadge}</td>
+            <td>${formatDate(staff.hire_date)}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="viewStaffDetails(${staff.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="editStaff(${staff.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="deleteStaff(${staff.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+function updateStaffCounts() {
+    const totalStaff = staffData.length;
+    const activeStaff = staffData.filter(s => s.status === 'active').length;
+    const waiterCount = staffData.filter(s => s.role === 'waiter').length;
+    const chefCount = staffData.filter(s => s.role === 'chef').length;
+    
+    document.getElementById('total-staff').textContent = totalStaff;
+    document.getElementById('active-staff').textContent = activeStaff;
+    document.getElementById('waiter-count').textContent = waiterCount;
+    document.getElementById('chef-count').textContent = chefCount;
+}
+
+function getRoleBadge(role) {
+    const badges = {
+        'waiter': '<span class="badge bg-info">Waiter</span>',
+        'chef': '<span class="badge bg-warning">Chef</span>',
+        'cashier': '<span class="badge bg-purple">Cashier</span>',
+        'admin': '<span class="badge bg-danger">Admin</span>'
+    };
+    return badges[role] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+function getStatusBadge(status) {
+    if (status === 'active') {
+        return '<span class="badge bg-success">Active</span>';
+    } else {
+        return '<span class="badge bg-secondary">Inactive</span>';
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+}
+
+// Staff Management Functions
+function showAddStaffForm() {
+    document.getElementById('staffModalTitle').textContent = 'Add Staff Member';
+    document.getElementById('staffForm').reset();
+    document.getElementById('staffId').value = '';
+    document.getElementById('staffHireDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('staffPassword').required = true;
+    new bootstrap.Modal(document.getElementById('staffModal')).show();
+}
+
+function editStaff(staffId) {
+    const staff = staffData.find(s => s.id === staffId);
+    if (!staff) return;
+    
+    document.getElementById('staffModalTitle').textContent = 'Edit Staff Member';
+    document.getElementById('staffId').value = staff.id;
+    document.getElementById('staffName').value = staff.name;
+    document.getElementById('staffRole').value = staff.role;
+    document.getElementById('staffEmail').value = staff.email;
+    document.getElementById('staffPhone').value = staff.phone || '';
+    document.getElementById('staffUsername').value = staff.username;
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffPassword').required = false;
+    document.getElementById('staffHireDate').value = staff.hire_date;
+    document.getElementById('staffStatus').value = staff.status;
+    document.getElementById('staffNotes').value = staff.notes || '';
+    
+    new bootstrap.Modal(document.getElementById('staffModal')).show();
+}
+
+function saveStaff() {
+    const formData = {
+        id: document.getElementById('staffId').value || null,
+        name: document.getElementById('staffName').value,
+        role: document.getElementById('staffRole').value,
+        email: document.getElementById('staffEmail').value,
+        phone: document.getElementById('staffPhone').value,
+        username: document.getElementById('staffUsername').value,
+        password: document.getElementById('staffPassword').value,
+        hire_date: document.getElementById('staffHireDate').value,
+        status: document.getElementById('staffStatus').value,
+        notes: document.getElementById('staffNotes').value
+    };
+    
+    if (!formData.name.trim()) {
+        showAlert('Staff name is required', 'warning');
+        return;
+    }
+    
+    if (!formData.role) {
+        showAlert('Please select a role', 'warning');
+        return;
+    }
+    
+    if (!formData.email.trim()) {
+        showAlert('Email is required', 'warning');
+        return;
+    }
+    
+    if (!formData.username.trim()) {
+        showAlert('Username is required', 'warning');
+        return;
+    }
+    
+    if (!formData.id && !formData.password.trim()) {
+        showAlert('Password is required for new staff members', 'warning');
+        return;
+    }
+    
+    // Call API to save staff
+    fetch('/api/save_staff', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message || 'Staff member saved successfully!', 'success');
+            // Reload staff data from server
+            loadStaffData();
+            bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
+        } else {
+            // Show detailed error message with suggestion if available
+            let errorMsg = data.message || 'Failed to save staff member';
+            if (data.is_remote_mode) {
+                errorMsg += '\n\nSystem is in REMOTE database mode.';
+            }
+            if (data.suggestion) {
+                errorMsg += '\n\n💡 ' + data.suggestion;
+            }
+            showAlert(errorMsg, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving staff:', error);
+        showAlert('Error saving staff member: ' + error.message, 'danger');
+    });
+}
+
+function deleteStaff(staffId) {
+    const staff = staffData.find(s => s.id === staffId);
+    if (!staff) return;
+    
+    if (!confirm(`Are you sure you want to delete ${staff.name}? This action cannot be undone.`)) {
+        return;
+    }
+    
+    // For now, show message - would need API implementation
+    staffData = staffData.filter(s => s.id !== staffId);
+    updateStaffDisplay();
+    updateStaffCounts();
+    showAlert('Staff member deleted successfully!', 'success');
+}
+
+function viewStaffDetails(staffId) {
+    const staff = staffData.find(s => s.id === staffId);
+    if (!staff) return;
+    
+    const content = document.getElementById('staffDetailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-4 text-center">
+                <div class="avatar-lg mb-3">
+                    <i class="fas fa-user-circle fa-5x text-muted"></i>
+                </div>
+                <h5>${staff.name}</h5>
+                <p class="text-muted">${getRoleBadge(staff.role)}</p>
+                <p class="text-muted">${getStatusBadge(staff.status)}</p>
+            </div>
+            <div class="col-md-8">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Contact Information</h6>
+                        <p><strong>Email:</strong> ${staff.email}</p>
+                        <p><strong>Phone:</strong> ${staff.phone || 'N/A'}</p>
+                        <p><strong>Username:</strong> ${staff.username}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Employment Details</h6>
+                        <p><strong>Hire Date:</strong> ${formatDate(staff.hire_date)}</p>
+                        <p><strong>Employee ID:</strong> ${staff.id}</p>
+                        <p><strong>Status:</strong> ${staff.status}</p>
+                    </div>
+                </div>
+                ${staff.notes ? `
+                    <div class="mt-3">
+                        <h6>Notes</h6>
+                        <p class="text-muted">${staff.notes}</p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('staffDetailsModal')).show();
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

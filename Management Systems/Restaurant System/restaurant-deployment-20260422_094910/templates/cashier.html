@@ -1,0 +1,1500 @@
+{% extends "base.html" %}
+
+{% block title %}Cash Register - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">
+                <i class="fas fa-cash-register text-warning me-2"></i>
+                Cash Register
+            </h1>
+            <p class="text-muted">Process payments and manage customer bills</p>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="pending-payments">0</div>
+                <div class="stats-label">Pending Payments</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="total-amount">$0.00</div>
+                <div class="stats-label">Total Amount</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="completed-today">0</div>
+                <div class="stats-label">Completed Today</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number" id="avg-order">$0.00</div>
+                <div class="stats-label">Average Order</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Orders Ready for Payment -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-credit-card me-2"></i>
+                            Orders Ready for Payment
+                        </h5>
+                        <button class="btn btn-primary" onclick="refreshOrders()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <!-- Filter Toggle Switches - Paired Logic -->
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <div class="border rounded p-2 bg-light">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterReady" checked onchange="handleReadyToggle()">
+                                <label class="form-check-label fw-bold" for="filterReady" style="cursor: pointer;">Ready & Unpaid</label>
+                            </div>
+                            <small class="text-muted ms-4" style="font-size: 0.75rem;">Shows orders ready for payment</small>
+                        </div>
+                        <div class="border rounded p-2 bg-light">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterServed" onchange="handleServedToggle()">
+                                <label class="form-check-label fw-bold" for="filterServed" style="cursor: pointer;">Served & Paid</label>
+                            </div>
+                            <small class="text-muted ms-4" style="font-size: 0.75rem;">Shows completed paid orders</small>
+                        </div>
+                        <div class="border rounded p-2 bg-light">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterPending" onchange="applyFilters()">
+                                <label class="form-check-label fw-bold" for="filterPending" style="cursor: pointer;">Pending</label>
+                            </div>
+                            <small class="text-muted ms-4" style="font-size: 0.75rem;">New orders waiting</small>
+                        </div>
+                        <div class="border rounded p-2 bg-light">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="filterPreparing" onchange="applyFilters()">
+                                <label class="form-check-label fw-bold" for="filterPreparing" style="cursor: pointer;">Preparing</label>
+                            </div>
+                            <small class="text-muted ms-4" style="font-size: 0.75rem;">Orders being prepared</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="orders-container">
+                        <!-- Orders will be loaded here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm">
+                    <input type="hidden" id="paymentOrderId">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Order Details</h6>
+                            <div id="orderDetails">
+                                <!-- Order details will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>Payment Information</h6>
+                            
+                            <div class="mb-3">
+                                <label for="paymentAmount" class="form-label">Amount Due</label>
+                                <input type="number" 
+                                       class="form-control form-control-lg" 
+                                       id="paymentAmount" 
+                                       step="0.01" 
+                                       readonly>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="paymentMethod" class="form-label">Payment Method</label>
+                                <select class="form-select" id="paymentMethod" required>
+                                    <option value="">Select Payment Method</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="card">Credit/Debit Card</option>
+                                    <option value="mobile">Mobile Payment</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3" id="transactionIdGroup" style="display: none;">
+                                <label for="transactionId" class="form-label">Transaction ID</label>
+                                <input type="text" class="form-control" id="transactionId" placeholder="Enter transaction ID">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="paymentNotes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="paymentNotes" rows="3" placeholder="Any additional notes..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="processPayment()">
+                    <i class="fas fa-check me-2"></i>
+                    Complete Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Payment Receipt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="receiptBody">
+                    <!-- Receipt content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="refundBtn" class="btn btn-danger" onclick="showRefundModal()" style="display: none;">
+                    <i class="fas fa-undo me-2"></i>
+                    Refund
+                </button>
+                <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                    <i class="fas fa-print me-2"></i>
+                    Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Refund Password Modal -->
+<div class="modal fade" id="pendingRefundPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Verify Access</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="pendingRefundPasswordForm">
+                    <input type="hidden" id="pendingRefundOrderId">
+                    <input type="hidden" id="pendingRefundRequestId">
+                    
+                    <div class="mb-3">
+                        <label for="pendingRefundPassword" class="form-label">Enter Your Password</label>
+                        <input type="password" class="form-control form-control-lg" id="pendingRefundPassword" placeholder="Enter password to view refund details" required autofocus>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Admin/Manager access required to view pending refund requests.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="verifyPendingRefundAccess()">
+                    <i class="fas fa-check me-2"></i>Verify
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Request Modal -->
+<div class="modal fade" id="refundRequestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="refundModalTitle">Request Refund</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="refundRequestForm">
+                    <input type="hidden" id="refundPaymentId">
+                    <input type="hidden" id="refundOrderId">
+                    <input type="hidden" id="refundAmount">
+                    <input type="hidden" id="refundNeedsApproval">
+                    
+                    <div class="mb-3">
+                        <label for="refundAmountDisplay" class="form-label">Refund Amount <span class="text-muted">(can be adjusted for partial refunds)</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control form-control-lg" id="refundAmountDisplay" step="0.01" min="0.01" required>
+                        </div>
+                        <small class="text-muted">Original amount: <span id="originalAmountDisplay"></span></small>
+                    </div>
+                    
+                    <div class="mb-3" id="refundReasonGroup">
+                        <label for="refundReason" class="form-label">Reason for Refund <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="refundReason" rows="4" placeholder="Please provide a reason for this refund request..." required></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info" id="refundInfoMessage" style="display: none;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="refundInfoText"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="submitRefundBtn" onclick="submitRefundRequest()">
+                    <i class="fas fa-undo me-2"></i>
+                    <span id="submitRefundText">Request Refund</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stats-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.order-card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.order-card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.order-card .card-body {
+    padding: 1.25rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let orders = [];
+let refreshInterval;
+
+$(document).ready(function() {
+    loadOrders();
+    loadDailyStats();
+
+    // Refresh orders every 30 seconds
+    refreshInterval = setInterval(loadOrders, 30000);
+    // Refresh stats every 60 seconds
+    setInterval(loadDailyStats, 60000);
+    
+    // Show/hide transaction ID field based on payment method
+    $('#paymentMethod').change(function() {
+        const method = $(this).val();
+        if (method === 'card' || method === 'mobile') {
+            $('#transactionIdGroup').show();
+            $('#transactionId').prop('required', true);
+        } else {
+            $('#transactionIdGroup').hide();
+            $('#transactionId').prop('required', false);
+        }
+    });
+    
+    // Prevent form submission on Enter key for password modal
+    $('#pendingRefundPasswordForm').on('submit', function(e) {
+        e.preventDefault();
+        verifyPendingRefundAccess();
+    });
+    
+    // Also handle Enter key in password field
+    $('#pendingRefundPassword').on('keypress', function(e) {
+        if (e.which === 13) { // Enter key
+            e.preventDefault();
+            verifyPendingRefundAccess();
+        }
+    });
+});
+
+let allOrders = []; // Store all orders before filtering
+
+function loadOrders() {
+    // Add cache-busting parameter to ensure fresh data
+    const cacheBuster = '?_=' + new Date().getTime();
+    $.get('/api/get_orders' + cacheBuster)
+        .done(function(data) {
+            allOrders = data.orders; // Store all orders
+            applyFilters(); // Apply current filter settings
+        })
+        .fail(function(xhr, status, error) {
+            console.error('Error loading orders:', error);
+        });
+}
+
+// Handle Ready toggle - automatically pairs with Unpaid
+function handleReadyToggle() {
+    const isReadyChecked = $('#filterReady').is(':checked');
+    applyFilters();
+}
+
+// Handle Served toggle - automatically pairs with Paid
+function handleServedToggle() {
+    const isServedChecked = $('#filterServed').is(':checked');
+    applyFilters();
+}
+
+function applyFilters() {
+    // Get filter states
+    const showReady = $('#filterReady').is(':checked');
+    const showServed = $('#filterServed').is(':checked');
+    const showPending = $('#filterPending').is(':checked');
+    const showPreparing = $('#filterPreparing').is(':checked');
+    
+    // Check if at least one status filter is selected
+    const hasStatusFilter = showReady || showServed || showPending || showPreparing;
+    if (!hasStatusFilter) {
+        // If no status filter is selected, show empty
+        orders = [];
+        updateStats();
+        renderOrders();
+        return;
+    }
+    
+    // Filter orders based on toggle switches with paired logic
+    orders = allOrders.filter(order => {
+        // Always exclude cancelled orders
+        if (order.status === 'cancelled') return false;
+        
+        const isPaid = order.has_payment === true;
+        
+        // Ready & Unpaid (paired) - shows ready orders that are unpaid
+        if (showReady) {
+            if (order.status === 'ready' && !isPaid) {
+                return true;
+            }
+        }
+        
+        // Served & Paid (paired) - shows served orders that are paid
+        if (showServed) {
+            if (order.status === 'served' && isPaid) {
+                return true;
+            }
+        }
+        
+        // Pending - shows all pending orders (both paid and unpaid)
+        if (showPending) {
+            if (order.status === 'pending') {
+                return true;
+            }
+        }
+        
+        // Preparing - shows all preparing orders (both paid and unpaid)
+        if (showPreparing) {
+            if (order.status === 'preparing') {
+                return true;
+            }
+        }
+        
+        return false;
+    });
+    
+    updateStats();
+    renderOrders();
+}
+
+function refreshOrders() {
+    loadOrders();
+}
+
+function loadDailyStats() {
+    $.get('/api/get_stats')
+        .done(function(data) {
+            if (!data.success) return;
+            // Completed today = today_orders (includes manual payments)
+            $('#completed-today').text(data.today_orders || 0);
+            // Total amount = today's revenue
+            $('#total-amount').text('$' + (parseFloat(data.today_revenue) || 0).toFixed(2));
+            // Avg order
+            const avg = data.today_orders > 0 ? data.today_revenue / data.today_orders : 0;
+            $('#avg-order').text('$' + avg.toFixed(2));
+        })
+        .fail(function() {
+            console.error('Could not load daily stats');
+        });
+}
+
+function updateStats() {
+    // Pending payments = visible unpaid ready orders
+    const pendingPayments = orders.filter(o => o.status === 'ready' && !o.has_payment).length;
+    $('#pending-payments').text(pendingPayments);
+}
+
+function renderOrders() {
+    const container = $('#orders-container');
+    container.empty();
+    
+    if (orders.length === 0) {
+        container.html(`
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No orders ready for payment</h5>
+                <p class="text-muted">Orders will appear here when they are ready to be paid</p>
+            </div>
+        `);
+        return;
+    }
+    
+    orders.forEach(order => {
+        const orderCard = createOrderCard(order);
+        container.append(orderCard);
+    });
+}
+
+function createOrderCard(order) {
+    const statusClass = getStatusClass(order.status);
+    const statusIcon = getStatusIcon(order.status);
+    
+    return `
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card order-card h-100" style="cursor: ${order.has_payment ? 'pointer' : 'default'};" ${order.has_payment ? `onclick="showOrderReceiptFromCard(${order.id})"` : ''}>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Table ${order.table_number}
+                    </h6>
+                    <span class="status-badge ${statusClass}">
+                        <i class="${statusIcon} me-1"></i>
+                        ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Order ID: ${order.id}</small><br>
+                        <small class="text-muted">Time: ${new Date(order.created_at).toLocaleTimeString()}</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Items:</h6>
+                        ${order.items.map(item => `
+                            <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                                <div>
+                                    <strong>${item.name}</strong><br>
+                                    <small class="text-muted">Qty: ${item.quantity}</small>
+                                </div>
+                                <div class="text-end">
+                                    <strong>$${(item.unit_price * item.quantity).toFixed(2)}</strong>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="text-success mb-0">$${order.total_amount.toFixed(2)}</h5>
+                            <small class="text-muted">Total Amount</small>
+                        </div>
+                        ${order.has_payment === true ? `
+                            ${order.has_pending_refund === true ? `
+                                <button class="badge bg-warning fs-6 px-3 py-2" style="border: none; cursor: pointer;" onclick="event.stopPropagation(); showPendingRefundModal(${order.id}, ${order.refund_request_id})">
+                                    <i class="fas fa-clock me-2"></i>
+                                    Pending Refund
+                                </button>
+                            ` : `
+                                <span class="badge bg-success fs-6 px-3 py-2">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Paid
+                                </span>
+                            `}
+                        ` : `
+                            <button class="btn btn-success btn-lg" onclick="event.stopPropagation(); openPaymentModal('${order.id}')">
+                                <i class="fas fa-credit-card me-2"></i>
+                                Process Payment
+                            </button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'ready': return 'bg-info text-white';
+        case 'served': return 'bg-success text-white';
+        default: return 'bg-secondary text-white';
+    }
+}
+
+function getStatusIcon(status) {
+    switch(status) {
+        case 'ready': return 'fas fa-clock';
+        case 'served': return 'fas fa-check-circle';
+        default: return 'fas fa-info-circle';
+    }
+}
+
+function openPaymentModal(orderId) {
+    const order = orders.find(o => o.id == orderId);
+    if (!order) return;
+    
+    $('#paymentOrderId').val(orderId);
+    $('#paymentAmount').val(order.total_amount);
+    $('#paymentMethod').val('');
+    $('#transactionId').val('');
+    $('#paymentNotes').val('');
+    $('#transactionIdGroup').hide();
+    
+    // Populate order details
+    $('#orderDetails').html(`
+        <div class="mb-3">
+            <strong>Order ID:</strong> ${order.id}<br>
+            <strong>Table:</strong> ${order.table_number}<br>
+            <strong>Customer:</strong> ${order.customer_name || 'Walk-in'}<br>
+            <strong>Time:</strong> ${new Date(order.created_at).toLocaleString()}
+        </div>
+        <div class="mb-3">
+            <h6>Items:</h6>
+            ${order.items.map(item => `
+                <div class="d-flex justify-content-between p-2 bg-light rounded mb-2">
+                    <span>${item.name} x${item.quantity}</span>
+                    <span>$${(item.unit_price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('')}
+        </div>
+        <div class="text-end">
+            <h5 class="text-success">Total: $${order.total_amount.toFixed(2)}</h5>
+        </div>
+    `);
+    
+    $('#paymentModal').modal('show');
+}
+
+function processPayment() {
+    const orderId = $('#paymentOrderId').val();
+    const paymentMethod = $('#paymentMethod').val();
+    const transactionId = $('#transactionId').val();
+    const notes = $('#paymentNotes').val();
+    
+    if (!paymentMethod) {
+        showAlert('Please select a payment method', 'danger');
+        return;
+    }
+    
+    if ((paymentMethod === 'card' || paymentMethod === 'mobile') && !transactionId) {
+        showAlert('Transaction ID is required for card/mobile payments', 'danger');
+        return;
+    }
+    
+    const paymentData = {
+        order_id: orderId,
+        amount: parseFloat($('#paymentAmount').val()),
+        payment_method: paymentMethod,
+        transaction_id: transactionId,
+        notes: notes
+    };
+    
+    $.ajax({
+        url: '/api/create_payment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(paymentData),
+        success: function(response) {
+            if (response.success) {
+                $('#paymentModal').modal('hide');
+                showReceipt(paymentData, orders.find(o => o.id == orderId));
+                // Refresh orders list after a short delay to ensure database is updated
+                setTimeout(function() {
+                    loadOrders();
+                }, 500);
+                showAlert('Payment processed successfully!', 'success');
+            } else {
+                showAlert('Error processing payment: ' + response.message, 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            showAlert('Error processing payment: ' + error, 'danger');
+        }
+    });
+}
+
+// Store current receipt data for refund
+let currentReceiptData = null;
+
+function showOrderReceiptFromCard(orderId) {
+    // Get order and payment data
+    const order = orders.find(o => o.id == orderId);
+    if (!order) {
+        showAlert('Order not found', 'danger');
+        return;
+    }
+    
+    // Get payment data for this order
+    $.get(`/api/get_payment_by_order/${orderId}`)
+        .done(function(response) {
+            if (response.success && response.payment) {
+                const payment = response.payment;
+                showReceiptFromPayment(payment, order);
+            } else {
+                showAlert('Payment not found for this order', 'warning');
+            }
+        })
+        .fail(function() {
+            showAlert('Error loading payment data', 'danger');
+        });
+}
+
+function showReceiptFromPayment(payment, order) {
+    currentReceiptData = { payment, order };
+    const amount = payment.amount;
+    const payment_method = payment.payment_method;
+    const transaction_id = payment.transaction_id || '';
+    const payment_date = payment.created_at;
+    
+    $('#receiptBody').html(`
+        <div class="text-center mb-4">
+            <h4>Payment Receipt</h4>
+            <p class="text-muted">Restaurant Management System</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Order ID:</strong><br>
+                <strong>Table:</strong><br>
+                <strong>Payment ID:</strong><br>
+                <strong>Date:</strong><br>
+                <strong>Time:</strong>
+            </div>
+            <div class="col-6 text-end">
+                ${order.id}<br>
+                ${order.table_number}<br>
+                ${payment.id}<br>
+                ${new Date(payment_date).toLocaleDateString()}<br>
+                ${new Date(payment_date).toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="mb-3">
+            <h6>Items:</h6>
+            ${order.items && order.items.length > 0 ? order.items.map(item => `
+                <div class="d-flex justify-content-between p-2 bg-light rounded mb-2">
+                    <span>${escapeHtml(item.name)} x${item.quantity}</span>
+                    <span>$${((item.unit_price || item.price) * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('') : '<p class="text-muted">No items</p>'}
+        </div>
+        
+        <hr>
+        
+        <div class="row">
+            <div class="col-6">
+                <strong>Total Amount:</strong><br>
+                <strong>Payment Method:</strong><br>
+                ${transaction_id ? '<strong>Transaction ID:</strong><br>' : ''}
+                ${payment.notes ? '<strong>Notes:</strong>' : ''}
+            </div>
+            <div class="col-6 text-end">
+                $${amount.toFixed(2)}<br>
+                ${payment_method.charAt(0).toUpperCase() + payment_method.slice(1).replace('_', ' ')}<br>
+                ${transaction_id || ''}<br>
+                ${payment.notes ? escapeHtml(payment.notes) : ''}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <p class="text-muted">Please keep this receipt for your records</p>
+        </div>
+    `);
+    
+    // Show/hide refund button based on permissions and check for existing requests
+    checkRefundPermission(payment.id);
+    checkExistingRefundRequest(payment.id);
+    
+    $('#receiptModal').modal('show');
+}
+
+function checkExistingRefundRequest(paymentId) {
+    // Check if there's already a refund request for this payment
+    $.get(`/api/get_refund_requests?status=pending`)
+        .done(function(response) {
+            if (response.success && response.requests) {
+                const existingRequest = response.requests.find(req => req.payment_id === paymentId);
+                if (existingRequest) {
+                    // Show request status
+                    $('#receiptBody').append(`
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>Refund Request Pending</strong><br>
+                            <small>Request ID: ${existingRequest.id} | Status: ${existingRequest.status}<br>
+                            ${existingRequest.reason ? 'Reason: ' + escapeHtml(existingRequest.reason) : ''}</small>
+                        </div>
+                    `);
+                    $('#refundBtn').hide();
+                }
+            }
+        })
+        .fail(function() {
+            // Silently fail - not critical
+        });
+}
+
+function showReceipt(paymentData, order) {
+    // This is for payments just processed
+    currentReceiptData = { payment: paymentData, order };
+    const { amount, payment_method, transaction_id } = paymentData;
+    
+    $('#receiptBody').html(`
+        <div class="text-center mb-4">
+            <h4>Payment Receipt</h4>
+            <p class="text-muted">Restaurant Management System</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong>Order ID:</strong><br>
+                <strong>Table:</strong><br>
+                <strong>Date:</strong><br>
+                <strong>Time:</strong>
+            </div>
+            <div class="col-6 text-end">
+                ${order.id}<br>
+                ${order.table_number}<br>
+                ${new Date().toLocaleDateString()}<br>
+                ${new Date().toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="mb-3">
+            <h6>Items:</h6>
+            ${order.items.map(item => `
+                <div class="d-flex justify-content-between">
+                    <span>${item.name} x${item.quantity}</span>
+                    <span>$${(item.unit_price * item.quantity).toFixed(2)}</span>
+                </div>
+            `).join('')}
+        </div>
+        
+        <hr>
+        
+        <div class="row">
+            <div class="col-6">
+                <strong>Total Amount:</strong><br>
+                <strong>Payment Method:</strong><br>
+                ${transaction_id ? '<strong>Transaction ID:</strong><br>' : ''}
+            </div>
+            <div class="col-6 text-end">
+                $${amount.toFixed(2)}<br>
+                ${payment_method.replace('_', ' ').toUpperCase()}<br>
+                ${transaction_id || ''}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <p class="text-muted">Please keep this receipt for your records</p>
+        </div>
+    `);
+    
+    // Hide refund button for newly processed payments
+    $('#refundBtn').hide();
+    
+    $('#receiptModal').modal('show');
+}
+
+function checkRefundPermission(paymentId) {
+    // Check refund settings and user role
+    $.when(
+        $.get('/api/get_setting?key=refund_permission'),
+        $.get('/api/get_user_role')
+    )
+        .done(function(refundResponse, roleResponse) {
+            const refundSetting = (refundResponse[0].success && refundResponse[0].value) ? refundResponse[0].value : 'request_approval';
+            const userRole = (roleResponse[0] && roleResponse[0].role) ? roleResponse[0].role : 'cashier';
+            
+            // Admin/Manager can always refund
+            if (userRole === 'admin' || userRole === 'manager') {
+                $('#refundBtn').show();
+                $('#refundBtn').text('Refund');
+                $('#refundBtn').removeClass('btn-warning').addClass('btn-danger');
+                return;
+            }
+            
+            // Cashier permissions based on setting
+            if (refundSetting === 'allow') {
+                $('#refundBtn').show();
+                $('#refundBtn').text('Refund');
+                $('#refundBtn').removeClass('btn-warning').addClass('btn-danger');
+            } else if (refundSetting === 'request_approval') {
+                $('#refundBtn').show();
+                $('#refundBtn').text('Request Refund');
+                $('#refundBtn').removeClass('btn-danger').addClass('btn-warning');
+            } else {
+                $('#refundBtn').hide();
+            }
+        })
+        .fail(function() {
+            // Default to request approval on error
+            $('#refundBtn').show();
+            $('#refundBtn').text('Request Refund');
+            $('#refundBtn').removeClass('btn-danger').addClass('btn-warning');
+        });
+}
+
+function showRefundModal() {
+    if (!currentReceiptData || !currentReceiptData.payment) {
+        showAlert('No payment data available', 'danger');
+        return;
+    }
+    
+    const paymentId = currentReceiptData.payment.id || currentReceiptData.payment.payment_id;
+    const orderId = currentReceiptData.order.id;
+    const amount = currentReceiptData.payment.amount;
+    const needsApproval = $('#refundBtn').hasClass('btn-warning');
+    
+    // Populate form
+    $('#refundPaymentId').val(paymentId);
+    $('#refundOrderId').val(orderId);
+    $('#refundAmount').val(amount);
+    $('#refundNeedsApproval').val(needsApproval ? 'true' : 'false');
+    $('#refundAmountDisplay').val(amount.toFixed(2));
+    $('#originalAmountDisplay').text('$' + amount.toFixed(2));
+    $('#refundReason').val('');
+    
+    // Update UI based on approval status
+    if (needsApproval) {
+        $('#refundModalTitle').text('Request Refund');
+        $('#submitRefundText').text('Request Refund');
+        $('#refundReasonGroup').show();
+        $('#refundReason').attr('required', true);
+        $('#refundInfoMessage').show();
+        $('#refundInfoText').text('This refund request will require admin/manager approval before processing.');
+    } else {
+        $('#refundModalTitle').text('Process Refund');
+        $('#submitRefundText').text('Process Refund');
+        $('#refundReasonGroup').hide();
+        $('#refundReason').attr('required', false);
+        $('#refundInfoMessage').show();
+        $('#refundInfoText').text('This refund will be processed immediately. Are you sure you want to continue?');
+    }
+    
+    // Show modal
+    $('#refundRequestModal').modal('show');
+    
+    // Focus on reason field if needed
+    if (needsApproval) {
+        setTimeout(() => {
+            $('#refundReason').focus();
+        }, 300);
+    }
+}
+
+function submitRefundRequest() {
+    const paymentId = $('#refundPaymentId').val();
+    const orderId = $('#refundOrderId').val();
+    const originalAmount = parseFloat($('#refundAmount').val());
+    const refundAmount = parseFloat($('#refundAmountDisplay').val());
+    const reason = $('#refundReason').val().trim();
+    const needsApproval = $('#refundNeedsApproval').val() === 'true';
+    
+    // Validate refund amount
+    if (!refundAmount || refundAmount <= 0) {
+        showAlert('Please enter a valid refund amount', 'warning');
+        $('#refundAmountDisplay').focus();
+        return;
+    }
+    
+    if (refundAmount > originalAmount) {
+        showAlert(`Refund amount cannot exceed original payment amount of $${originalAmount.toFixed(2)}`, 'warning');
+        $('#refundAmountDisplay').focus();
+        return;
+    }
+    
+    // Validate reason if needed
+    if (needsApproval && !reason) {
+        showAlert('Please provide a reason for the refund request', 'warning');
+        $('#refundReason').focus();
+        return;
+    }
+    
+    // Show info for partial refunds in the modal (already visible to user)
+    if (refundAmount < originalAmount) {
+        // User can see the partial amount they entered, no need for confirmation
+    }
+    
+    // Disable submit button
+    $('#submitRefundBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+    
+    $.ajax({
+        url: '/api/refund_payment',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            payment_id: parseInt(paymentId),
+            order_id: parseInt(orderId),
+            amount: refundAmount,
+            reason: reason
+        }),
+        success: function(response) {
+            $('#refundRequestModal').modal('hide');
+            
+            if (response.success) {
+                if (response.processed) {
+                    showAlert('Refund processed successfully!', 'success');
+                } else {
+                    showAlert('Refund request submitted. Waiting for admin/manager approval.', 'info');
+                }
+                $('#receiptModal').modal('hide');
+                loadOrders(); // Refresh orders list
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error processing refund';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        },
+        complete: function() {
+            // Re-enable submit button
+            const needsApproval = $('#refundNeedsApproval').val() === 'true';
+            $('#submitRefundBtn').prop('disabled', false);
+            $('#submitRefundBtn').html(`<i class="fas fa-undo me-2"></i><span>${needsApproval ? 'Request Refund' : 'Process Refund'}</span>`);
+        }
+    });
+}
+
+function showPendingRefundModal(orderId, refundRequestId) {
+    // Always show password verification modal - password check will verify admin/manager access
+    $('#pendingRefundOrderId').val(orderId);
+    $('#pendingRefundRequestId').val(refundRequestId);
+    $('#pendingRefundPassword').val('');
+    $('#pendingRefundPasswordModal').modal('show');
+    setTimeout(() => {
+        $('#pendingRefundPassword').focus();
+    }, 300);
+}
+
+function verifyPendingRefundAccess() {
+    const password = $('#pendingRefundPassword').val();
+    const orderId = $('#pendingRefundOrderId').val();
+    const refundRequestId = $('#pendingRefundRequestId').val();
+    
+    console.log('Verifying password access:', { orderId, refundRequestId, hasPassword: !!password });
+    
+    if (!password) {
+        showAlert('Please enter your password', 'warning');
+        $('#pendingRefundPassword').focus();
+        return;
+    }
+    
+    if (!orderId || !refundRequestId) {
+        console.error('Missing orderId or refundRequestId:', { orderId, refundRequestId });
+        showAlert('Error: Missing order or refund request information. Please try again.', 'danger');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/verify_password',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ password: password }),
+        success: function(response) {
+            console.log('Password verification response:', response);
+            if (response.success) {
+                // Hide password modal first
+                const passwordModal = bootstrap.Modal.getInstance(document.getElementById('pendingRefundPasswordModal'));
+                if (passwordModal) {
+                    passwordModal.hide();
+                } else {
+                    $('#pendingRefundPasswordModal').modal('hide');
+                }
+                
+                // Wait a bit for modal to fully close, then load refund details
+                setTimeout(function() {
+                    console.log('Calling viewRefundRequestDetails with:', { orderId, refundRequestId });
+                    viewRefundRequestDetails(orderId, refundRequestId);
+                }, 300);
+            } else {
+                showAlert('Invalid password. Access denied.', 'danger');
+                $('#pendingRefundPassword').val('').focus();
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Password verification error:', xhr, status, error);
+            showAlert('Error verifying password: ' + error, 'danger');
+        }
+    });
+}
+
+function viewRefundRequestDetails(orderId, refundRequestId) {
+    console.log('viewRefundRequestDetails called with:', { orderId, refundRequestId });
+    
+    // Get refund request details
+    $.get(`/api/get_refund_requests?status=all`)
+        .done(function(response) {
+            console.log('Refund requests response:', response);
+            if (response.success && response.requests) {
+                const request = response.requests.find(r => r.id == refundRequestId || r.id == parseInt(refundRequestId));
+                console.log('Found refund request:', request);
+                
+                if (request) {
+                    // Try to get order from current filtered orders first
+                    let order = typeof orders !== 'undefined' ? orders.find(o => o.id == orderId || o.id == parseInt(orderId)) : null;
+                    
+                    // If order not in filtered list, try to get from allOrders
+                    if (!order && typeof allOrders !== 'undefined') {
+                        order = allOrders.find(o => o.id == orderId || o.id == parseInt(orderId));
+                    }
+                    
+                    console.log('Found order:', order);
+                    
+                    // If still not found, fetch from API
+                    if (!order) {
+                        console.log('Order not in local data, fetching from API...');
+                        $.get(`/api/get_orders`)
+                            .done(function(ordersResponse) {
+                                console.log('Orders API response:', ordersResponse);
+                                if (ordersResponse.orders) {
+                                    order = ordersResponse.orders.find(o => o.id == orderId || o.id == parseInt(orderId));
+                                    if (order) {
+                                        console.log('Order found from API, showing modal');
+                                        showRefundRequestModal(request, order);
+                                    } else {
+                                        console.error('Order not found in API response');
+                                        showAlert('Order not found in system', 'danger');
+                                    }
+                                } else {
+                                    console.error('No orders in API response');
+                                    showAlert('Error loading order details', 'danger');
+                                }
+                            })
+                            .fail(function(xhr, status, error) {
+                                console.error('Error fetching orders:', xhr, status, error);
+                                showAlert('Error loading order details', 'danger');
+                            });
+                    } else {
+                        // Show refund request in a modal
+                        console.log('Showing refund request modal');
+                        showRefundRequestModal(request, order);
+                    }
+                } else {
+                    console.error('Refund request not found:', refundRequestId);
+                    showAlert('Refund request not found. Request ID: ' + refundRequestId, 'danger');
+                }
+            } else {
+                console.error('Invalid refund requests response:', response);
+                showAlert('Error loading refund request: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        })
+        .fail(function(xhr, status, error) {
+            console.error('Error loading refund requests:', xhr, status, error);
+            showAlert('Error loading refund request: ' + error, 'danger');
+        });
+}
+
+function showRefundRequestModal(request, order) {
+    console.log('Showing refund request modal:', { request, order });
+    
+    // Ensure we have valid data
+    if (!request || !order) {
+        showAlert('Missing refund request or order data', 'danger');
+        return;
+    }
+    
+    // Create a modal to show refund request details with approve/reject options
+    const requestId = request.id;
+    const orderId = order.id;
+    const status = request.status || 'pending';
+    const amount = parseFloat(request.amount || 0);
+    const paymentId = request.payment_id || 'N/A';
+    const tableNumber = order.table_number || 'N/A';
+    const reason = request.reason || '';
+    const requesterName = request.requester ? request.requester.name : 'Unknown';
+    const requesterUsername = request.requester ? request.requester.username : 'Unknown';
+    const createdAt = request.created_at ? new Date(request.created_at).toLocaleString() : 'N/A';
+    const paymentMethod = request.payment ? request.payment.payment_method : 'N/A';
+    const transactionId = request.payment && request.payment.transaction_id ? request.payment.transaction_id : '';
+    
+    const modalHtml = `
+        <div class="modal fade" id="viewRefundRequestModal" tabindex="-1" role="dialog" aria-labelledby="viewRefundRequestModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="viewRefundRequestModalLabel">Refund Request Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Request ID:</strong> ${requestId}</p>
+                                <p><strong>Payment ID:</strong> ${paymentId}</p>
+                                <p><strong>Order ID:</strong> ${orderId} (Table ${tableNumber})</p>
+                                <p><strong>Amount:</strong> <span class="text-success fw-bold">$${amount.toFixed(2)}</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Requested By:</strong> ${escapeHtml(requesterName)} (${escapeHtml(requesterUsername)})</p>
+                                <p><strong>Requested At:</strong> ${createdAt}</p>
+                                ${request.approved_at ? `<p><strong>${request.status === 'processed' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Reviewed'} At:</strong> ${new Date(request.approved_at).toLocaleString()}</p>` : ''}
+                                ${request.approver ? `<p><strong>${request.status === 'processed' ? 'Approved' : request.status === 'rejected' ? 'Rejected' : 'Reviewed'} By:</strong> ${escapeHtml((request.approver.name && request.approver.name !== request.approver.role) ? request.approver.name : request.approver.username || 'Unknown')}${request.approver.username ? ` (${escapeHtml(request.approver.username)})` : ''}</p>` : ''}
+                                ${request.verified_admin ? `<p><strong>Verified with Admin:</strong> ${escapeHtml(request.verified_admin.name || request.verified_admin.username)} (${escapeHtml(request.verified_admin.username)})</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        ${reason ? `
+                            <div class="alert alert-info">
+                                <strong>Reason:</strong><br>
+                                ${escapeHtml(reason)}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="mb-3">
+                            <strong>Payment Details:</strong><br>
+                            Method: ${paymentMethod}<br>
+                            ${transactionId ? `Transaction ID: ${escapeHtml(transactionId)}` : ''}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-success" onclick="approveRequestFromModal(${requestId})">
+                            <i class="fas fa-check me-2"></i>Approve
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="showRejectModalFromView(${requestId})">
+                            <i class="fas fa-times me-2"></i>Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    $('#viewRefundRequestModal').remove();
+    
+    // Add modal to body
+    $('body').append(modalHtml);
+    
+    // Initialize and show modal using Bootstrap 5
+    const modalElement = document.getElementById('viewRefundRequestModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        
+        // Show the modal
+        modal.show();
+        
+        // Clean up on close
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            $(this).remove();
+        });
+    } else {
+        console.error('Modal element not found after creation');
+        showAlert('Error displaying refund request modal', 'danger');
+    }
+}
+
+function approveRequestFromModal(requestId) {
+    // No confirmation dialog - user already authenticated with password
+    $.ajax({
+        url: '/api/approve_refund_request',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ request_id: requestId }),
+        success: function(response) {
+            if (response.success) {
+                $('#viewRefundRequestModal').modal('hide');
+                showAlert('Refund request approved and processed successfully!', 'success');
+                loadOrders(); // Refresh orders list
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error approving refund request';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function showRejectModalFromView(requestId) {
+    // Create a reject modal inline
+    const rejectModalHtml = `
+        <div class="modal fade" id="rejectModalInline" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Reject Refund Request</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="rejectFormInline">
+                            <input type="hidden" id="rejectRequestIdInline" value="${requestId}">
+                            <div class="mb-3">
+                                <label for="rejectionReasonInline" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="rejectionReasonInline" rows="3" required placeholder="Please provide a reason for rejecting this refund request..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" onclick="submitRejectionInline()">
+                            <i class="fas fa-times me-2"></i>Reject Request
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    $('#rejectModalInline').remove();
+    
+    // Add modal to body
+    $('body').append(rejectModalHtml);
+    
+    // Hide refund request modal and show reject modal
+    $('#viewRefundRequestModal').modal('hide');
+    $('#rejectModalInline').modal('show');
+    
+    // Clean up on close
+    $('#rejectModalInline').on('hidden.bs.modal', function() {
+        $(this).remove();
+    });
+    
+    // Focus on reason field
+    setTimeout(() => {
+        $('#rejectionReasonInline').focus();
+    }, 300);
+}
+
+function submitRejectionInline() {
+    const requestId = $('#rejectRequestIdInline').val();
+    const reason = $('#rejectionReasonInline').val().trim();
+    
+    if (!reason) {
+        showAlert('Please provide a rejection reason', 'warning');
+        $('#rejectionReasonInline').focus();
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/reject_refund_request',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            request_id: parseInt(requestId),
+            rejection_reason: reason
+        }),
+        success: function(response) {
+            if (response.success) {
+                $('#rejectModalInline').modal('hide');
+                showAlert('Refund request rejected', 'success');
+                loadOrders(); // Refresh orders list
+            } else {
+                showAlert('Error: ' + (response.message || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error rejecting refund request';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += ': ' + xhr.responseJSON.message;
+            } else {
+                errorMessage += ': ' + error;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function printReceipt() {
+    const printContent = document.getElementById('receiptBody').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <meta name="viewport" content="width=280, initial-scale=1.0">
+                <title>Receipt</title>
+                <style>
+                    /* 76mm thermal roll: usable width ~72mm, margins 2mm each side */
+                    @page {
+                        size: 76mm auto;
+                        margin: 2mm;
+                    }
+                    * { box-sizing: border-box; color: #000 !important; }
+                    body {
+                        font-family: Arial, Helvetica, sans-serif;
+                        font-size: 12px;
+                        font-weight: bold;
+                        width: 72mm;
+                        margin: 0 auto;
+                        padding: 0;
+                        color: #000;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .text-center { text-align: center; }
+                    .text-end { text-align: right; }
+                    .mb-4 { margin-bottom: 6px; }
+                    .mb-3 { margin-bottom: 4px; }
+                    .mt-4 { margin-top: 6px; }
+                    h4 { font-size: 13px; margin: 4px 0; }
+                    h6 { font-size: 11px; margin: 3px 0; }
+                    p { margin: 2px 0; }
+                    hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+                    .text-muted { color: #000; }
+                    /* Bootstrap grid stripped down to two-column receipt layout */
+                    .row { display: flex; width: 100%; }
+                    .col-6 { width: 50%; }
+                    /* Item lines */
+                    .d-flex { display: flex; }
+                    .justify-content-between { justify-content: space-between; }
+                    .p-2 { padding: 1px 0; }
+                    .bg-light { background: none; }
+                    .rounded { }
+                    strong { font-weight: bold; }
+                    /* Hide screen-only elements */
+                    .alert { display: none; }
+                    html {
+                        height: auto;
+                    }
+                    @media print {
+                        html, body { height: auto; overflow: visible; }
+                        body { width: 72mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = function() {
+        printWindow.focus();
+        printWindow.print();
+    };
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('.main-content').prepend(alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+}
+
+
+
+// Cleanup on page unload
+$(window).on('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}

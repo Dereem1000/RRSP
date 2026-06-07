@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer Dynamics - Client Registration</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/client-portal.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-section">
+        <div class="login-container">
+            <div class="login-header">
+                <a href="/"><img src="images/logo.png" alt="Computer Dynamics" class="logo"></a>
+                <h1>Client Registration</h1>
+                <p>Create your client portal account</p>
+            </div>
+            
+            <form id="registrationForm" class="login-form">
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="companyName">Company Name</label>
+                    <input type="text" id="companyName" name="companyName">
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" disabled style="background-color: #e9ecef; cursor: not-allowed;">
+                    <small style="display: block; margin-top: 5px; color: #6c757d; font-style: italic;">
+                        <i class="fas fa-info-circle"></i> A temporary password will be sent to your email address after registration.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" disabled style="background-color: #e9ecef; cursor: not-allowed;">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                <p>Already have an account? <a href="client-portal.html">Sign in here</a></p>
+                <p>Need help? Contact support at <a href="mailto:support@computerdynamics.com">support@computerdynamics.com</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <script>
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            // Password fields are disabled - temporary password will be sent via email
+            // No need to validate passwords
+            
+            try {
+                const response = await fetch('/api/public/client-signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: data.username,
+                        email: data.email,
+                        // Password not sent - temporary password will be generated server-side
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        companyName: data.companyName || null,
+                        phone: data.phone || null,
+                        address: null // Address field not in form, but can be added later
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('✅ Account created successfully! 📧 IMPORTANT: A temporary password has been sent to your email address. Please check your email (including spam folder) and use the temporary password to log in.', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'client-portal.html';
+                    }, 5000); // Increased timeout to give user time to read the message
+                } else {
+                    showNotification(result.message || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showNotification('Registration failed. Please try again or contact support.', 'error');
+            }
+        });
+        
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <span>${message}</span>
+                    <button class="notification-close" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 

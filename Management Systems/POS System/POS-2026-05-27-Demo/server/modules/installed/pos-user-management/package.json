@@ -1,0 +1,63 @@
+{
+  "name": "pos-user-management",
+  "version": "1.0.0",
+  "description": "User management module for POS system with role-based access control and PIN authentication",
+  "main": "index.js",
+  "author": "POS System",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  },
+  "posDependencies": {
+    "core": ">=1.0.0"
+  },
+  "permissions": [
+    "users:read",
+    "users:write",
+    "users:delete",
+    "settings:read",
+    "settings:write",
+    "auth:manage"
+  ],
+  "settings": {
+    "pinLength": {
+      "type": "number",
+      "default": 4,
+      "description": "Length of PIN for authentication",
+      "min": 4,
+      "max": 8
+    },
+    "pinTimeout": {
+      "type": "number",
+      "default": 300,
+      "description": "PIN authentication timeout in seconds",
+      "min": 60,
+      "max": 3600
+    },
+    "requirePinForSettings": {
+      "type": "boolean",
+      "default": true,
+      "description": "Require PIN authentication to access settings"
+    },
+    "lockSettingsByRole": {
+      "type": "boolean",
+      "default": true,
+      "description": "Lock settings based on user role"
+    },
+    "defaultPin": {
+      "type": "string",
+      "default": "0000",
+      "description": "Default PIN to use when user hasn't set up their own PIN",
+      "minLength": 4,
+      "maxLength": 8
+    },
+    "inactivityTimeout": {
+      "type": "number",
+      "default": 300,
+      "description": "Inactivity timeout in seconds before lock screen appears",
+      "min": 60,
+      "max": 3600
+    }
+  }
+}
+

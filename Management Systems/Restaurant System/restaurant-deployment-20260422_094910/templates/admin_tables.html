@@ -1,0 +1,510 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Tables - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .table-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-card.selected {
+        border-color: #007bff;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    }
+
+    .table-card.occupied {
+        background-color: #fff3cd;
+    }
+
+    .table-card.available {
+        background-color: #d1edff;
+    }
+
+    .qr-code-container {
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-utensils me-2"></i>
+                Table Management
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Table List Section -->
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Restaurant Tables</h6>
+                    <button class="btn btn-success btn-sm" onclick="showAddTableForm()">
+                        <i class="fas fa-plus me-1"></i>Add Table
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="tablesGrid" class="row">
+                        <!-- Tables will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- QR Codes Section -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">QR Codes</h6>
+                    <button class="btn btn-info btn-sm" onclick="printAllQRCodes()">
+                        <i class="fas fa-print me-1"></i>Print All
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="qrCodesSection">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-qrcode fa-2x mb-2"></i><br>
+                            Select a table to view its QR code
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Table Modal -->
+<div class="modal fade" id="tableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tableModalTitle">Add Table</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="tableForm">
+                    <input type="hidden" id="tableId">
+                    <div class="mb-3">
+                        <label for="tableNumber" class="form-label">Table Number</label>
+                        <input type="number" class="form-control" id="tableNumber" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tableCapacity" class="form-label">Seating Capacity</label>
+                        <input type="number" class="form-control" id="tableCapacity" min="1" max="20" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tableLocation" class="form-label">Location (optional)</label>
+                        <input type="text" class="form-control" id="tableLocation" placeholder="e.g., Window, Patio, Private Room">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveTable()">Save Table</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let tablesData = [];
+
+// Load tables on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded - admin_tables.html');
+    console.log('Tables grid element:', document.getElementById('tablesGrid'));
+    loadTables();
+});
+
+function loadTables() {
+    console.log('Loading tables...');
+    fetch('/api/get_tables')
+        .then(response => {
+            console.log('Response received:', response);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Tables data:', data);
+            tablesData = data.tables;
+            renderTables();
+            clearQRCodeSelection();
+        })
+        .catch(error => {
+            console.error('Error loading tables:', error);
+            showAlert('Error loading tables data', 'danger');
+        });
+}
+
+function renderTables() {
+    console.log('Rendering tables, count:', tablesData.length);
+    const container = document.getElementById('tablesGrid');
+    if (!container) {
+        console.error('Tables grid container not found!');
+        return;
+    }
+    container.innerHTML = '';
+    
+    if (tablesData.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center text-muted py-4">
+                <i class="fas fa-table fa-2x mb-2"></i><br>
+                No tables configured yet
+            </div>
+        `;
+        return;
+    }
+    
+    tablesData.forEach(table => {
+        console.log('Rendering table:', table);
+        const isOccupied = table.is_occupied;
+        
+        const tableElement = document.createElement('div');
+        tableElement.className = 'col-md-4 col-sm-6 mb-3';
+        
+        tableElement.innerHTML = `
+            <div class="card table-card ${isOccupied ? 'occupied' : 'available'}" onclick="selectTable(${table.id}, event)">
+                <div class="card-body text-center">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">Table ${table.number}</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); editTable(${table.id})">
+                                    <i class="fas fa-edit me-2"></i>Edit
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); viewTableQR(${table.id})">
+                                    <i class="fas fa-qrcode me-2"></i>View QR Code
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); deleteTable(${table.id})">
+                                    <i class="fas fa-trash me-2"></i>Delete
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p class="card-text">
+                        <i class="fas fa-users me-1"></i>Capacity: ${table.capacity}
+                        ${table.location ? `<br><i class="fas fa-map-marker-alt me-1"></i>${table.location}` : ''}
+                    </p>
+                    <span class="badge ${isOccupied ? 'bg-warning' : 'bg-success'}">
+                        ${isOccupied ? 'Occupied' : 'Available'}
+                    </span>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(tableElement);
+    });
+}
+
+function selectTable(tableId, event) {
+    // Remove previous selections
+    document.querySelectorAll('.table-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Add selection to clicked table
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('selected');
+    }
+    
+    // Show QR code for selected table
+    viewTableQR(tableId);
+}
+
+function viewTableQR(tableId) {
+    const table = tablesData.find(t => t.id === tableId);
+    if (!table) return;
+    
+    // Get current base URL
+    fetch('/api/get_base_url')
+        .then(response => response.json())
+        .then(urlData => {
+            const tableUrl = `${urlData.base_url}/table/${table.number}`;
+            const connectionType = urlData.connection_type;
+            const isLocal = urlData.is_local;
+            
+            const qrSection = document.getElementById('qrCodesSection');
+            qrSection.innerHTML = `
+                <div class="text-center">
+                    <h6 class="mb-3">Table ${table.number} QR Code</h6>
+                    <div class="qr-code-container mb-3">
+                        <img src="/static/qr_codes/table_${table.number}_qr.png" 
+                             alt="Table ${table.number} QR Code" 
+                             class="img-fluid border rounded"
+                             style="max-width: 200px;">
+                    </div>
+                    <div class="alert alert-${isLocal ? 'warning' : 'success'} alert-sm mb-3">
+                        <small>
+                            <i class="fas fa-${isLocal ? 'wifi' : 'globe'} me-1"></i>
+                            ${connectionType === 'local' ? 'Local Network' : 'Internet'} Connection
+                            ${!urlData.has_public_url && !isLocal ? '<br><em>Consider setting a public URL in System Settings</em>' : ''}
+                        </small>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        Customers scan this code to access the menu for Table ${table.number}
+                    </p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-sm" onclick="printTableQR(${table.number})">
+                            <i class="fas fa-print me-1"></i>Print QR Code
+                        </button>
+                        <button class="btn btn-info btn-sm" onclick="copyTableURL(${table.number})">
+                            <i class="fas fa-copy me-1"></i>Copy URL
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="generateNewQR(${table.number})">
+                            <i class="fas fa-sync me-1"></i>Regenerate QR
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Current URL: <br>
+                            <code>${tableUrl}</code>
+                        </small>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Error getting base URL:', error);
+            // Fallback to localhost
+            const qrSection = document.getElementById('qrCodesSection');
+            qrSection.innerHTML = `
+                <div class="text-center">
+                    <h6 class="mb-3">Table ${table.number} QR Code</h6>
+                    <div class="alert alert-danger">
+                        <small>Unable to determine current URL. Using localhost.</small>
+                    </div>
+                    <div class="qr-code-container mb-3">
+                        <img src="/static/qr_codes/table_${table.number}_qr.png" 
+                             alt="Table ${table.number} QR Code" 
+                             class="img-fluid border rounded"
+                             style="max-width: 200px;">
+                    </div>
+                </div>
+            `;
+        });
+}
+
+function clearQRCodeSelection() {
+    const qrSection = document.getElementById('qrCodesSection');
+    qrSection.innerHTML = `
+        <div class="text-center text-muted py-4">
+            <i class="fas fa-qrcode fa-2x mb-2"></i><br>
+            Select a table to view its QR code
+        </div>
+    `;
+}
+
+function printTableQR(tableNumber) {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Table ${tableNumber} QR Code</title>
+                <style>
+                    body { text-align: center; font-family: Arial, sans-serif; margin: 40px; }
+                    h1 { margin-bottom: 20px; }
+                    img { max-width: 300px; margin: 20px 0; }
+                    .instructions { margin-top: 30px; font-size: 14px; color: #666; }
+                </style>
+            </head>
+            <body>
+                <h1>Table ${tableNumber}</h1>
+                <img src="/static/qr_codes/table_${tableNumber}_qr.png" alt="Table ${tableNumber} QR Code">
+                <div class="instructions">
+                    <p>Scan this QR code with your phone to view our menu and place your order!</p>
+                    <p><strong>Table ${tableNumber}</strong></p>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function copyTableURL(tableNumber) {
+    fetch('/api/get_base_url')
+        .then(response => response.json())
+        .then(urlData => {
+            const url = `${urlData.base_url}/table/${tableNumber}`;
+            navigator.clipboard.writeText(url).then(() => {
+                showAlert('Table URL copied to clipboard!', 'success');
+            }).catch(() => {
+                showAlert('Failed to copy URL', 'warning');
+            });
+        })
+        .catch(() => {
+            // Fallback to localhost
+            const url = `http://localhost:5000/table/${tableNumber}`;
+            navigator.clipboard.writeText(url).then(() => {
+                showAlert('Table URL copied to clipboard! (localhost fallback)', 'success');
+            }).catch(() => {
+                showAlert('Failed to copy URL', 'warning');
+            });
+        });
+}
+
+function generateNewQR(tableNumber) {
+    // This would regenerate QR codes with current URL settings
+    showAlert('QR code regeneration feature would be implemented here', 'info');
+}
+
+function printAllQRCodes() {
+    const printWindow = window.open('', '_blank');
+    let qrCodesHTML = '';
+    
+    tablesData.forEach(table => {
+        qrCodesHTML += `
+            <div class="qr-page">
+                <h2>Table ${table.number}</h2>
+                <img src="/static/qr_codes/table_${table.number}_qr.png" alt="Table ${table.number} QR Code">
+                <p>Capacity: ${table.capacity} ${table.location ? `| Location: ${table.location}` : ''}</p>
+                <div class="instructions">
+                    <p>Scan this QR code with your phone to view our menu and place your order!</p>
+                </div>
+            </div>
+        `;
+    });
+    
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>All Table QR Codes</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .qr-page { 
+                        text-align: center; 
+                        page-break-after: always; 
+                        margin-bottom: 40px;
+                        padding: 20px;
+                        border: 1px solid #ddd;
+                    }
+                    .qr-page:last-child { page-break-after: avoid; }
+                    h2 { margin-bottom: 20px; }
+                    img { max-width: 250px; margin: 20px 0; }
+                    .instructions { margin-top: 20px; font-size: 14px; color: #666; }
+                    @media print {
+                        .qr-page { border: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${qrCodesHTML}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Add/Edit Table Functions
+function showAddTableForm() {
+    document.getElementById('tableModalTitle').textContent = 'Add Table';
+    document.getElementById('tableForm').reset();
+    document.getElementById('tableId').value = '';
+    new bootstrap.Modal(document.getElementById('tableModal')).show();
+}
+
+function editTable(tableId) {
+    const table = tablesData.find(t => t.id === tableId);
+    if (!table) return;
+    
+    document.getElementById('tableModalTitle').textContent = 'Edit Table';
+    document.getElementById('tableId').value = table.id;
+    document.getElementById('tableNumber').value = table.number;
+    document.getElementById('tableCapacity').value = table.capacity;
+    document.getElementById('tableLocation').value = table.location || '';
+    
+    new bootstrap.Modal(document.getElementById('tableModal')).show();
+}
+
+function saveTable() {
+    const formData = {
+        id: document.getElementById('tableId').value || null,
+        number: parseInt(document.getElementById('tableNumber').value),
+        capacity: parseInt(document.getElementById('tableCapacity').value),
+        location: document.getElementById('tableLocation').value || null
+    };
+    
+    if (!formData.number || formData.number < 1) {
+        showAlert('Valid table number is required', 'warning');
+        return;
+    }
+    
+    if (!formData.capacity || formData.capacity < 1) {
+        showAlert('Valid seating capacity is required', 'warning');
+        return;
+    }
+    
+    fetch('/api/save_table', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Table saved successfully', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('tableModal')).hide();
+            loadTables(); // Refresh the table list
+        } else {
+            showAlert(data.message || 'Error saving table', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving table:', error);
+        showAlert('Error saving table', 'danger');
+    });
+}
+
+function deleteTable(tableId) {
+    const table = tablesData.find(t => t.id === tableId);
+    if (!table) return;
+    
+    if (!confirm(`Are you sure you want to delete Table ${table.number}?`)) {
+        return;
+    }
+    
+    fetch('/api/delete_table', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tableId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Table deleted successfully', 'success');
+            loadTables(); // Refresh the table list
+        } else {
+            showAlert(data.message || 'Error deleting table', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting table:', error);
+        showAlert('Error deleting table', 'danger');
+    });
+}
+
+
+</script>
+{% endblock %}

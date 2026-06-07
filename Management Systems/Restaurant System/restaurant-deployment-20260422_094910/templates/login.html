@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <!-- Database Connection Status Alert -->
+            {% if database_status and not database_status.connection_available %}
+            <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+                <h5 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Database Connection Issue
+                </h5>
+                <p class="mb-2">
+                    {% if database_status.is_remote_mode %}
+                        The remote database server is not available. 
+                        <strong>Error:</strong> {{ database_status.error_message }}
+                    {% else %}
+                        Local database connection failed. 
+                        <strong>Error:</strong> {{ database_status.error_message }}
+                    {% endif %}
+                </p>
+                <hr>
+                <p class="mb-3">
+                    {% if database_status.is_remote_mode %}
+                        Would you like to switch to local database mode?
+                    {% else %}
+                        Please check your database configuration.
+                    {% endif %}
+                </p>
+                {% if database_status.is_remote_mode %}
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <button type="button" class="btn btn-success btn-sm" onclick="switchToLocalDatabase()">
+                        <i class="fas fa-database me-1"></i>
+                        Switch to Local Database
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="retryConnection()">
+                        <i class="fas fa-redo me-1"></i>
+                        Retry Connection
+                    </button>
+                </div>
+                {% endif %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+            
+            <div class="card mt-5">
+                <div class="card-body text-center p-5">
+                    <h2 class="mb-4">
+                        <i class="fas fa-sign-in-alt text-primary"></i>
+                        Staff Login
+                    </h2>
+                    
+                    <form method="POST" action="{{ url_for('login') }}">
+                        <div class="mb-4">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg" 
+                                   id="username" 
+                                   name="username" 
+                                   required 
+                                   autocomplete="username"
+                                   placeholder="Enter your username">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" 
+                                   class="form-control form-control-lg" 
+                                   id="password" 
+                                   name="password" 
+                                   required 
+                                   autocomplete="current-password"
+                                   placeholder="Enter your password">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            Login
+                        </button>
+                    </form>
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+function switchToLocalDatabase() {
+    if (confirm('Are you sure you want to switch to local database mode? This will disconnect from the remote database server.')) {
+        // Show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Switching...';
+        button.disabled = true;
+        
+        console.log('🔄 Starting database switch...');
+        
+        fetch('/api/switch_to_local_database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            console.log('📡 Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📦 Response data:', data);
+            if (data.success) {
+                // Show success message and reload page
+                showAlert('success', 'Successfully switched to local database mode. The page will reload.', function() {
+                    console.log('🔄 Reloading page...');
+                    window.location.reload();
+                });
+            } else {
+                console.error('❌ Switch failed:', data.error);
+                showAlert('error', 'Failed to switch to local database: ' + (data.error || 'Unknown error'));
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('❌ Network error:', error);
+            showAlert('error', 'Network error: ' + error.message);
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+}
+
+function retryConnection() {
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Retrying...';
+    button.disabled = true;
+    
+    // Reload the page to retry connection
+    setTimeout(() => {
+        window.location.reload();
+    }, 1000);
+}
+
+function showAlert(type, message, callback) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Insert at the top of the container
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+    
+    // Call callback if provided
+    if (callback) {
+        setTimeout(callback, 2000);
+    }
+}
+</script>
+{% endblock %}

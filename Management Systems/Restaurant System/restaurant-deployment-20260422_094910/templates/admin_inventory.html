@@ -1,0 +1,971 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Management - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inventory-card {
+        border-left: 4px solid #28a745;
+    }
+    
+    .low-stock {
+        border-left-color: #dc3545;
+        background-color: #fff5f5;
+    }
+    
+    .out-of-stock {
+        border-left-color: #6c757d;
+        background-color: #f8f9fa;
+    }
+    
+    .stock-level {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .stock-critical { color: #dc3545; }
+    .stock-low { color: #fd7e14; }
+    .stock-ok { color: #28a745; }
+    
+    .inventory-item {
+        transition: transform 0.2s;
+    }
+    
+    .inventory-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-boxes me-2"></i>
+                Inventory Management
+            </h1>
+        </div>
+    </div>
+
+    <!-- Inventory Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Inventory Overview</h6>
+                    <button class="btn btn-success btn-sm" onclick="showAddInventory()">
+                        <i class="fas fa-plus me-1"></i>Add Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card inventory-card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-success">In Stock</h5>
+                                    <h3 class="text-success" id="in-stock-count">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card inventory-card low-stock">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-warning">Low Stock</h5>
+                                    <h3 class="text-warning" id="low-stock-count">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card inventory-card out-of-stock">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-danger">Out of Stock</h5>
+                                    <h3 class="text-danger" id="out-of-stock-count">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card inventory-card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-info">Total Items</h5>
+                                    <h3 class="text-info" id="total-inventory-count">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card inventory-card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-secondary">Waste Qty (Last 7d)</h5>
+                                    <h3 class="text-secondary" id="waste-qty-7d">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Receive Modal -->
+<div class="modal fade" id="receiveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Receive Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="receiveForm">
+                    <div class="mb-3">
+                        <label class="form-label">Quantity</label>
+                        <input id="receiveQty" type="number" step="0.01" min="0" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Unit Cost</label>
+                        <input id="receiveCost" type="number" step="0.01" min="0" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Supplier</label>
+                        <input id="receiveSupplier" type="text" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea id="receiveNotes" class="form-control"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="submitReceive()">Receive</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+<!-- Waste Modal -->
+<div class="modal fade" id="wasteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Waste</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="wasteForm">
+                    <div class="mb-3">
+                        <label class="form-label">Quantity</label>
+                        <input id="wasteQty" type="number" step="0.01" min="0" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reason</label>
+                        <select id="wasteReason" class="form-select">
+                            <option value="spoilage">Spoilage</option>
+                            <option value="over_prep">Over-prep</option>
+                            <option value="spill">Spill</option>
+                            <option value="comp">Comp</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea id="wasteNotes" class="form-control"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitWaste()">Record Waste</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+<!-- Count Modal -->
+<div class="modal fade" id="countModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Inventory Count</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="countForm">
+                    <div class="mb-3">
+                        <label class="form-label">Previous Quantity</label>
+                        <input id="countPrevious" type="number" class="form-control" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Counted Quantity</label>
+                        <input id="countQty" type="number" step="0.01" min="0" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea id="countNotes" class="form-control"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="submitCount()">Save Count</button>
+            </div>
+        </div>
+    </div>
+    </div>
+    <!-- Tabs for Items vs History -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <ul class="nav nav-pills" id="invTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" id="tabBtnItems" onclick="showInvTab('items')">
+                        <i class="fas fa-list-ul me-1"></i> Items
+                    </button>
+                </li>
+                <li class="nav-item ms-2">
+                    <button class="nav-link" id="tabBtnHistory" onclick="showInvTab('history')">
+                        <i class="fas fa-history me-1"></i> History
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="row" id="sectionItems">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">Inventory Items</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>Category</th>
+                                    <th>Current Stock</th>
+                                    <th>Min Stock</th>
+                                    <th>Unit</th>
+                                    <th>Cost</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-tbody">
+                                <!-- Inventory items will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History: Receivings / Wastes / Counts -->
+    <div class="row mt-4 d-none" id="sectionHistory">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0">Inventory History</h6>
+                    <div class="d-flex gap-2">
+                        <input type="date" class="form-control form-control-sm" id="histFrom">
+                        <input type="date" class="form-control form-control-sm" id="histTo">
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadHistory()">Filter</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabReceivings" type="button" role="tab">Receivings</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabWastes" type="button" role="tab">Wastes</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCounts" type="button" role="tab">Counts</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="tabReceivings" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Item</th>
+                                            <th>Qty</th>
+                                            <th>Unit Cost</th>
+                                            <th>Supplier</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="receivingsBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="tabWastes" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Item</th>
+                                            <th>Qty</th>
+                                            <th>Reason</th>
+                                            <th>By</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="wastesBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="tabCounts" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Item</th>
+                                            <th>Previous</th>
+                                            <th>Counted</th>
+                                            <th>By</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="countsBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inventory Management Modal -->
+<div class="modal fade" id="inventoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inventoryModalTitle">Manage Inventory Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inventoryForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="itemName" class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="itemName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="itemCategory" class="form-label">Category</label>
+                                <select class="form-select" id="itemCategory" required>
+                                    <option value="">Select Category</option>
+                                    <option value="ingredients">Ingredients</option>
+                                    <option value="supplies">Supplies</option>
+                                    <option value="equipment">Equipment</option>
+                                    <option value="packaging">Packaging</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="currentStock" class="form-label">Current Stock</label>
+                                <input type="number" class="form-control" id="currentStock" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="minStock" class="form-label">Minimum Stock</label>
+                                <input type="number" class="form-control" id="minStock" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="unit" class="form-label">Unit</label>
+                                <select class="form-select" id="unit" required>
+                                    <option value="">Select Unit</option>
+                                    <option value="kg">Kilograms</option>
+                                    <option value="g">Grams</option>
+                                    <option value="l">Liters</option>
+                                    <option value="ml">Milliliters</option>
+                                    <option value="pcs">Pieces</option>
+                                    <option value="boxes">Boxes</option>
+                                    <option value="bottles">Bottles</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="cost" class="form-label">Cost per Unit</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="cost" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="supplier" class="form-label">Supplier</label>
+                                <input type="text" class="form-control" id="supplier">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveInventoryItem()">Save Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase Order Modal -->
+<div class="modal fade" id="purchaseOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Purchase Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="purchaseOrderForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="poSupplier" class="form-label">Supplier</label>
+                                <input type="text" class="form-control" id="poSupplier" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="poDate" class="form-label">Expected Delivery</label>
+                                <input type="date" class="form-control" id="poDate" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="poNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="poNotes" rows="3"></textarea>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Cost</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poItems">
+                                <!-- Purchase order items will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end">
+                        <strong>Total: $<span id="poTotal">0.00</span></strong>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="createPurchaseOrder()">Create Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let inventoryData = [];
+
+// Load inventory data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadInventoryData();
+    loadHistory();
+    showInvTab('items');
+});
+
+function loadInventoryData() {
+    // Fetch real data from API
+    fetch('/api/get_inventory')
+        .then(response => response.json())
+        .then(data => {
+            if (data.inventory) {
+                inventoryData = data.inventory.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    category: item.category,
+                    current_stock: item.current_stock,
+                    min_stock: item.min_stock,
+                    unit: item.unit,
+                    cost: item.cost,
+                    supplier: item.supplier,
+                    description: item.description
+                }));
+            }
+            updateInventoryDisplay();
+            loadWasteSummary();
+        })
+        .catch(error => {
+            console.error('Error loading inventory data:', error);
+            showAlert('Error loading inventory data', 'danger');
+            // Fallback to mock data
+            inventoryData = [
+                {
+                    id: 1,
+                    name: "Tomatoes",
+                    category: "ingredients",
+                    current_stock: 25,
+                    min_stock: 10,
+                    unit: "kg",
+                    cost: 2.50,
+                    supplier: "Fresh Farms Co.",
+                    description: "Fresh red tomatoes for salads and cooking"
+                },
+                {
+                    id: 2,
+                    name: "Olive Oil",
+                    category: "ingredients",
+                    current_stock: 8,
+                    min_stock: 15,
+                    unit: "l",
+                    cost: 12.00,
+                    supplier: "Mediterranean Imports",
+                    description: "Extra virgin olive oil for cooking and dressings"
+                },
+                {
+                    id: 3,
+                    name: "Paper Towels",
+                    category: "supplies",
+                    current_stock: 0,
+                    min_stock: 20,
+                    unit: "rolls",
+                    cost: 1.50,
+                    supplier: "Office Supplies Inc.",
+                    description: "High-quality paper towels for kitchen use"
+                },
+                {
+                    id: 4,
+                    name: "Chef Knives",
+                    category: "equipment",
+                    current_stock: 5,
+                    min_stock: 8,
+                    unit: "pcs",
+                    cost: 45.00,
+                    supplier: "Professional Kitchen Supply",
+                    description: "Professional grade chef knives"
+                }
+            ];
+            updateInventoryDisplay();
+        });
+}
+
+function updateInventoryDisplay() {
+    const tbody = document.getElementById('inventory-tbody');
+    const inStockCount = document.getElementById('in-stock-count');
+    const lowStockCount = document.getElementById('low-stock-count');
+    const outOfStockCount = document.getElementById('out-of-stock-count');
+    const totalCount = document.getElementById('total-inventory-count');
+    
+    let inStock = 0, lowStock = 0, outOfStock = 0;
+    
+    tbody.innerHTML = '';
+    
+    inventoryData.forEach(item => {
+        let statusClass = '';
+        let statusText = '';
+        
+        if (item.current_stock <= 0) {
+            statusText = 'Out of Stock';
+            statusClass = 'text-danger';
+            outOfStock++;
+        } else if (item.current_stock <= item.min_stock) {
+            statusText = 'Low Stock';
+            statusClass = 'text-warning';
+            lowStock++;
+        } else {
+            statusText = 'In Stock';
+            statusClass = 'text-success';
+            inStock++;
+        }
+        
+        const row = `
+            <tr class="inventory-item">
+                <td>${item.name}</td>
+                <td>${item.category}</td>
+                <td class="stock-level ${statusClass}">${item.current_stock}</td>
+                <td>${item.min_stock}</td>
+                <td>${item.unit}</td>
+                <td>$${item.cost.toFixed(2)}</td>
+                <td><span class="badge ${statusClass === 'text-danger' ? 'bg-danger' : statusClass === 'text-warning' ? 'bg-warning' : 'bg-success'}">${statusText}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editInventoryItem(${item.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-success" onclick="createPurchaseOrderForItem(${item.id})">
+                        <i class="fas fa-shopping-cart"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" title="Receive" onclick="openReceive(${item.id})">
+                        <i class="fas fa-truck-loading"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" title="Waste" onclick="openWaste(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" title="Count" onclick="openCount(${item.id})">
+                        <i class="fas fa-calculator"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+    
+    inStockCount.textContent = inStock;
+    lowStockCount.textContent = lowStock;
+    outOfStockCount.textContent = outOfStock;
+    totalCount.textContent = inventoryData.length;
+}
+
+function loadWasteSummary() {
+    fetch('/api/inventory/wastes')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000);
+            const qty = res.wastes.reduce((sum, w) => {
+                const d = new Date(w.recorded_at);
+                return d >= sevenDaysAgo ? sum + (parseFloat(w.quantity) || 0) : sum;
+            }, 0);
+            document.getElementById('waste-qty-7d').textContent = qty.toFixed(2);
+        })
+        .catch(() => {});
+}
+
+// History tables
+function loadHistory() {
+    const from = document.getElementById('histFrom').value ? new Date(document.getElementById('histFrom').value) : null;
+    const to = document.getElementById('histTo').value ? new Date(document.getElementById('histTo').value) : null;
+
+    // Receivings
+    fetch('/api/inventory/receivings')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const body = document.getElementById('receivingsBody');
+            body.innerHTML = '';
+            (res.receivings || []).filter(rw => withinRange(rw.received_at, from, to)).slice(0, 200)
+                .forEach(rw => body.innerHTML += `
+                    <tr>
+                        <td>${formatDate(rw.received_at)}</td>
+                        <td>${rw.item_name || rw.item_id}</td>
+                        <td>${rw.quantity}</td>
+                        <td>${rw.unit_cost ?? ''}</td>
+                        <td>${rw.supplier ?? ''}</td>
+                        <td>${rw.notes ?? ''}</td>
+                    </tr>`);
+        });
+
+    // Wastes
+    fetch('/api/inventory/wastes')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const body = document.getElementById('wastesBody');
+            body.innerHTML = '';
+            (res.wastes || []).filter(w => withinRange(w.recorded_at, from, to)).slice(0, 200)
+                .forEach(w => body.innerHTML += `
+                    <tr>
+                        <td>${formatDate(w.recorded_at)}</td>
+                        <td>${w.item_name || w.item_id}</td>
+                        <td>${w.quantity}</td>
+                        <td>${w.reason}</td>
+                        <td>${w.recorded_by ?? ''}</td>
+                        <td>${w.notes ?? ''}</td>
+                    </tr>`);
+        });
+
+    // Counts
+    fetch('/api/inventory/counts')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const body = document.getElementById('countsBody');
+            body.innerHTML = '';
+            (res.counts || []).filter(c => withinRange(c.counted_at, from, to)).slice(0, 200)
+                .forEach(c => body.innerHTML += `
+                    <tr>
+                        <td>${formatDate(c.counted_at)}</td>
+                        <td>${c.item_name || c.item_id}</td>
+                        <td>${c.previous_quantity}</td>
+                        <td>${c.counted_quantity}</td>
+                        <td>${c.counted_by ?? ''}</td>
+                        <td>${c.notes ?? ''}</td>
+                    </tr>`);
+        });
+}
+
+function withinRange(dtString, from, to) {
+    try {
+        const d = new Date(dtString);
+        if (from && d < from) return false;
+        if (to) {
+            const toEnd = new Date(to);
+            toEnd.setHours(23,59,59,999);
+            if (d > toEnd) return false;
+        }
+        return true;
+    } catch { return true; }
+}
+
+function formatDate(dtString) {
+    try { return new Date(dtString).toLocaleString(); } catch { return dtString; }
+}
+
+// Simple tab toggle for Items vs History
+function showInvTab(which) {
+    const items = document.getElementById('sectionItems');
+    const hist = document.getElementById('sectionHistory');
+    const btnItems = document.getElementById('tabBtnItems');
+    const btnHist = document.getElementById('tabBtnHistory');
+    if (which === 'items') {
+        items.classList.remove('d-none');
+        hist.classList.add('d-none');
+        btnItems.classList.add('active');
+        btnHist.classList.remove('active');
+    } else {
+        items.classList.add('d-none');
+        hist.classList.remove('d-none');
+        btnItems.classList.remove('active');
+        btnHist.classList.add('active');
+    }
+}
+
+// Modal functions
+function showAddInventory() {
+    document.getElementById('inventoryModalTitle').textContent = 'Add Inventory Item';
+    document.getElementById('inventoryForm').reset();
+    new bootstrap.Modal(document.getElementById('inventoryModal')).show();
+}
+
+function editInventoryItem(itemId) {
+    const item = inventoryData.find(i => i.id === itemId);
+    if (item) {
+        document.getElementById('inventoryModalTitle').textContent = 'Edit Inventory Item';
+        document.getElementById('itemName').value = item.name;
+        document.getElementById('itemCategory').value = item.category;
+        document.getElementById('currentStock').value = item.current_stock;
+        document.getElementById('minStock').value = item.min_stock;
+        document.getElementById('unit').value = item.unit;
+        document.getElementById('cost').value = item.cost;
+        document.getElementById('supplier').value = item.supplier || '';
+        document.getElementById('description').value = item.description || '';
+        
+        new bootstrap.Modal(document.getElementById('inventoryModal')).show();
+    }
+}
+
+function saveInventoryItem() {
+    const formData = {
+        name: document.getElementById('itemName').value,
+        category: document.getElementById('itemCategory').value,
+        current_stock: parseInt(document.getElementById('currentStock').value),
+        min_stock: parseInt(document.getElementById('minStock').value),
+        unit: document.getElementById('unit').value,
+        cost: parseFloat(document.getElementById('cost').value),
+        supplier: document.getElementById('supplier').value,
+        description: document.getElementById('description').value
+    };
+    
+    fetch('/api/save_inventory_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showAlert('Inventory item saved', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('inventoryModal')).hide();
+            loadInventoryData();
+        } else {
+            showAlert(res.message || 'Failed to save item', 'danger');
+        }
+    })
+    .catch(() => showAlert('Error saving item', 'danger'));
+}
+
+function createPurchaseOrderForItem(itemId) {
+    const item = inventoryData.find(i => i.id === itemId);
+    if (item) {
+        document.getElementById('poSupplier').value = item.supplier || '';
+        document.getElementById('poDate').value = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        // Add item to purchase order
+        const poItems = document.getElementById('poItems');
+        poItems.innerHTML = `
+            <tr>
+                <td>${item.name}</td>
+                <td><input type="number" class="form-control form-control-sm" value="${Math.max(10, item.min_stock * 2)}" min="1" onchange="updatePOTotal()"></td>
+                <td>$${item.cost.toFixed(2)}</td>
+                <td class="item-total">$${(Math.max(10, item.min_stock * 2) * item.cost).toFixed(2)}</td>
+            </tr>
+        `;
+        
+        updatePOTotal();
+        new bootstrap.Modal(document.getElementById('purchaseOrderModal')).show();
+    }
+}
+
+function updatePOTotal() {
+    let total = 0;
+    const rows = document.getElementById('poItems').getElementsByTagName('tr');
+    
+    for (let row of rows) {
+        const quantity = parseInt(row.cells[1].querySelector('input').value) || 0;
+        const cost = parseFloat(row.cells[2].textContent.replace('$', '')) || 0;
+        const itemTotal = quantity * cost;
+        row.cells[3].textContent = `$${itemTotal.toFixed(2)}`;
+        total += itemTotal;
+    }
+    
+    document.getElementById('poTotal').textContent = total.toFixed(2);
+}
+
+function createPurchaseOrder() {
+    const supplier = document.getElementById('poSupplier').value;
+    const expected_delivery = document.getElementById('poDate').value;
+    const notes = document.getElementById('poNotes').value;
+    const rows = document.getElementById('poItems').getElementsByTagName('tr');
+    const items = [];
+    for (let row of rows) {
+        items.push({
+            name: row.cells[0].textContent,
+            quantity: parseFloat(row.cells[1].querySelector('input').value) || 0,
+            cost: parseFloat(row.cells[2].textContent.replace('$','')) || 0
+        });
+    }
+    fetch('/api/create_purchase_order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplier, expected_delivery, notes, items })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            showAlert('Purchase order created', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('purchaseOrderModal')).hide();
+        } else {
+            showAlert(res.message || 'Failed to create PO', 'danger');
+        }
+    }).catch(() => showAlert('Error creating PO', 'danger'));
+}
+
+// Receive / Waste / Count modals
+let actionItemId = null;
+
+function openReceive(id) {
+    actionItemId = id;
+    document.getElementById('receiveForm').reset();
+    new bootstrap.Modal(document.getElementById('receiveModal')).show();
+}
+
+function openWaste(id) {
+    actionItemId = id;
+    document.getElementById('wasteForm').reset();
+    new bootstrap.Modal(document.getElementById('wasteModal')).show();
+}
+
+function openCount(id) {
+    actionItemId = id;
+    const item = inventoryData.find(i => i.id === id);
+    document.getElementById('countPrevious').value = item ? item.current_stock : 0;
+    document.getElementById('countForm').reset();
+    new bootstrap.Modal(document.getElementById('countModal')).show();
+}
+
+function submitReceive() {
+    const quantity = parseFloat(document.getElementById('receiveQty').value) || 0;
+    const unit_cost = parseFloat(document.getElementById('receiveCost').value) || 0;
+    const supplier = document.getElementById('receiveSupplier').value;
+    const notes = document.getElementById('receiveNotes').value;
+    fetch('/api/inventory/receive', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: actionItemId, quantity, unit_cost, supplier, notes })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            showAlert('Received into stock', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('receiveModal')).hide();
+            loadInventoryData();
+        } else { showAlert(res.message || 'Receive failed', 'danger'); }
+    }).catch(() => showAlert('Receive error', 'danger'));
+}
+
+function submitWaste() {
+    const qtyField = document.getElementById('wasteQty');
+    const quantity = parseFloat(qtyField.value);
+    if (!quantity || quantity <= 0) {
+        showAlert('Please enter a waste quantity greater than 0', 'warning');
+        qtyField.focus();
+        return;
+    }
+    const reason = document.getElementById('wasteReason').value;
+    const notes = document.getElementById('wasteNotes').value;
+    fetch('/api/inventory/waste', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: actionItemId, quantity, reason, notes })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            showAlert('Waste recorded', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('wasteModal')).hide();
+            loadInventoryData();
+        } else { showAlert(res.message || 'Waste failed', 'danger'); }
+    }).catch(() => showAlert('Waste error', 'danger'));
+}
+
+function submitCount() {
+    const counted_quantity = parseFloat(document.getElementById('countQty').value) || 0;
+    const notes = document.getElementById('countNotes').value;
+    fetch('/api/inventory/count', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: actionItemId, counted_quantity, notes })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            showAlert('Count saved', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('countModal')).hide();
+            loadInventoryData();
+        } else { showAlert(res.message || 'Count failed', 'danger'); }
+    }).catch(() => showAlert('Count error', 'danger'));
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

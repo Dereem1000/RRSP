@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+apps/web/.next/
+.next/
+data/computer_dynamics.db
+data/computer_dynamics.db-*
+data/*.db
+data/*.db-*
+# Keep data/ tracked or untracked as you prefer; ignore DB backups only
+data/*.db-journal
+data/backups/
+data/.demo_mode/
+*.log
+.DS_Store
+Thumbs.db
+.vite/
+coverage/
+**/sftp_keys/
+**/license.encrypted

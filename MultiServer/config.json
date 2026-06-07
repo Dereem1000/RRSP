@@ -1,0 +1,69 @@
+{
+  "settings": {
+    "base_domain": "https://www.computerdynamicstt.com",
+    "host": "localhost",
+    "url_path_prefix": "/demo",
+    "manager_port": 5674,
+    "demo_port_range_start": 8100,
+    "demo_port_range_end": 8990,
+    "port_block_step": 10,
+    "website_public_dir": "F:/Computer Dynamics System v2/apps/web/public",
+    "ngrok_bat_name": "start-ngrok.bat",
+    "ngrok_inspector_port_start": 4040
+  },
+  "systems": [
+    {
+      "id": "cabb6ce6-face-4837-9cb4-d2abc6ec83a2",
+      "name": "Lawfirm Deployment 20260416 004524   Demo",
+      "slug": "lawfirm",
+      "working_dir": "F:/Computer Dynamics System v2/Management Systems/Document Manager/lawfirm-deployment-20260416_004524 - Demo",
+      "type": "pm2-ecosystem",
+      "client_port": 8100,
+      "server_port": 8100,
+      "demo_port": 8100,
+      "extra_ports": [
+        8101
+      ],
+      "command": "",
+      "enabled": true,
+      "notes": "",
+      "demo_page": "document-management.html",
+      "ngrok_enabled": false,
+      "ngrok_bat": ""
+    },
+    {
+      "id": "dd0de1c5-a44e-48fe-b9f7-32a4d451d548",
+      "name": "Restaurant Deployment 20260422 094910",
+      "slug": "repair-restaurant",
+      "working_dir": "F:/Computer Dynamics System v2/Management Systems/Restaurant System/restaurant-deployment-20260422_094910",
+      "type": "python-flask",
+      "client_port": 8110,
+      "server_port": 8110,
+      "demo_port": 8110,
+      "extra_ports": [],
+      "command": "",
+      "enabled": true,
+      "notes": "",
+      "demo_page": "restaurant-management-learn-more.html",
+      "ngrok_enabled": false,
+      "ngrok_bat": ""
+    },
+    {
+      "id": "7f414e2c-f3e8-466c-b0f1-57e0f2e49d91",
+      "name": "Pos 2026 05 27 Demo",
+      "slug": "pos-2026-05-27-demo",
+      "working_dir": "F:/Computer Dynamics System v2/Management Systems/POS System/POS-2026-05-27-Demo",
+      "type": "custom",
+      "client_port": 8120,
+      "server_port": 8121,
+      "demo_port": 8120,
+      "extra_ports": [],
+      "command": "",
+      "enabled": true,
+      "notes": "",
+      "demo_page": "pos-system-learn-more.html",
+      "ngrok_enabled": false,
+      "ngrok_bat": ""
+    }
+  ]
+}

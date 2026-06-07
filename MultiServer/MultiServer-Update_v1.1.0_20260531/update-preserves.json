@@ -1,0 +1,49 @@
+{
+  "description": "Files and folders that must never ship in an update payload or overwrite an existing install.",
+  "excludeFromPayload": [
+    "config.json",
+    "config.example.json",
+    "demos-manifest.json",
+    "demo-pages.json",
+    "DISTRIBUTION-MANIFEST.json",
+    "deploy/Caddyfile",
+    "logs"
+  ],
+  "verifyAbsentFromPayload": [
+    "config.json",
+    "demos-manifest.json",
+    "demo-pages.json",
+    "deploy/Caddyfile"
+  ],
+  "preserveOnTarget": {
+    "files": [
+      "config.json",
+      "demos-manifest.json",
+      "demo-pages.json",
+      "DISTRIBUTION-MANIFEST.json",
+      "Caddyfile"
+    ],
+    "filePatterns": [
+      "config.json.bak*",
+      "*.log"
+    ],
+    "directories": [
+      "logs",
+      ".git",
+      "distributions",
+      "__pycache__",
+      ".venv",
+      "venv",
+      ".cursor",
+      ".vscode"
+    ]
+  },
+  "notes": {
+    "config.json": "Systems, ports, slugs, ngrok flags — unique per machine.",
+    "demos-manifest.json": "Exported website manifest if saved in install folder.",
+    "demo-pages.json": "Website page map if synced locally.",
+    "deploy/Caddyfile": "Generated from local config.json (ports/slugs). Regenerate with deploy/install-caddy.ps1 after update.",
+    "logs": "Per-system demo run logs.",
+    "distributions": "Local update packages built on this machine."
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "computer-dynamics-v2",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Computer Dynamics MSP Intranet — Next.js + TypeScript (legacy SQLite compatible)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @cd-v2/web",
+    "dev:license": "cd license_activation_system_new && set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& python license_api_server.py",
+    "security:worker": "npm run dev -w @cd-v2/security",
+    "security:worker:once": "npm run build -w @cd-v2/security && node packages/security/dist/worker-cli.js --once",
+    "dev:all": "npx concurrently -k -n web,security,license -c blue,yellow,magenta \"npm run dev -w @cd-v2/web\" \"npm run security:worker\" \"npm run dev:license\"",
+    "build": "npm run build -w @cd-v2/database && npm run build -w @cd-v2/backup && npm run build -w @cd-v2/security && npm run build -w @cd-v2/web",
+    "start": "npm run start -w @cd-v2/web",
+    "db:verify": "npm run verify -w @cd-v2/database",
+    "test:security:external": "node scripts/security-external-test.mjs",
+    "check:blocked-ips": "node scripts/check-blocked-ips.mjs"
+  },
+  "dependencies": {
+    "sqlite3": "6.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "sqlite3": "6.0.1"
+  }
+}

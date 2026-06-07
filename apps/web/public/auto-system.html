@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto System - Field Operations Automation | Computer Dynamics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 50px;
+            width: auto;
+            max-width: 200px;
+            margin-right: 12px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            color: var(--gray-700);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-700);
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 120px 0 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-tagline {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 40px;
+            font-weight: 500;
+        }
+
+        .hero-gallery {
+            display: flex;
+            gap: 20px;
+            margin-top: 60px;
+            max-width: 100%;
+            overflow-x: auto;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+        }
+
+        .hero-gallery::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .hero-gallery::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .hero-image-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: 400px;
+            min-width: 400px;
+        }
+
+        .hero-image-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .hero-image-card img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .hero-image-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .hero-image-card p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 80px 0;
+            background: var(--gray-50);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .feature-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .feature-card p {
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            color: var(--gray-600);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Interface Showcase Sections */
+        .interface-section {
+            padding: 80px 0;
+            background: var(--white);
+        }
+
+        .interface-showcase {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
+            gap: clamp(40px, 5vw, 80px);
+            align-items: center;
+        }
+
+        .interface-showcase:has(> .interface-image:first-child) {
+            grid-template-columns: minmax(480px, 2fr) minmax(280px, 1fr);
+        }
+
+        .interface-content {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .interface-text h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .interface-text p {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .interface-features {
+            list-style: none;
+            padding: 0;
+        }
+
+        .interface-features li {
+            color: var(--gray-700);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+        }
+
+        .interface-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .interface-image {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            text-align: center;
+            width: 100%;
+        }
+
+        .showcase-image {
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            max-height: min(780px, 85vh);
+            object-fit: contain;
+            object-position: center;
+            display: block;
+            margin: 0 auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .showcase-image:hover {
+            transform: scale(1.02);
+        }
+
+        /* Development Status */
+        .development-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .development-content h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .development-content p {
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .demo-button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.125rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .demo-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .cd-live-demo-slot {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .cd-live-demo-btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .cd-live-demo-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* WhatsApp Button */
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.3);
+            text-decoration: none;
+            width: 60px;
+            height: 60px;
+        }
+
+        .btn-whatsapp:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(37, 211, 102, 0.4);
+            color: white;
+        }
+
+        .btn-whatsapp i {
+            font-size: 24px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+            text-align: center;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-500);
+            cursor: pointer;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.125rem;
+            }
+
+            .hero-gallery {
+                gap: 16px;
+                padding: 16px 0;
+            }
+
+            .hero-image-card {
+                width: 320px;
+                min-width: 320px;
+            }
+
+            .hero-image-card img {
+                height: 160px;
+            }
+
+            .interface-showcase,
+            .interface-showcase:has(> .interface-image:first-child) {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .showcase-image {
+                max-height: min(560px, 70vh);
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; align-items: center;">
+                    <i class="fas fa-desktop" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
+                    <div class="logo-text">Computer Dynamics</div>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#interfaces">Interfaces</a></li>
+                <li><a href="#development">Status</a></li>
+            </ul>
+            <button class="mobile-menu-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Auto System</h1>
+                <p class="hero-subtitle">Comprehensive automotive business management system for service centers with corporate clients</p>
+                <p class="hero-tagline">Complete workflow automation • Multi-role interfaces • Real-time tracking</p>
+                
+                <div class="hero-gallery">
+                    <div class="hero-image-card" onclick="openModal('images/auto-system/Admin Dashboard.png', 'Admin Dashboard')">
+                        <img src="images/auto-system/Admin Dashboard.png" alt="Admin Dashboard">
+                        <h4>Admin Dashboard</h4>
+                        <p>Complete system oversight and management</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/auto-system/Client Dashboard.png', 'Client Dashboard')">
+                        <img src="images/auto-system/Client Dashboard.png" alt="Client Dashboard">
+                        <h4>Client Dashboard</h4>
+                        <p>Real-time vehicle status tracking</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/auto-system/Mobile technician Dashboard.png', 'Mobile Technician Dashboard')">
+                        <img src="images/auto-system/Mobile technician Dashboard.png" alt="Mobile Technician Dashboard">
+                        <h4>Mobile Technician</h4>
+                        <p>Touch-friendly field operations</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModal('images/auto-system/mobile Technician Vehicles management .png', 'Vehicle Management')">
+                        <img src="images/auto-system/mobile Technician Vehicles management .png" alt="Vehicle Management">
+                        <h4>Vehicle Management</h4>
+                        <p>Complete vehicle tracking and service</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Automotive Business Management Features</h2>
+                <p>Streamlined workflow automation for automotive service centers with specialized interfaces for administrators, technicians, and corporate clients</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-car"></i>
+                    </div>
+                    <h3>Vehicle Management</h3>
+                    <p>Complete vehicle registration, tracking, and service history management with photo documentation and PO management.</p>
+                    <ul class="feature-list">
+                        <li>Vehicle registration and customer assignment</li>
+                        <li>Service history tracking</li>
+                        <li>Photo upload for vehicle condition</li>
+                        <li>PO (Purchase Order) management</li>
+                        <li>Initial damage assessment</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Multi-Role Interface</h3>
+                    <p>Specialized dashboards for administrators, technicians, and corporate clients with role-based access control.</p>
+                    <ul class="feature-list">
+                        <li>Admin: Complete system oversight</li>
+                        <li>Technician: Mobile-friendly field operations</li>
+                        <li>Client: Real-time status tracking</li>
+                        <li>Role-based permissions</li>
+                        <li>Secure authentication</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Service Workflow</h3>
+                    <p>Complete service process from inspection to invoice with automated estimates and work order management.</p>
+                    <ul class="feature-list">
+                        <li>Vehicle inspection and recommendations</li>
+                        <li>Automated estimate generation</li>
+                        <li>Work order creation and tracking</li>
+                        <li>Progress monitoring</li>
+                        <li>Invoice generation</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Mobile Operations</h3>
+                    <p>Touch-friendly mobile interface for technicians with offline capability and real-time synchronization.</p>
+                    <ul class="feature-list">
+                        <li>Mobile technician dashboard</li>
+                        <li>Touch-friendly interface</li>
+                        <li>Offline capability</li>
+                        <li>Real-time sync</li>
+                        <li>Photo documentation</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Reporting & Analytics</h3>
+                    <p>Comprehensive business insights with financial reporting, technician productivity, and customer satisfaction metrics.</p>
+                    <ul class="feature-list">
+                        <li>Financial performance tracking</li>
+                        <li>Technician productivity metrics</li>
+                        <li>Service completion statistics</li>
+                        <li>Customer satisfaction tracking</li>
+                        <li>Revenue analysis</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Security & Compliance</h3>
+                    <p>Enterprise-grade security with JWT authentication, role-based access control, and data protection.</p>
+                    <ul class="feature-list">
+                        <li>JWT-based authentication</li>
+                        <li>Role-based access control</li>
+                        <li>Data encryption</li>
+                        <li>Audit logging</li>
+                        <li>Secure file uploads</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Admin Interface Section -->
+    <section class="interface-section" id="interfaces">
+        <div class="container">
+            <div class="section-header">
+                <h2>Admin Interface</h2>
+                <p>Complete system oversight and management dashboard for administrators</p>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Administrative Dashboard</h3>
+                        <p>Comprehensive admin interface providing complete system oversight, user management, financial reporting, and business analytics.</p>
+                        <ul class="interface-features">
+                            <li>System-wide business overview metrics</li>
+                            <li>User management with role-based permissions</li>
+                            <li>Financial reporting and revenue tracking</li>
+                            <li>Inventory oversight and parts management</li>
+                            <li>System configuration and settings</li>
+                            <li>Analytics and performance insights</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="interface-image">
+                    <img src="images/auto-system/Admin Dashboard.png" alt="Admin Dashboard" class="showcase-image">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Client Interface Section -->
+    <section class="interface-section" style="background: var(--gray-50);">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="images/auto-system/Client Dashboard.png" alt="Client Dashboard" class="showcase-image">
+                </div>
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Corporate Client Portal</h3>
+                        <p>Real-time vehicle status tracking and management portal for corporate clients with appointment scheduling and payment processing.</p>
+                        <ul class="interface-features">
+                            <li>Live vehicle status updates</li>
+                            <li>Online appointment booking</li>
+                            <li>Digital estimate approval</li>
+                            <li>Payment processing integration</li>
+                            <li>Service history and documentation</li>
+                            <li>Direct communication channels</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mobile Technician Section -->
+    <section class="interface-section">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Mobile Technician Interface</h3>
+                        <p>Touch-friendly mobile interface designed for field operations with offline capability and real-time synchronization.</p>
+                        <ul class="interface-features">
+                            <li>Mobile-optimized dashboard</li>
+                            <li>Touch-friendly interface design</li>
+                            <li>Vehicle inspection and service recommendations</li>
+                            <li>Work order management and progress tracking</li>
+                            <li>Photo documentation capabilities</li>
+                            <li>Offline capability with sync</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="interface-image">
+                    <img src="images/auto-system/Mobile technician Dashboard.png" alt="Mobile Technician Dashboard" class="showcase-image">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Vehicle Management Section -->
+    <section class="interface-section" style="background: var(--gray-50);">
+        <div class="container">
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="images/auto-system/mobile Technician Vehicles management .png" alt="Vehicle Management" class="showcase-image">
+                </div>
+                <div class="interface-content">
+                    <div class="interface-text">
+                        <h3>Vehicle Management System</h3>
+                        <p>Complete vehicle tracking and service management with detailed records, service history, and real-time status updates.</p>
+                        <ul class="interface-features">
+                            <li>Complete vehicle registration and tracking</li>
+                            <li>Service history and documentation</li>
+                            <li>Photo upload for vehicle condition</li>
+                            <li>PO (Purchase Order) management</li>
+                            <li>Real-time status updates</li>
+                            <li>Customer assignment and communication</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Development Status Section -->
+    <section class="development-section" id="development">
+        <div class="container">
+            <div class="development-content">
+                <h2>Currently in Development</h2>
+                <p>Our Auto System is currently under active development. We're building a comprehensive automotive business management solution that will revolutionize how service centers operate.</p>
+                <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <a href="#" class="demo-button" onclick="openDemoModal()">Request Demo</a>
+                    <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
+                    <a href="https://wa.me/18683168851" target="_blank" class="btn-whatsapp" title="WhatsApp Chat">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Image Modal -->
+    <div class="modal-overlay" id="imageModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">
+                <i class="fas fa-times"></i>
+            </button>
+            <img id="modalImage" src="" alt="">
+            <h3 class="modal-title" id="modalTitle">Image Preview</h3>
+        </div>
+    </div>
+
+    <!-- Demo Modal -->
+    <div class="modal-overlay" id="demoModal">
+        <div class="modal-content">
+            <button class="modal-close" id="demoClose">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="modal-title">Currently in Development</h3>
+            <p style="color: var(--gray-600); margin-bottom: 24px;">Our Auto System is currently under active development. We're building a comprehensive automotive business management solution that will revolutionize how service centers operate.</p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <button class="demo-button" onclick="closeDemoModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Image modal functionality
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalClose = document.getElementById('modalClose');
+        const imageCards = document.querySelectorAll('.hero-image-card');
+
+        function openModal(src, title) {
+            modalImage.src = src;
+            modalTitle.textContent = title;
+            imageModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            imageModal.style.display = 'none';
+        }
+
+        modalClose.addEventListener('click', closeModal);
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                closeModal();
+            }
+        });
+
+        // Demo modal functionality
+        const demoModal = document.getElementById('demoModal');
+        const demoClose = document.getElementById('demoClose');
+
+        function openDemoModal() {
+            demoModal.style.display = 'flex';
+        }
+
+        function closeDemoModal() {
+            demoModal.style.display = 'none';
+        }
+
+        demoClose.addEventListener('click', closeDemoModal);
+        demoModal.addEventListener('click', (e) => {
+            if (e.target === demoModal) {
+                closeDemoModal();
+            }
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Mobile menu toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+        });
+    </script>
+    <script src="/js/multiserver-demos.js" defer></script>
+</body>
+</html>
+
+
+
+

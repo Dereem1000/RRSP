@@ -1,0 +1,776 @@
+{% extends "base.html" %}
+
+{% block title %}License Registration - Restaurant Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card mt-5">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-key me-2"></i>
+                        License Registration
+                    </h3>
+                    <p class="mb-0 mt-2">Register your restaurant with a valid license</p>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Progress Steps -->
+                    <div class="mb-4">
+                        <div class="progress-steps">
+                            <div class="step active" id="step-1">
+                                <div class="step-number">1</div>
+                                <div class="step-label">License Info</div>
+                            </div>
+                            <div class="step" id="step-2">
+                                <div class="step-number">2</div>
+                                <div class="step-label">Client Login</div>
+                            </div>
+                            <div class="step" id="step-3">
+                                <div class="step-number">3</div>
+                                <div class="step-label">Restaurant Details</div>
+                            </div>
+                            <div class="step" id="step-4">
+                                <div class="step-number">4</div>
+                                <div class="step-label">Database Mode</div>
+                            </div>
+                            <div class="step" id="step-5">
+                                <div class="step-number">5</div>
+                                <div class="step-label">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 1: License Information -->
+                    <div id="license-step" class="registration-step">
+                        <h5 class="mb-3">
+                            <i class="fas fa-certificate text-primary me-2"></i>
+                            License Information
+                        </h5>
+                        <form id="license-form">
+                            <div class="mb-3">
+                                <label for="serial_number" class="form-label">License Serial Number</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="serial_number" 
+                                       name="serial_number" 
+                                       required 
+                                       placeholder="Enter your license serial number"
+                                       pattern="[A-Z0-9-]+"
+                                       title="Enter a valid serial number">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Enter the serial number provided with your license
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Back to Home
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    Validate License
+                                    <i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Step 2: MSP Authentication -->
+                    <div id="msp-step" class="registration-step" style="display: none;">
+                        <h5 class="mb-3">
+                            <i class="fas fa-user-shield text-primary me-2"></i>
+                            MSP Client Authentication
+                        </h5>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Please login with your Computer Dynamics account to verify license ownership.
+                        </div>
+                        <form id="msp-form">
+                            <div class="mb-3">
+                                <label for="msp_email" class="form-label">Username</label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="msp_email"
+                                       name="email"
+                                       required
+                                       placeholder="Enter your username">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="msp_password" class="form-label">Password</label>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="msp_password" 
+                                       name="password" 
+                                       required 
+                                       placeholder="Enter your password">
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary" onclick="goToStep(1)">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Back
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    Authenticate
+                                    <i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Step 3: Restaurant Details -->
+                    <div id="restaurant-step" class="registration-step" style="display: none;">
+                        <h5 class="mb-3">
+                            <i class="fas fa-utensils text-primary me-2"></i>
+                            Restaurant Information
+                        </h5>
+                        <form id="restaurant-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="restaurant_name" class="form-label">Restaurant Name</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="restaurant_name" 
+                                               name="restaurant_name" 
+                                               required 
+                                               placeholder="Enter restaurant name">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="contact_person" class="form-label">Contact Person</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="contact_person" 
+                                               name="contact_person" 
+                                               required 
+                                               placeholder="Enter contact person name">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="phone" class="form-label">Phone Number</label>
+                                        <input type="tel" 
+                                               class="form-control" 
+                                               id="phone" 
+                                               name="phone" 
+                                               placeholder="Enter phone number">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="address" class="form-label">Address</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="address" 
+                                               name="address" 
+                                               placeholder="Enter restaurant address">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            <h6 class="mb-3">
+                                <i class="fas fa-user-cog text-primary me-2"></i>
+                                Administrator Account
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="admin_username" class="form-label">Admin Username</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="admin_username" 
+                                               name="admin_username" 
+                                               required 
+                                               placeholder="Enter admin username">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="admin_name" class="form-label">Admin Full Name</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="admin_name" 
+                                               name="admin_name" 
+                                               required 
+                                               placeholder="Enter admin full name">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="admin_password" class="form-label">Admin Password</label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="admin_password" 
+                                               name="admin_password" 
+                                               required 
+                                               placeholder="Enter admin password"
+                                               minlength="6">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="confirm_password" class="form-label">Confirm Password</label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="confirm_password" 
+                                               name="confirm_password" 
+                                               required 
+                                               placeholder="Confirm admin password"
+                                               minlength="6">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary" onclick="goToStep(2)">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Back
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    Next: Database Mode
+                                    <i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Step 4: Database Mode Selection -->
+                    <div id="database-step" class="registration-step" style="display: none;">
+                        <h5 class="mb-3">
+                            <i class="fas fa-database text-primary me-2"></i>
+                            Database Mode Selection
+                        </h5>
+                        <p class="text-muted mb-4">Choose how your restaurant data will be stored and managed.</p>
+                        
+                        <form id="database-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <div class="mb-3">
+                                                <i class="fas fa-laptop-house text-primary" style="font-size: 3rem;"></i>
+                                            </div>
+                                            <h5 class="card-title">Local Database</h5>
+                                            <p class="card-text text-muted">
+                                                Store all data locally on this computer. 
+                                                Best for single-location restaurants.
+                                            </p>
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="radio" 
+                                                       name="database_mode" 
+                                                       id="local_mode" 
+                                                       value="local" 
+                                                       checked>
+                                                <label class="form-check-label" for="local_mode">
+                                                    <strong>Use Local Database</strong>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-body text-center">
+                                            <div class="mb-3">
+                                                <i class="fas fa-cloud text-info" style="font-size: 3rem;"></i>
+                                            </div>
+                                            <h5 class="card-title">Remote Database</h5>
+                                            <p class="card-text text-muted">
+                                                Store data on a remote database server. 
+                                                Best for multi-location or cloud-based setups.
+                                            </p>
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="radio" 
+                                                       name="database_mode" 
+                                                       id="remote_mode" 
+                                                       value="remote">
+                                                <label class="form-check-label" for="remote_mode">
+                                                    <strong>Use Remote Database</strong>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info mt-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Note:</strong> You can change this setting later in the Database Management section. 
+                                The selected database will be initialized with sample data, while the other will remain empty.
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary" onclick="goToStep(3)">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Back
+                                </button>
+                                <button type="submit" class="btn btn-success">
+                                    Complete Registration
+                                    <i class="fas fa-check ms-2"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Step 5: Completion -->
+                    <div id="complete-step" class="registration-step" style="display: none;">
+                        <div class="text-center">
+                            <div class="mb-4">
+                                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                            </div>
+                            <h4 class="text-success mb-3">Registration Successful!</h4>
+                            <p class="text-muted mb-4">Your restaurant has been successfully registered with the license system.</p>
+                            
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Registration Details</h6>
+                                    <div id="registration-details">
+                                        <!-- Details will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Login to System
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Overlay -->
+                    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="mt-3">Processing...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+}
+
+.step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 60%;
+    width: 80%;
+    height: 2px;
+    background-color: #dee2e6;
+    z-index: 1;
+}
+
+.step.active:not(:last-child)::after {
+    background-color: #0d6efd;
+}
+
+.step.completed:not(:last-child)::after {
+    background-color: #198754;
+}
+
+.step-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    z-index: 2;
+    position: relative;
+}
+
+.step.active .step-number {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.step.completed .step-number {
+    background-color: #198754;
+    color: white;
+}
+
+.step-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-align: center;
+}
+
+.step.active .step-label {
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+.step.completed .step-label {
+    color: #198754;
+    font-weight: 500;
+}
+
+.registration-step {
+    min-height: 400px;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.card {
+    position: relative;
+}
+</style>
+
+<script>
+let currentStep = 1;
+let registrationData = {};
+
+// Debug function to track registrationData changes
+function debugRegistrationData(step, action) {
+    console.log(`🔍 [${step}] ${action}:`, {
+        keys: Object.keys(registrationData),
+        values: registrationData,
+        serial_number: registrationData.serial_number,
+        restaurant_name: registrationData.restaurant_name
+    });
+}
+
+function goToStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.registration-step').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Show current step
+    document.getElementById(getStepId(step)).style.display = 'block';
+    
+    // Update progress
+    updateProgress(step);
+    
+    currentStep = step;
+}
+
+function getStepId(step) {
+    const stepIds = ['', 'license-step', 'msp-step', 'restaurant-step', 'database-step', 'complete-step'];
+    return stepIds[step];
+}
+
+function updateProgress(step) {
+    document.querySelectorAll('.step').forEach((el, index) => {
+        el.classList.remove('active', 'completed');
+        if (index + 1 < step) {
+            el.classList.add('completed');
+        } else if (index + 1 === step) {
+            el.classList.add('active');
+        }
+    });
+}
+
+function showLoading() {
+    document.getElementById('loading-overlay').style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+}
+
+// Step 1: License Form
+document.getElementById('license-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const serialNumber = formData.get('serial_number');
+    
+    if (!serialNumber) {
+        showError('Please enter a serial number');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch('/api/validate_license', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ serial_number: serialNumber })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            registrationData.serial_number = serialNumber;
+            registrationData.license_info = result.license_info;
+            debugRegistrationData('Step 1', 'After license validation');
+            goToStep(2);
+        } else {
+            showError(result.error || 'License validation failed');
+        }
+    } catch (error) {
+        showError('Network error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+// Step 2: MSP Form
+document.getElementById('msp-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const email = formData.get('email');
+    const password = formData.get('password');
+    
+    if (!email || !password) {
+        showError('Please enter both username and password');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch('/api/authenticate_msp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                email: email,
+                password: password,
+                serial_number: registrationData.serial_number
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            registrationData.email = email;
+            registrationData.password = password;
+            registrationData.client_data = result.client_data;
+            debugRegistrationData('Step 2', 'After MSP authentication');
+            goToStep(3);
+        } else {
+            showError(result.error || 'MSP authentication failed');
+        }
+    } catch (error) {
+        showError('Network error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+// Step 3: Restaurant Form
+document.getElementById('restaurant-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const adminPassword = formData.get('admin_password');
+    const confirmPassword = formData.get('confirm_password');
+    
+    if (adminPassword !== confirmPassword) {
+        showError('Admin passwords do not match');
+        return;
+    }
+    
+    if (adminPassword.length < 6) {
+        showError('Admin password must be at least 6 characters');
+        return;
+    }
+    
+    // Debug existing registrationData before updating
+    console.log('📋 Existing registrationData before Step 3 update:', registrationData);
+    
+    // Collect all form data and store in registrationData
+    registrationData = {
+        ...registrationData,
+        restaurant_name: formData.get('restaurant_name'),
+        contact_person: formData.get('contact_person'),
+        phone: formData.get('phone'),
+        address: formData.get('address'),
+        admin_username: formData.get('admin_username'),
+        admin_name: formData.get('admin_name'),
+        admin_password: adminPassword
+    };
+    
+    // Debug data collection
+    console.log('🔑 Admin password collected:', adminPassword);
+    console.log('📝 Full registration data stored after Step 3:', registrationData);
+    console.log('🔍 Restaurant name specifically:', registrationData.restaurant_name);
+    debugRegistrationData('Step 3', 'After restaurant data collection');
+    
+    // Move to database selection step without calling API yet
+    goToStep(4);
+});
+
+// Step 4: Database Form
+document.getElementById('database-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const databaseMode = formData.get('database_mode');
+    
+    // Add database mode to registration data
+    registrationData.database_mode = databaseMode;
+    debugRegistrationData('Step 4', 'Before validation');
+    
+    console.log('🗄️ Database mode selected:', databaseMode);
+    console.log('📝 Full registration data before API call:', registrationData);
+    console.log('🔍 Individual field checks:');
+    console.log('  - serial_number:', registrationData.serial_number);
+    console.log('  - email:', registrationData.email);
+    console.log('  - password:', registrationData.password);
+    console.log('  - restaurant_name:', registrationData.restaurant_name);
+    console.log('  - contact_person:', registrationData.contact_person);
+    console.log('  - admin_username:', registrationData.admin_username);
+    console.log('  - admin_name:', registrationData.admin_name);
+    console.log('  - admin_password:', registrationData.admin_password);
+    
+    // Validate that all required fields are present
+    const requiredFields = ['serial_number', 'email', 'password', 'restaurant_name', 
+                          'contact_person', 'admin_username', 'admin_name', 'admin_password'];
+    
+    const missingFields = requiredFields.filter(field => !registrationData[field]);
+    if (missingFields.length > 0) {
+        console.error('❌ Missing required fields:', missingFields);
+        console.error('❌ Current registrationData keys:', Object.keys(registrationData));
+        showError(`Missing required fields: ${missingFields.join(', ')}`);
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch('/api/register_restaurant', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(registrationData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Show completion step with details
+            showCompletionStep(result);
+        } else {
+            showError(result.error || 'Registration failed');
+        }
+    } catch (error) {
+        showError('Network error: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+function showCompletionStep(result) {
+    let detailsHtml = `
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Restaurant:</strong> ${result.restaurant_name || 'N/A'}<br>
+                <strong>License Type:</strong> ${result.license_info?.type || 'N/A'}<br>
+                <strong>Max Users:</strong> ${result.license_info?.max_users || 'N/A'}<br>
+                <strong>Database Mode:</strong> <span class="badge ${result.database_mode === 'local' ? 'bg-primary' : 'bg-info'}">${result.database_mode === 'local' ? 'Local Database' : 'Remote Database'}</span>
+            </div>
+            <div class="col-md-6">
+                <strong>Admin Username:</strong> ${result.admin_username}<br>
+                <strong>Expiration:</strong> ${new Date(result.license_info?.expiration_date).toLocaleDateString() || 'N/A'}<br>
+                <strong>Data Status:</strong> ${result.database_mode === 'local' ? 'Sample data loaded' : 'Ready for remote connection'}
+            </div>
+        </div>
+    `;
+    
+    // Add restart requirement message if needed
+    if (result.requires_restart) {
+        detailsHtml += `
+            <div class="alert alert-warning mt-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>System Restart Required</strong><br>
+                ${result.restart_message || 'Please restart the Restaurant Management System to activate your license.'}
+                <div class="mt-2">
+                    <button class="btn btn-warning btn-sm" onclick="restartSystem()">
+                        <i class="fas fa-redo me-1"></i>Restart System
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    document.getElementById('registration-details').innerHTML = detailsHtml;
+    goToStep(5);
+}
+
+function restartSystem() {
+    if (confirm('Are you sure you want to restart the Restaurant Management System? This will close the current session and restart the application.')) {
+        // Show loading message
+        document.getElementById('registration-details').innerHTML = `
+            <div class="alert alert-info">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                Restarting system... Please wait.
+            </div>
+        `;
+        
+        // Redirect to restart endpoint or show instructions
+        setTimeout(() => {
+            window.location.href = '/restart';
+        }, 2000);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    goToStep(1);
+});
+</script>
+{% endblock %}

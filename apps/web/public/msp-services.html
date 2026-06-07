@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSP Services - Computer Dynamics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--gray-50);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-links li {
+            position: relative;
+        }
+
+        .nav-links a {
+            color: var(--gray-700);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+            background: var(--gray-100);
+        }
+
+        .nav-links a.active {
+            color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-700);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--dark);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 50px;
+            width: auto;
+            max-width: 200px;
+            margin-right: 12px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--white);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: var(--gray-50);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 0;
+            padding: 0;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 0;
+        }
+
+        /* MSP Services Hero Image */
+        .hero-image {
+            text-align: center;
+            margin: 0;
+            padding: 80px 40px 60px 40px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 0;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+            margin-top: -100px;
+            padding-top: 210px;
+        }
+
+        .hero-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-image .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-image .msp-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .hero-image h3 {
+            font-size: 1.8rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .hero-image p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Request Button */
+        .btn-request-quote {
+            background: linear-gradient(135deg, var(--white), var(--gray-100));
+            color: var(--primary);
+            border: none;
+            padding: 20px 40px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            text-decoration: none;
+            margin-top: 20px;
+        }
+
+        .btn-request-quote:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-request-quote i {
+            font-size: 20px;
+        }
+
+        /* Hero Visual Elements */
+        .hero-visuals {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .visual-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            min-width: 120px;
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .visual-icon:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(99, 102, 241, 0.4);
+        }
+
+        .visual-icon i {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .visual-icon span {
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        /* MSP Packages Section */
+        .packages-section {
+            padding: 80px 0;
+            background: var(--white);
+        }
+
+        .packages-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .packages-header h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .packages-header p {
+            font-size: 1.25rem;
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .packages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 60px;
+        }
+
+        .package-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 40px 32px;
+            text-align: center;
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .package-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .package-card.featured {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .package-card.featured:hover {
+            transform: scale(1.05) translateY(-8px);
+        }
+
+        .package-card.featured .package-price {
+            color: white;
+        }
+
+        .package-card.featured .package-features li {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .package-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--secondary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .package-icon {
+            font-size: 3rem;
+            margin-bottom: 24px;
+            color: var(--primary);
+        }
+
+        .package-card.featured .package-icon {
+            color: white;
+        }
+
+        .package-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .package-card.featured .package-name {
+            color: white;
+        }
+
+        .package-description {
+            font-size: 1rem;
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .package-card.featured .package-description {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .package-price {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .package-billing {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+            margin-bottom: 32px;
+        }
+
+        .package-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 32px;
+        }
+
+        .package-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            color: var(--gray-700);
+        }
+
+        .package-features li i {
+            color: var(--success);
+            font-size: 1.1rem;
+        }
+
+        .package-btn {
+            width: 100%;
+            padding: 16px 24px;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .package-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .package-card.featured .package-btn {
+            background: white;
+            color: var(--primary);
+            border-color: white;
+        }
+
+        .package-card.featured .package-btn:hover {
+            background: var(--gray-100);
+        }
+
+        /* MSP Services Section */
+        .services-section {
+            padding: 80px 0;
+            background: var(--gray-50);
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 60px;
+        }
+
+        .service-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .service-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
+        }
+
+        .service-card i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .service-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .service-card p {
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        /* Service Coverage Grid */
+        .service-coverage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 40px;
+        }
+
+        .coverage-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .coverage-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
+        }
+
+        .coverage-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .coverage-card p {
+            color: var(--gray-600);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .coverage-card ul {
+            list-style: none;
+        }
+
+        .coverage-card ul li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            color: var(--gray-700);
+        }
+
+        .coverage-card ul li i {
+            color: var(--success);
+            font-size: 1.1rem;
+        }
+
+        /* Support Levels Grid */
+        .support-levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 40px;
+        }
+
+        .support-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .support-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15);
+        }
+
+        .support-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .support-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .support-card p {
+            color: var(--gray-600);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .support-card ul {
+            list-style: none;
+            text-align: left;
+        }
+
+        .support-card ul li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            color: var(--gray-700);
+        }
+
+        .support-card ul li i {
+            color: var(--success);
+            font-size: 1.1rem;
+        }
+
+        /* MSP Explanation Section */
+        .msp-explanation {
+            margin-top: 40px;
+        }
+
+        .explanation-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            margin-bottom: 48px;
+            align-items: start;
+        }
+
+        .explanation-text h3 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .explanation-text p {
+            font-size: 1.1rem;
+            color: var(--gray-600);
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .benefit-item {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .benefit-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+        }
+
+        .benefit-item i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .benefit-item h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .benefit-item p {
+            font-size: 0.95rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .explanation-visual {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            border: 2px solid var(--gray-200);
+        }
+
+        .msp-process h4 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .process-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .step-content h5 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .step-content p {
+            font-size: 0.95rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .msp-comparison {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            border: 2px solid var(--gray-200);
+        }
+
+        .msp-comparison h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        .comparison-item {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid var(--gray-200);
+        }
+
+        .comparison-item.msp-advantage {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .comparison-item h4 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .comparison-item.msp-advantage h4 {
+            color: white;
+        }
+
+        .comparison-item ul {
+            list-style: none;
+        }
+
+        .comparison-item ul li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            font-size: 0.95rem;
+        }
+
+        .comparison-item ul li i {
+            font-size: 1.1rem;
+        }
+
+        .comparison-item ul li i.fa-check {
+            color: var(--success);
+        }
+
+        .comparison-item ul li i.fa-times {
+            color: var(--error);
+        }
+
+        .comparison-item.msp-advantage ul li i.fa-check {
+            color: var(--success);
+        }
+
+        .comparison-item.msp-advantage ul li {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Feature Breakdown */
+        .feature-breakdown {
+            margin-top: 40px;
+        }
+
+        .breakdown-section {
+            margin-bottom: 48px;
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            border: 2px solid var(--gray-200);
+        }
+
+        .breakdown-section h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .breakdown-section h3 i {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        .breakdown-item {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .breakdown-item h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .breakdown-item ul {
+            list-style: none;
+        }
+
+        .breakdown-item ul li {
+            padding: 6px 0;
+            color: var(--gray-700);
+            font-size: 0.95rem;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            padding: 16px;
+            margin-top: 8px;
+        }
+
+        .mobile-menu.active {
+            display: block;
+        }
+
+        .mobile-menu .nav-links {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .mobile-menu .nav-links a {
+            display: block;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-menu {
+                position: relative;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .packages-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .package-card.featured {
+                transform: none;
+            }
+            
+            .package-card.featured:hover {
+                transform: translateY(-8px);
+            }
+
+            .service-coverage-grid,
+            .support-levels-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .breakdown-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .explanation-content {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="logo">
+                    <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div style="display: none; align-items: center;">
+                        <i class="fas fa-server" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
+                        <span class="logo-text">Computer Dynamics</span>
+                    </div>
+                </a>
+                
+                <div class="nav-menu">
+                    <ul class="nav-links">
+                        <li><a href="#what-is-msp">What is MSP?</a></li>
+                        <li><a href="#packages">Packages</a></li>
+                        <li><a href="#service-coverage">Service Coverage</a></li>
+                        <li><a href="#support-levels">Support Levels</a></li>
+                        <li><a href="#feature-breakdown">Features</a></li>
+                    </ul>
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="mobile-menu" id="mobileMenu">
+                        <ul class="nav-links">
+                            <li><a href="#what-is-msp">What is MSP?</a></li>
+                            <li><a href="#packages">Packages</a></li>
+                            <li><a href="#service-coverage">Service Coverage</a></li>
+                            <li><a href="#support-levels">Support Levels</a></li>
+                            <li><a href="#feature-breakdown">Features</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <a href="/" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Home
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <!-- MSP Services Hero Image -->
+                <div class="hero-image">
+                    <div class="content">
+                        <div class="msp-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <h3>Managed Service Provider (MSP) Services</h3>
+                        <p>Complete IT management solutions for businesses. We remotely manage your IT infrastructure and end-user systems with comprehensive support packages.</p>
+                        <p style="margin-top: 16px; font-size: 1rem; opacity: 0.9;"><i class="fas fa-shield-alt" style="margin-right: 8px;"></i>24/7 Monitoring • Proactive Support • Cost-Effective Solutions</p>
+                        <div style="margin-top: 30px;">
+                            <button class="btn-request-quote" id="requestQuoteBtn">
+                                <i class="fas fa-file-invoice"></i>
+                                Request Quote
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hero Visual Elements -->
+                <div class="hero-visuals" style="margin-top: 40px;">
+                    <div class="visual-icon">
+                        <i class="fas fa-server"></i>
+                        <span>IT<br>Management</span>
+                    </div>
+                    <div class="visual-icon">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>24/7<br>Monitoring</span>
+                    </div>
+                    <div class="visual-icon">
+                        <i class="fas fa-tools"></i>
+                        <span>Proactive<br>Support</span>
+                    </div>
+                    <div class="visual-icon">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Cost<br>Savings</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- What is MSP Section -->
+        <section class="packages-section" id="what-is-msp">
+            <div class="container">
+                <div class="packages-header">
+                    <h2>What is a Managed Service Provider (MSP)?</h2>
+                    <p>Understanding how MSP services can transform your business IT operations</p>
+                </div>
+
+                <div class="msp-explanation">
+                    <div class="explanation-content">
+                        <div class="explanation-text">
+                            <h3>Complete IT Management for Your Business</h3>
+                            <p>A Managed Service Provider (MSP) is a company that remotely manages your IT infrastructure and end-user systems. Instead of hiring an in-house IT team or dealing with IT issues as they arise, an MSP proactively monitors, maintains, and optimizes your technology environment.</p>
+                            
+                            <div class="benefits-grid">
+                                <div class="benefit-item">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <h4>Proactive Monitoring</h4>
+                                    <p>24/7 monitoring of your systems to prevent issues before they impact your business</p>
+                                </div>
+                                <div class="benefit-item">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    <h4>Cost Predictability</h4>
+                                    <p>Fixed monthly costs instead of unpredictable IT expenses and emergency repairs</p>
+                                </div>
+                                <div class="benefit-item">
+                                    <i class="fas fa-users"></i>
+                                    <h4>Expert Team</h4>
+                                    <p>Access to specialized IT professionals without the overhead of full-time staff</p>
+                                </div>
+                                <div class="benefit-item">
+                                    <i class="fas fa-chart-line"></i>
+                                    <h4>Business Focus</h4>
+                                    <p>Focus on your core business while we handle all your IT needs</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="explanation-visual">
+                            <div class="msp-process">
+                                <h4>How MSP Services Work</h4>
+                                <div class="process-steps">
+                                    <div class="step">
+                                        <div class="step-number">1</div>
+                                        <div class="step-content">
+                                            <h5>Assessment</h5>
+                                            <p>We evaluate your current IT infrastructure and identify areas for improvement</p>
+                                        </div>
+                                    </div>
+                                    <div class="step">
+                                        <div class="step-number">2</div>
+                                        <div class="step-content">
+                                            <h5>Implementation</h5>
+                                            <p>We set up monitoring tools and establish support processes for your business</p>
+                                        </div>
+                                    </div>
+                                    <div class="step">
+                                        <div class="step-number">3</div>
+                                        <div class="step-content">
+                                            <h5>Ongoing Management</h5>
+                                            <p>Continuous monitoring, maintenance, and support to keep your systems running smoothly</p>
+                                        </div>
+                                    </div>
+                                    <div class="step">
+                                        <div class="step-number">4</div>
+                                        <div class="step-content">
+                                            <h5>Optimization</h5>
+                                            <p>Regular reviews and improvements to enhance performance and security</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="msp-comparison">
+                        <h3>MSP vs Traditional IT Support</h3>
+                        <div class="comparison-grid">
+                            <div class="comparison-item">
+                                <h4>Traditional IT Support</h4>
+                                <ul>
+                                    <li><i class="fas fa-times"></i> Reactive - fixes problems after they occur</li>
+                                    <li><i class="fas fa-times"></i> Unpredictable costs</li>
+                                    <li><i class="fas fa-times"></i> Limited expertise</li>
+                                    <li><i class="fas fa-times"></i> No proactive monitoring</li>
+                                    <li><i class="fas fa-times"></i> Downtime during repairs</li>
+                                </ul>
+                            </div>
+                            <div class="comparison-item msp-advantage">
+                                <h4>MSP Services</h4>
+                                <ul>
+                                    <li><i class="fas fa-check"></i> Proactive - prevents problems before they happen</li>
+                                    <li><i class="fas fa-check"></i> Predictable monthly costs</li>
+                                    <li><i class="fas fa-check"></i> Access to specialized expertise</li>
+                                    <li><i class="fas fa-check"></i> 24/7 monitoring and support</li>
+                                    <li><i class="fas fa-check"></i> Minimal downtime with preventive maintenance</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MSP Packages Section -->
+        <section class="services-section" id="packages">
+            <div class="container">
+                <div class="packages-header">
+                    <h2>MSP Service Packages</h2>
+                    <p>Comprehensive IT management solutions with detailed service coverage and support levels.</p>
+                </div>
+
+                <div class="packages-grid">
+                    <!-- Business Essentials Package -->
+                    <div class="package-card">
+                        <div class="package-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <h3 class="package-name">Business Essentials</h3>
+                        <p class="package-description">Essentials for small businesses with basic IT needs</p>
+                        <div class="package-price">TTD $3,000</div>
+                        <div class="package-billing">per month</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> Business hours support (8am-4pm)</li>
+                            <li><i class="fas fa-check"></i> Level 1 support (simple issues)</li>
+                            <li><i class="fas fa-check"></i> 20 remote sessions included</li>
+                            <li><i class="fas fa-check"></i> Basic network monitoring</li>
+                            <li><i class="fas fa-check"></i> 4 free on-site visits</li>
+                            <li><i class="fas fa-check"></i> System software maintenance</li>
+                            <li><i class="fas fa-check"></i> 14-day Facebook Ads management</li>
+                            <li><i class="fas fa-check"></i> 1 graphic design for ads</li>
+                            <li><i class="fas fa-check"></i> 100GB Google Drive storage</li>
+                        </ul>
+                        <button class="package-btn">Choose Essentials</button>
+                    </div>
+
+                    <!-- Business Standard Package -->
+                    <div class="package-card featured">
+                        <div class="package-badge">Most Popular</div>
+                        <div class="package-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3 class="package-name">Business Standard</h3>
+                        <p class="package-description">Enhanced coverage with networking and core services</p>
+                        <div class="package-price">TTD $6,000</div>
+                        <div class="package-billing">per month</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> Extended service hours (12hr support)</li>
+                            <li><i class="fas fa-check"></i> Level 1 & 2 support (complex issues)</li>
+                            <li><i class="fas fa-check"></i> 40 remote sessions included</li>
+                            <li><i class="fas fa-check"></i> Network management (5 endpoints)</li>
+                            <li><i class="fas fa-check"></i> 8 free on-site visits</li>
+                            <li><i class="fas fa-check"></i> System software & hardware maintenance</li>
+                            <li><i class="fas fa-check"></i> 30-day Facebook Ads management</li>
+                            <li><i class="fas fa-check"></i> 1-2 custom graphic designs</li>
+                            <li><i class="fas fa-check"></i> Website development included</li>
+                            <li><i class="fas fa-check"></i> Microsoft 365 support</li>
+                        </ul>
+                        <button class="package-btn">Choose Standard</button>
+                    </div>
+
+                    <!-- Business Comprehensive Package -->
+                    <div class="package-card">
+                        <div class="package-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <h3 class="package-name">Business Comprehensive</h3>
+                        <p class="package-description">Complete solution with specialized services and priority support</p>
+                        <div class="package-price">TTD $7,000</div>
+                        <div class="package-billing">per month</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> 12-hour support coverage</li>
+                            <li><i class="fas fa-check"></i> Level 1, 2 & 3 support</li>
+                            <li><i class="fas fa-check"></i> 40 remote sessions included</li>
+                            <li><i class="fas fa-check"></i> Advanced network security</li>
+                            <li><i class="fas fa-check"></i> 4 priority on-site visits</li>
+                            <li><i class="fas fa-check"></i> Complete system maintenance</li>
+                            <li><i class="fas fa-check"></i> Advanced social media ads</li>
+                            <li><i class="fas fa-check"></i> Website development & maintenance</li>
+                            <li><i class="fas fa-check"></i> Microsoft 365 (4 users included)</li>
+                            <li><i class="fas fa-check"></i> App design & management</li>
+                            <li><i class="fas fa-check"></i> TikTok & Facebook ads</li>
+                        </ul>
+                        <button class="package-btn">Choose Comprehensive</button>
+                    </div>
+
+                    <!-- Per-Job Package -->
+                    <div class="package-card">
+                        <div class="package-icon">
+                            <i class="fas fa-wrench"></i>
+                        </div>
+                        <h3 class="package-name">Per-Job Services</h3>
+                        <p class="package-description">Pay-as-you-go services for specific projects or one-time needs</p>
+                        <div class="package-price">Variable</div>
+                        <div class="package-billing">per project</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> Helpdesk tickets (per resolved ticket)</li>
+                            <li><i class="fas fa-check"></i> Network troubleshooting (per incident)</li>
+                            <li><i class="fas fa-check"></i> Cloud management tasks</li>
+                            <li><i class="fas fa-check"></i> Data backup & recovery</li>
+                            <li><i class="fas fa-check"></i> Hardware repairs (per job rate)</li>
+                            <li><i class="fas fa-check"></i> Remote or on-site options</li>
+                        </ul>
+                        <button class="package-btn">Get Quote</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Service Coverage Section -->
+        <section class="services-section" id="service-coverage">
+            <div class="container">
+                <div class="packages-header">
+                    <h2>Service Coverage</h2>
+                    <p>Detailed breakdown of what's included in each service tier</p>
+                </div>
+
+                <div class="service-coverage-grid">
+                    <div class="coverage-card">
+                        <h3>Essentials Only</h3>
+                        <p>System software or hardware maintenance for optimal computer performance</p>
+                        <ul>
+                            <li><i class="fas fa-check"></i> System software maintenance</li>
+                            <li><i class="fas fa-check"></i> Facebook Ads Manager (14 days)</li>
+                            <li><i class="fas fa-check"></i> 1 graphic design for campaign</li>
+                            <li><i class="fas fa-check"></i> Alternative service substitution available</li>
+                        </ul>
+                    </div>
+
+                    <div class="coverage-card">
+                        <h3>Essential & Core</h3>
+                        <p>Comprehensive system maintenance with enhanced ad services</p>
+                        <ul>
+                            <li><i class="fas fa-check"></i> System software & hardware maintenance</li>
+                            <li><i class="fas fa-check"></i> 30-day Ads Manager service</li>
+                            <li><i class="fas fa-check"></i> 1-2 custom graphic designs</li>
+                            <li><i class="fas fa-check"></i> Alternative service substitution available</li>
+                        </ul>
+                    </div>
+
+                    <div class="coverage-card">
+                        <h3>Essential, Core & Specialized</h3>
+                        <p>Complete solution with specialized services and advanced features</p>
+                        <ul>
+                            <li><i class="fas fa-check"></i> All previous package benefits</li>
+                            <li><i class="fas fa-check"></i> Website creation and management</li>
+                            <li><i class="fas fa-check"></i> App management and creation</li>
+                            <li><i class="fas fa-check"></i> Custom solutions available</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Support Levels Section -->
+        <section class="packages-section" id="support-levels">
+            <div class="container">
+                <div class="packages-header">
+                    <h2>Support Levels</h2>
+                    <p>Professional support tiers to handle all your IT needs</p>
+                </div>
+
+                <div class="support-levels-grid">
+                    <div class="support-card">
+                        <div class="support-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3>Service Level 1</h3>
+                        <p>Simple user issues and basic troubleshooting</p>
+                        <ul>
+                            <li><i class="fas fa-check"></i> Password resets</li>
+                            <li><i class="fas fa-check"></i> App installation</li>
+                            <li><i class="fas fa-check"></i> Email client configuration</li>
+                            <li><i class="fas fa-check"></i> User guides creation</li>
+                            <li><i class="fas fa-check"></i> Knowledge base maintenance</li>
+                        </ul>
+                    </div>
+
+                    <div class="support-card">
+                        <div class="support-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>Service Level 2</h3>
+                        <p>Complex technical requests and infrastructure issues</p>
+                        <ul>
+                            <li><i class="fas fa-check"></i> Server administration</li>
+                            <li><i class="fas fa-check"></i> OS upgrades</li>
+                            <li><i class="fas fa-check"></i> Network settings verification</li>
+                            <li><i class="fas fa-check"></i> Group Policy Objects management</li>
+                            <li><i class="fas fa-check"></i> Advanced troubleshooting</li>
+                        </ul>
+                    </div>
+
+                    <div class="support-card">
+                        <div class="support-icon">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <h3>Service Level 3</h3>
+                        <p>Advanced infrastructure and code-level issues</p>
+                        <ul>
+                            <li><i class="fas fa-check"></i> App-related code issues</li>
+                            <li><i class="fas fa-check"></i> Advanced infrastructure problems</li>
+                            <li><i class="fas fa-check"></i> Root cause analysis</li>
+                            <li><i class="fas fa-check"></i> Network outage investigation</li>
+                            <li><i class="fas fa-check"></i> Desktop virtualization</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Breakdown Section -->
+        <section class="services-section" id="feature-breakdown">
+            <div class="container">
+                <div class="packages-header">
+                    <h2>Feature Breakdown</h2>
+                    <p>Detailed comparison of features across all service tiers</p>
+                </div>
+
+                <div class="feature-breakdown">
+                    <div class="breakdown-section">
+                        <h3><i class="fas fa-headset"></i> Helpdesk Support</h3>
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <h4>Business Essentials</h4>
+                                <ul>
+                                    <li>Business Hours (8am-4pm)</li>
+                                    <li>Level 1 Support</li>
+                                    <li>Email & Chat</li>
+                                </ul>
+                            </div>
+                            <div class="breakdown-item">
+                                <h4>Business Standard</h4>
+                                <ul>
+                                    <li>Extended Service Hours</li>
+                                    <li>Level 1 & 2 Support</li>
+                                    <li>Phone, Email & Chat</li>
+                                </ul>
+                            </div>
+                            <div class="breakdown-item">
+                                <h4>Business Comprehensive</h4>
+                                <ul>
+                                    <li>12hr Support</li>
+                                    <li>Level 1, 2 & 3 Support</li>
+                                    <li>Priority Response</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="breakdown-section">
+                        <h3><i class="fas fa-network-wired"></i> Remote Support</h3>
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <h4>Business Essentials</h4>
+                                <ul>
+                                    <li>20 sessions included</li>
+                                    <li>$75 TT per additional session</li>
+                                </ul>
+                            </div>
+                            <div class="breakdown-item">
+                                <h4>Business Standard</h4>
+                                <ul>
+                                    <li>40 sessions included</li>
+                                    <li>$45 TT per additional session</li>
+                                </ul>
+                            </div>
+                            <div class="breakdown-item">
+                                <h4>Business Comprehensive</h4>
+                                <ul>
+                                    <li>40 sessions included</li>
+                                    <li>$35 TT per additional session</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="breakdown-section">
+                        <h3><i class="fas fa-tools"></i> Hardware Repairs</h3>
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <h4>Business Essentials</h4>
+                                <ul>
+                                    <li>4 free on-site visits</li>
+                                    <li>$250 TT per additional visit</li>
+                                    <li>Per job rate for repairs</li>
+                                </ul>
+                            </div>
+                            <div class="breakdown-item">
+                                <h4>Business Standard</h4>
+                                <ul>
+                                    <li>8 free on-site visits</li>
+                                    <li>$180 TT per additional visit</li>
+                                    <li>Discounted repair rates</li>
+                                </ul>
+                            </div>
+                            <div class="breakdown-item">
+                                <h4>Business Comprehensive</h4>
+                                <ul>
+                                    <li>4 priority on-site visits</li>
+                                    <li>$80 TT per additional visit</li>
+                                    <li>Priority repair rates</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const requestQuoteBtn = document.getElementById('requestQuoteBtn');
+            const packageBtns = document.querySelectorAll('.package-btn');
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const navLinks = document.querySelectorAll('.nav-links a');
+
+            // Mobile menu toggle
+            mobileMenuToggle.addEventListener('click', function() {
+                mobileMenu.classList.toggle('active');
+                const icon = this.querySelector('i');
+                if (mobileMenu.classList.contains('active')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+
+            // Close mobile menu when clicking on a link
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    mobileMenu.classList.remove('active');
+                    const icon = mobileMenuToggle.querySelector('i');
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                });
+            });
+
+            // Smooth scrolling for navigation links
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetSection = document.querySelector(targetId);
+                    
+                    if (targetSection) {
+                        const headerHeight = document.querySelector('.header').offsetHeight;
+                        const targetPosition = targetSection.offsetTop - headerHeight - 20;
+                        
+                        window.scrollTo({
+                            top: targetPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+
+            // Active navigation highlighting
+            function updateActiveNav() {
+                const sections = document.querySelectorAll('section[id]');
+                const scrollPos = window.scrollY + 100;
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+
+                    if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === `#${sectionId}`) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Update active nav on scroll
+            window.addEventListener('scroll', updateActiveNav);
+
+            // Request Quote button functionality
+            requestQuoteBtn.addEventListener('click', function() {
+                // Scroll to packages section
+                const packagesSection = document.querySelector('#packages');
+                if (packagesSection) {
+                    const headerHeight = document.querySelector('.header').offsetHeight;
+                    const targetPosition = packagesSection.offsetTop - headerHeight - 20;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+
+            // Package button functionality
+            packageBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const packageName = this.closest('.package-card').querySelector('.package-name').textContent;
+                    
+                    // You can implement quote request functionality here
+                    alert(`Quote requested for ${packageName} package. We'll contact you soon!`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

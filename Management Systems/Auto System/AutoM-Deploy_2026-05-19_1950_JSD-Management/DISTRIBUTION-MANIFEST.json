@@ -1,0 +1,17 @@
+﻿{
+    "folderName":  "AutoM-Deploy_2026-05-19_1950_JSD-Management",
+    "includesSource":  false,
+    "distributionType":  "client-runtime",
+    "securityNotes":  [
+                          "No src directory - vendor retains TypeScript source",
+                          "productionBrowserSourceMaps disabled",
+                          "License validation: production host allowlist and HMAC signatures",
+                          "LICENSE_ENFORCEMENT on by default"
+                      ],
+    "nodeVersion":  "v22.22.0",
+    "builtAt":  "2026-05-19T19:53:45.6063429-04:00",
+    "licenseServer":  "https://www.computerdynamicstt.com/api/license/validate",
+    "gitCommit":  "3ad1e8e",
+    "product":  "AutoM",
+    "clientTag":  "JSD-Management"
+}

@@ -1,0 +1,320 @@
+{
+  "files": {
+    "2:06_real_estate_deed.docx": {
+      "hash": "bba037719b1de96f0371cf664b5797313b94e553a31831c15c1edc8b9571d6ab",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\06_Real_Estate_Deed.docx",
+      "lastUploaded": 1770361622.4769943
+    },
+    "2:07_will_testament.txt": {
+      "hash": "778b05788d4c62e8eca201c5fe6e36291b17d6be3701bcc453f3122178812b94",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\07_Will_Testament.txt",
+      "lastUploaded": 1770361643.7870498
+    },
+    "4:06_real_estate_deed.docx": {
+      "hash": "3ad2cd98a0b163641fab6898b749738f86ed2ae2af7142431bb7eb0b1f8767ee",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\06_Real_Estate_Deed.docx",
+      "lastUploaded": 1770233137.6749418
+    },
+    "4:06_real_estate_deed.pdf": {
+      "hash": "28a99e2547e7f8e2bbceca978085ba1731c0539a0aaca5f67e33e5e4b6432c53",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\06_Real_Estate_Deed.pdf",
+      "lastUploaded": 1770233140.1969306
+    },
+    "4:07_will_testament.docx": {
+      "hash": "7de8477cec896029a7667aeb7a903b7395c6a6538bd7f9df37f80f4c809bcc34",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\07_Will_Testament.docx",
+      "lastUploaded": 1770233142.6816652
+    },
+    "4:07_will_testament.png": {
+      "hash": "f81ccfd2569c109c0e756b6eb06dc53cce6f1aced8e7f05e8d5a55ba0581375a",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\07_Will_Testament.png",
+      "lastUploaded": 1770233145.0770361
+    },
+    "4:07_will_testament.txt": {
+      "hash": "2380dcd0fc6f6769e2ed7b2959bbfdd159df8354c37bf54076e4a74672428232",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\07_Will_Testament.txt",
+      "lastUploaded": 1770233530.921222
+    },
+    "2:06_real_estate_deed.pdf": {
+      "hash": "cfc2cb38b57cf826dfe74a203a2e0ee7b882ad4cdfb9bfc90eb4024fd179d70e",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\06_Real_Estate_Deed.pdf",
+      "lastUploaded": 1770361629.550939
+    },
+    "2:07_will_testament.docx": {
+      "hash": "db4e2a05c3399eaa1ed89a9e6bee7fe633d5a843beae1b0a740aad3bcacf8736",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\07_Will_Testament.docx",
+      "lastUploaded": 1770361635.7794826
+    },
+    "3:01_attorney_client_privileged_memo.docx": {
+      "hash": "69536ca7f1a16ca7bf0e75b4b1fbfa92b5577252b94ca5ed730150abf2dca0f6",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\01_Attorney_Client_Privileged_Memo.docx",
+      "lastUploaded": 1770255147.9327738
+    },
+    "3:01_attorney_client_privileged_memo.pdf": {
+      "hash": "80c1c27b45c3b01a65e5aafe10bf2ec731529a9b219192675dd2620b37bdf71e",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\01_Attorney_Client_Privileged_Memo.pdf",
+      "lastUploaded": 1770255150.436436
+    },
+    "3:01_attorney_client_privileged_memo.png": {
+      "hash": "d3f383143cd4c02af250f71768af9566c8c5e6d2f7a80411459dfa80e78f713b",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\01_Attorney_Client_Privileged_Memo.png",
+      "lastUploaded": 1770255152.8355196
+    },
+    "3:01_attorney_client_privileged_memo.txt": {
+      "hash": "f5b8b32fe3cf65565975f81ec26560b67e251fd1a3adfae24f17747b1648b6f6",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\01_Attorney_Client_Privileged_Memo.txt",
+      "lastUploaded": 1770255156.7219565
+    },
+    "3:02_contract_agreement.docx": {
+      "hash": "9c6a309f17e5026aa90749832e759dbb8b40057e86752335045a2711f78b5cb1",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\02_Contract_Agreement.docx",
+      "lastUploaded": 1770255160.2229578
+    },
+    "3:02_contract_agreement.pdf": {
+      "hash": "f9858694df4ab69eb9cc56525ef9fc71e8b9a37bdd87081d33dfede16ecdafad",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\02_Contract_Agreement.pdf",
+      "lastUploaded": 1770255162.5617447
+    },
+    "3:02_contract_agreement.txt": {
+      "hash": "4243d98e0c9a971495d645be14da5329b107d70039edd85c8cb1e39102c5e6d6",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\02_Contract_Agreement.txt",
+      "lastUploaded": 1770255165.1169524
+    },
+    "3:03_court_complaint.docx": {
+      "hash": "d493f1dc0501bd36bd453943d33517b09db9407d35a6bd860d8a82fa4e63835a",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\03_Court_Complaint.docx",
+      "lastUploaded": 1770255167.6939914
+    },
+    "3:03_court_complaint.pdf": {
+      "hash": "8c0e2df7588c05bb03eb1a1842f2f91ccccd5d8289f65e2e9402f1b8c7c3a7c5",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\03_Court_Complaint.pdf",
+      "lastUploaded": 1770255170.2659063
+    },
+    "3:03_court_complaint.png": {
+      "hash": "02c2e04089f64a043b563c4be47d9d6bed39a010365fb6f47f596c186e8ddcf6",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\03_Court_Complaint.png",
+      "lastUploaded": 1770255173.092086
+    },
+    "3:15_public_press_release.pdf": {
+      "hash": "847fe9416f2bebc75f487ed482471c1bbc929014d47bd33e3c454a1cd33a55e1",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\15_Public_Press_Release.pdf",
+      "lastUploaded": 1770255175.635672
+    },
+    "3:15_public_press_release.png": {
+      "hash": "0d5c59b3448114f6496b920548364b2bab49070a4d2eb3fcd3025d20df55efc8",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\15_Public_Press_Release.png",
+      "lastUploaded": 1770255178.1373487
+    },
+    "3:15_public_press_release.txt": {
+      "hash": "4ff1970775bc7d6a43d5d2c1b386601cad25482258b9be46ba8c61960e83f593",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\ABC Corporation\\15_Public_Press_Release.txt",
+      "lastUploaded": 1770255180.7654727
+    },
+    "4:04_client_information_ssn.docx": {
+      "hash": "1fe6975161a73eeefacaa9088ad0ecbc77234ccac6f1a512d94e160090673b4c",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\04_Client_Information_SSN.docx",
+      "lastUploaded": 1770255189.5995731
+    },
+    "4:04_client_information_ssn.pdf": {
+      "hash": "428b68b3d7bab4af4386c5d3a71ef85e11c60d9599f22c6999fddf7b8c66a795",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\04_Client_Information_SSN.pdf",
+      "lastUploaded": 1770255192.0516071
+    },
+    "4:04_client_information_ssn.txt": {
+      "hash": "be09e0b20960f14f18a7c0e75d6bcea77c9b3ee5ac618bb8bd08b6ffb9b6c20e",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\04_Client_Information_SSN.txt",
+      "lastUploaded": 1770255194.4658933
+    },
+    "4:05_medical_records_hipaa.docx": {
+      "hash": "b9413b1d73a264a5e1f797b5d3bee4d00bf65320b052158135431e8699aef5af",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\05_Medical_Records_HIPAA.docx",
+      "lastUploaded": 1770255198.6075768
+    },
+    "4:05_medical_records_hipaa.pdf": {
+      "hash": "03c931503b155ac8cf40d150c94c3663121a5799a85cd1d849184b07d8dde491",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\05_Medical_Records_HIPAA.pdf",
+      "lastUploaded": 1770255201.3330553
+    },
+    "4:05_medical_records_hipaa.png": {
+      "hash": "df23ab64f36d79eefffcb5caeb6378e76d41be940d4b610912ee9f55f848bdd8",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\05_Medical_Records_HIPAA.png",
+      "lastUploaded": 1770255203.985363
+    },
+    "4:10_bank_statement.pdf": {
+      "hash": "59df071d1787b37740bd02eafb47e5b5bf421f4e7bc2a2d7e88c4bc258319dc6",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\10_Bank_Statement.pdf",
+      "lastUploaded": 1770255206.4721034
+    },
+    "4:10_bank_statement.png": {
+      "hash": "b967e2394dc1669d01700b05f0acb64ff42bb86bd6f01c48f060419afbee26a8",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\10_Bank_Statement.png",
+      "lastUploaded": 1770255208.9744954
+    },
+    "4:10_bank_statement.txt": {
+      "hash": "f6e874fa4500e777da1738ae418b46cecc91aadbbf8b245b9984797ca6eaaa1a",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\10_Bank_Statement.txt",
+      "lastUploaded": 1770255215.2294412
+    },
+    "5:12_internal_memo.docx": {
+      "hash": "d56b04336fb67e3be7009f7643ff47182ac4efe27c425862f8b713a77a72dde7",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.docx",
+      "lastUploaded": 1770261628.8968594
+    },
+    "5:12_internal_memo.png": {
+      "hash": "eade6e18847cc8ed3467ff197053f99c31ad8f28aa987c298d41fd4d5ebf7141",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.png",
+      "lastUploaded": 1770261636.4448347
+    },
+    "5:12_internal_memo.txt": {
+      "hash": "bd4fa6feac16cdaa6af422c5147a216f8125e9036ae34e065526acf8997067d9",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.txt",
+      "lastUploaded": 1770261646.7895648
+    },
+    "1:10_bank_statement.png": {
+      "hash": "b967e2394dc1669d01700b05f0acb64ff42bb86bd6f01c48f060419afbee26a8",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\10_Bank_Statement.png",
+      "lastUploaded": 1770263814.4570463
+    },
+    "1:10_bank_statement.txt": {
+      "hash": "f6e874fa4500e777da1738ae418b46cecc91aadbbf8b245b9984797ca6eaaa1a",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\10_Bank_Statement.txt",
+      "lastUploaded": 1770263816.8611796
+    },
+    "1:10_bank_statement.pdf": {
+      "hash": "ad759ccb88b738f91b1fd27f3fab47236d5e5dcfcd1b9b957b7620bfa0a8e293",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\10_Bank_Statement.pdf",
+      "lastUploaded": 1770353134.5043533
+    },
+    "1:05_medical_records_hipaa.docx": {
+      "hash": "2870c4233a80c2781bcfcf776045d02a5093b0bd75ce6b8bc3565460a210b732",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\05_Medical_Records_HIPAA.docx",
+      "lastUploaded": 1770358481.2606254
+    },
+    "1:04_client_information_ssn.pdf": {
+      "hash": "f7979c6d01a15f4e79122f58f6c3967dd458465705201537c3919a691ffc8095",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\04_Client_Information_SSN.pdf",
+      "lastUploaded": 1770355526.0341582
+    },
+    "1:05_medical_records_hipaa.pdf": {
+      "hash": "8bd13284cf49e6546729c376fbc358a02eff083521cb8f09f815262a5c7db4b4",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\05_Medical_Records_HIPAA.pdf",
+      "lastUploaded": 1770355535.7363892
+    },
+    "1:04_client_information_ssn.txt": {
+      "hash": "be09e0b20960f14f18a7c0e75d6bcea77c9b3ee5ac618bb8bd08b6ffb9b6c20e",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\04_Client_Information_SSN.txt",
+      "lastUploaded": 1770355565.5855994
+    },
+    "1:05_medical_records_hipaa.png": {
+      "hash": "df23ab64f36d79eefffcb5caeb6378e76d41be940d4b610912ee9f55f848bdd8",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Robert Johnson\\05_Medical_Records_HIPAA.png",
+      "lastUploaded": 1770360090.5478406
+    },
+    "2:07_will_testament.png": {
+      "hash": "f81ccfd2569c109c0e756b6eb06dc53cce6f1aced8e7f05e8d5a55ba0581375a",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\John Smith Estate\\07_Will_Testament.png",
+      "lastUploaded": 1770361640.8660069
+    },
+    "3:12_internal_memo.txt": {
+      "hash": "bd4fa6feac16cdaa6af422c5147a216f8125e9036ae34e065526acf8997067d9",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.txt",
+      "lastUploaded": 1770516468.9446695
+    },
+    "3:12_internal_memo.docx": {
+      "hash": "d56b04336fb67e3be7009f7643ff47182ac4efe27c425862f8b713a77a72dde7",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.docx",
+      "lastUploaded": 1770519372.1006668
+    },
+    "3:12_internal_memo.png": {
+      "hash": "eade6e18847cc8ed3467ff197053f99c31ad8f28aa987c298d41fd4d5ebf7141",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.png",
+      "lastUploaded": 1770519388.4595728
+    },
+    "4:12_internal_memo.docx": {
+      "hash": "d56b04336fb67e3be7009f7643ff47182ac4efe27c425862f8b713a77a72dde7",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.docx",
+      "lastUploaded": 1770520217.4402344
+    },
+    "4:12_internal_memo.png": {
+      "hash": "eade6e18847cc8ed3467ff197053f99c31ad8f28aa987c298d41fd4d5ebf7141",
+      "path": "E:\\Law Firm System\\repair_workspace\\repair_LawFirm System v2_20251207_114544\\working\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.png",
+      "lastUploaded": 1770520220.4757943
+    },
+    "15:hello.txt": {
+      "hash": "a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\tar-fs\\test\\fixtures\\a\\hello.txt",
+      "lastUploaded": 1776313154.9085882
+    },
+    "15:test.txt": {
+      "hash": "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\tar-fs\\test\\fixtures\\b\\a\\test.txt",
+      "lastUploaded": 1776313157.0192797
+    },
+    "15:authors.txt": {
+      "hash": "e1e0dfdaaed1f025c106731aff67d664b849635cc6cd3b9b08674db8dbcbc5e7",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\authors.txt",
+      "lastUploaded": 1776313158.6220822
+    },
+    "15:config.txt": {
+      "hash": "032c4ca3b1814a39579d7a0a00154a3772d89aece9884d135fdef782f36e27c1",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\config.txt",
+      "lastUploaded": 1776313159.9414325
+    },
+    "15:help.txt": {
+      "hash": "d98c56a3cb9643b399fa04c422da35204dc91cd869c47019e9783fb4f7289adc",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\help.txt",
+      "lastUploaded": 1776313161.2767007
+    },
+    "15:logo.txt": {
+      "hash": "cb0c73fe1bc7676104d6a92ca91250cd562b7f37a564edc260de01a3fc636b6d",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\logo.txt",
+      "lastUploaded": 1776313162.6286516
+    },
+    "15:options.txt": {
+      "hash": "3c8ec4fa239f82b2b9f427925ac2f75af2af9147eaecc706b1990540b95ae94b",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\options.txt",
+      "lastUploaded": 1776313163.975025
+    },
+    "15:topics.txt": {
+      "hash": "5f8f41620ccdc1d7298df4ab786abc7edcf049fa7e06fc69bb26b38cbd453643",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\topics.txt",
+      "lastUploaded": 1776313165.3419776
+    },
+    "15:usage.txt": {
+      "hash": "844e2d826c59dbd72ad383fe8a23b24373d83e9b184b437f7f04c42487cd5759",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\usage.txt",
+      "lastUploaded": 1776313166.6508868
+    },
+    "15:whoami.txt": {
+      "hash": "4e7d19dfe1603ca93a0421b1abd4b19cfa5324ef458ff549809c5e66a2efc596",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\temp\\encryption-system\\node_modules\\nodemon\\doc\\cli\\whoami.txt",
+      "lastUploaded": 1776313167.9830825
+    },
+    "15:12_internal_memo.docx": {
+      "hash": "d56b04336fb67e3be7009f7643ff47182ac4efe27c425862f8b713a77a72dde7",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.docx",
+      "lastUploaded": 1776313186.069793
+    },
+    "15:12_internal_memo.png": {
+      "hash": "1e265e82d5cc0914fc368a31737d25376c89bb90b30597905ab32a8a495e03ee",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.png",
+      "lastUploaded": 1776313187.5194607
+    },
+    "15:12_internal_memo.txt": {
+      "hash": "bd4fa6feac16cdaa6af422c5147a216f8125e9036ae34e065526acf8997067d9",
+      "path": "C:\\Users\\User\\Documents\\lawfirm-deployment\\server\\test_documents\\Internal Firm Documents\\12_Internal_Memo.txt",
+      "lastUploaded": 1776313188.902017
+    },
+    "16:creative content & media support proposal.pdf": {
+      "hash": "c5c9661d1ebcafb73878c4e08f4fd7e37007aa98f6f00f45f36e9db7ebd2f0e7",
+      "path": "C:\\Users\\User\\Documents\\Derreem Solomon\\CREATIVE CONTENT & MEDIA SUPPORT PROPOSAL.pdf",
+      "lastUploaded": 1776313189.3591745
+    },
+    "16:deliverables.docx": {
+      "hash": "9f8958e8326392f8706ea5489a172f1eadd1214d6f37f54d473c5397bf6b25c1",
+      "path": "C:\\Users\\User\\Documents\\Derreem Solomon\\DELIVERABLES.docx",
+      "lastUploaded": 1776313190.827142
+    }
+  },
+  "lastUpdated": 1776313190.8275938
+}

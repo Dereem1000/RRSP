@@ -1,0 +1,56 @@
+{
+  "name": "pos-clock-in-out",
+  "version": "1.0.0",
+  "description": "Clock in/clock out system for POS with time tracking and timesheet management",
+  "main": "index.js",
+  "author": "POS System",
+  "license": "MIT",
+  "dependencies": {},
+  "posDependencies": {
+    "core": ">=1.0.0"
+  },
+  "permissions": [
+    "users:read",
+    "timesheets:read",
+    "timesheets:write",
+    "timesheets:edit"
+  ],
+  "settings": {
+    "showClockInPromptOnLogin": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show clock in prompt when user logs in"
+    },
+    "showClockOutPromptOnLogout": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show clock out prompt when user logs out"
+    },
+    "autoClockInOnLogin": {
+      "type": "boolean",
+      "default": false,
+      "description": "Automatically clock in when user logs in (no prompt)"
+    },
+    "autoClockOutOnLogout": {
+      "type": "boolean",
+      "default": false,
+      "description": "Automatically clock out when user logs out (no prompt)"
+    },
+    "requireClockOutBeforeClockIn": {
+      "type": "boolean",
+      "default": true,
+      "description": "Require clock out before allowing new clock in"
+    },
+    "allowManualClockInOut": {
+      "type": "boolean",
+      "default": true,
+      "description": "Allow users to manually clock in/out from timesheet page"
+    },
+    "enableTimesheetEditing": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable admins and managers to edit timesheets"
+    }
+  }
+}
+
