@@ -1,6 +1,6 @@
 {
   "name": "computer-dynamics-v2",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "description": "Computer Dynamics MSP Intranet — Next.js + TypeScript (legacy SQLite compatible)",
   "workspaces": [
@@ -13,10 +13,23 @@
     "security:worker": "npm run dev -w @cd-v2/security",
     "security:worker:once": "npm run build -w @cd-v2/security && node packages/security/dist/worker-cli.js --once",
     "dev:all": "npx concurrently -k -n web,security,license -c blue,yellow,magenta \"npm run dev -w @cd-v2/web\" \"npm run security:worker\" \"npm run dev:license\"",
+    "dev:showcase": "node scripts/start-showcase-web.mjs",
+    "stop:showcase": "node scripts/stop-showcase.mjs",
     "build": "npm run build -w @cd-v2/database && npm run build -w @cd-v2/backup && npm run build -w @cd-v2/security && npm run build -w @cd-v2/web",
     "start": "npm run start -w @cd-v2/web",
+    "start:production": "npx concurrently -k -n web,security,license -c blue,yellow,magenta \"npm run start -w @cd-v2/web\" \"npm run security:worker:prod\" \"npm run start:license\"",
+    "start:license": "cd license_activation_system_new && set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& python license_api_server.py",
+    "security:worker:prod": "npm run build -w @cd-v2/security && node packages/security/dist/worker-cli.js",
+    "preflight:production": "node scripts/production-preflight.mjs",
     "db:verify": "npm run verify -w @cd-v2/database",
+    "db:export-showcase-schema": "node scripts/export-showcase-schema.mjs",
+    "db:init-showcase": "node scripts/init-showcase-database.mjs",
+    "showcase:create": "node scripts/create-showcase-copy.mjs",
+    "audit:security": "node scripts/security-audit/run.mjs",
+    "audit:security:pentest": "node scripts/security-audit/run-pentest.mjs",
+    "audit:security:full": "node scripts/security-audit/run-full.mjs",
     "test:security:external": "node scripts/security-external-test.mjs",
+    "test:auto-repair": "npm run build -w @cd-v2/database && npm run build -w @cd-v2/backup && npm run build -w @cd-v2/security && node scripts/test-auto-repair.mjs",
     "check:blocked-ips": "node scripts/check-blocked-ips.mjs"
   },
   "dependencies": {
@@ -26,6 +39,14 @@
     "node": ">=20"
   },
   "overrides": {
-    "sqlite3": "6.0.1"
+    "sqlite3": "6.0.1",
+    "semver": "7.7.2",
+    "postcss": "8.5.15",
+    "next": {
+      "postcss": "8.5.15"
+    },
+    "sequelize": {
+      "uuid": "11.1.1"
+    }
   }
 }

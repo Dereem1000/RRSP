@@ -8,6 +8,7 @@ import {
   FlaskConical,
   Loader2,
   Mail,
+  Plug,
   RefreshCw,
   Save,
   Settings2,
@@ -17,24 +18,10 @@ import {
 } from 'lucide-react';
 import { SettingsBackupSection } from '@/components/settings/SettingsBackupSection';
 import { SettingsCompanySection } from '@/components/settings/SettingsCompanySection';
+import { SettingsEmailSection } from '@/components/settings/SettingsEmailSection';
+import { SettingsIntegrationsSection } from '@/components/settings/SettingsIntegrationsSection';
 import { SettingsSecuritySection } from '@/components/settings/SettingsSecuritySection';
 import { SettingsUsersSection } from '@/components/settings/SettingsUsersSection';
-
-type EmailSettings = {
-  enabled: boolean;
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  password: string;
-  fromName: string;
-  fromEmail: string;
-  companyName: string;
-  companyAddress: string;
-  companyPhone: string;
-  companyWebsite: string;
-  confirmBeforeClientEmail: boolean;
-};
 
 type TicketSettings = {
   emailOnCreate: boolean;
@@ -86,9 +73,9 @@ function Toggle({
   );
 }
 
-type SettingsTab = 'system' | 'company' | 'users' | 'security' | 'backup';
+type SettingsTab = 'system' | 'email' | 'company' | 'users' | 'security' | 'integrations' | 'backup';
 
-const VALID_TABS: SettingsTab[] = ['system', 'company', 'users', 'security', 'backup'];
+const VALID_TABS: SettingsTab[] = ['system', 'email', 'company', 'users', 'security', 'integrations', 'backup'];
 
 function tabFromSearchParam(value: string | null): SettingsTab | null {
   if (value && VALID_TABS.includes(value as SettingsTab)) {
@@ -100,13 +87,11 @@ function tabFromSearchParam(value: string | null): SettingsTab | null {
 export function SettingsPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<SettingsTab>(() => tabFromSearchParam(searchParams.get('tab')) ?? 'system');
+  const [tab, setTab] = useState<SettingsTab>(() => tabFromSearchParam(searchParams?.get('tab') ?? null) ?? 'system');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [testEmail, setTestEmail] = useState('');
-  const [email, setEmail] = useState<EmailSettings | null>(null);
   const [tickets, setTickets] = useState<TicketSettings | null>(null);
   const [general, setGeneral] = useState<GeneralSettings | null>(null);
 
@@ -117,7 +102,6 @@ export function SettingsPageClient() {
       const res = await fetch('/api/settings');
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to load settings');
-      setEmail(data.email);
       setTickets(data.tickets);
       setGeneral(data.general);
     } catch (err) {
@@ -132,22 +116,22 @@ export function SettingsPageClient() {
   }, []);
 
   useEffect(() => {
-    const fromUrl = tabFromSearchParam(searchParams.get('tab'));
+    const fromUrl = tabFromSearchParam(searchParams?.get('tab') ?? null);
     if (fromUrl) setTab(fromUrl);
   }, [searchParams]);
 
-  async function saveSection(section: 'email' | 'tickets' | 'general', e: FormEvent) {
+  function selectTab(next: SettingsTab) {
+    setTab(next);
+    router.replace(`/settings?tab=${next}`, { scroll: false });
+  }
+
+  async function saveSection(section: 'tickets' | 'general', e: FormEvent) {
     e.preventDefault();
     setSaving(section);
     setMessage('');
     setError('');
     try {
-      const body =
-        section === 'email'
-          ? { email }
-          : section === 'tickets'
-            ? { tickets }
-            : { general };
+      const body = section === 'tickets' ? { tickets } : { general };
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -162,7 +146,7 @@ export function SettingsPageClient() {
             ? 'Demo mode on — snapshot saved. Test freely; turn demo mode off to restore live data.'
             : 'Settings saved'
       );
-      if (section === 'email' || section === 'general') await load();
+      if (section === 'general') await load();
       if (section === 'general') {
         router.refresh();
         window.dispatchEvent(new CustomEvent('cd-demo-mode-changed'));
@@ -174,31 +158,7 @@ export function SettingsPageClient() {
     }
   }
 
-  async function sendTestEmail() {
-    if (!testEmail.trim()) {
-      setError('Enter a test email address');
-      return;
-    }
-    setSaving('test');
-    setError('');
-    setMessage('');
-    try {
-      const res = await fetch('/api/settings/email/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: testEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Test email failed');
-      setMessage(data.message || 'Test email sent');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Test email failed');
-    } finally {
-      setSaving('');
-    }
-  }
-
-  const systemReady = !loading && email && tickets && general;
+  const systemReady = !loading && tickets && general;
 
   return (
     <div className="space-y-6">
@@ -206,7 +166,7 @@ export function SettingsPageClient() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">System settings</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Email, tickets, portal configuration, and staff accounts
+            Tickets, portal configuration, and staff accounts
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -226,7 +186,7 @@ export function SettingsPageClient() {
       <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 w-fit">
         <button
           type="button"
-          onClick={() => setTab('system')}
+          onClick={() => selectTab('system')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
             tab === 'system' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -236,7 +196,17 @@ export function SettingsPageClient() {
         </button>
         <button
           type="button"
-          onClick={() => setTab('company')}
+          onClick={() => selectTab('email')}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+            tab === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Mail className="h-4 w-4" />
+          Email
+        </button>
+        <button
+          type="button"
+          onClick={() => selectTab('company')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
             tab === 'company' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -246,17 +216,17 @@ export function SettingsPageClient() {
         </button>
         <button
           type="button"
-          onClick={() => setTab('users')}
+          onClick={() => selectTab('users')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
             tab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Users className="h-4 w-4" />
-          Users
+          Staff
         </button>
         <button
           type="button"
-          onClick={() => setTab('security')}
+          onClick={() => selectTab('security')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
             tab === 'security' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -266,7 +236,17 @@ export function SettingsPageClient() {
         </button>
         <button
           type="button"
-          onClick={() => setTab('backup')}
+          onClick={() => selectTab('integrations')}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+            tab === 'integrations' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Plug className="h-4 w-4" />
+          Integrations
+        </button>
+        <button
+          type="button"
+          onClick={() => selectTab('backup')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
             tab === 'backup' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -298,6 +278,12 @@ export function SettingsPageClient() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <SettingsSecuritySection onMessage={setMessage} onError={setError} />
         </div>
+      ) : tab === 'integrations' ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <SettingsIntegrationsSection onMessage={setMessage} onError={setError} />
+        </div>
+      ) : tab === 'email' ? (
+        <SettingsEmailSection onMessage={setMessage} onError={setError} />
       ) : tab === 'backup' ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <SettingsBackupSection onMessage={setMessage} onError={setError} />
@@ -309,127 +295,6 @@ export function SettingsPageClient() {
         </div>
       ) : (
       <div className="grid gap-6 xl:grid-cols-2">
-        <form
-          onSubmit={(e) => saveSection('email', e)}
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-        >
-          <div className="mb-4 flex items-center gap-2">
-            <Mail className="h-5 w-5 text-indigo-600" />
-            <h2 className="font-semibold text-slate-900">Email (SMTP)</h2>
-          </div>
-
-          <Toggle
-            label="Enable email"
-            checked={email.enabled}
-            onChange={(v) => setEmail({ ...email, enabled: v })}
-          />
-
-          <div className="mt-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client emails</p>
-            <Toggle
-              label="Ask before sending to clients"
-              description="When enabled, invoice, quote, payment, and welcome actions prompt you before an email is sent. When disabled, emails send automatically when the action requests it (e.g. mark paid, add payment, or “send immediately” on create)."
-              checked={email.confirmBeforeClientEmail}
-              onChange={(v) => setEmail({ ...email, confirmBeforeClientEmail: v })}
-            />
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
-              <span className="mb-1 block text-sm font-medium text-slate-700">SMTP host</span>
-              <input
-                value={email.host}
-                onChange={(e) => setEmail({ ...email, host: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Port</span>
-              <input
-                type="number"
-                value={email.port}
-                onChange={(e) => setEmail({ ...email, port: Number(e.target.value) })}
-                className={inputClass}
-              />
-            </label>
-            <label className="flex items-end gap-2 pb-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={email.secure}
-                onChange={(e) => setEmail({ ...email, secure: e.target.checked })}
-              />
-              Use TLS/SSL
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Username</span>
-              <input
-                value={email.user}
-                onChange={(e) => setEmail({ ...email, user: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Password</span>
-              <input
-                type="password"
-                placeholder={email.password === '********' ? '••••••••' : ''}
-                onChange={(e) => setEmail({ ...email, password: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">From name</span>
-              <input
-                value={email.fromName}
-                onChange={(e) => setEmail({ ...email, fromName: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">From email</span>
-              <input
-                value={email.fromEmail}
-                onChange={(e) => setEmail({ ...email, fromEmail: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={saving === 'email'}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-            >
-              {saving === 'email' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save email
-            </button>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
-            <label className="block flex-1 min-w-[12rem]">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Test recipient</span>
-              <input
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="admin@example.com"
-                className={inputClass}
-              />
-            </label>
-            <p className="w-full text-xs text-slate-500">
-              Sends every email template with sample data in <strong>4 bundled emails</strong> (welcome/quotes, invoices, tickets, orders) so your mail server is less likely to flag rapid bulk sending.
-            </p>
-            <button
-              type="button"
-              onClick={sendTestEmail}
-              disabled={saving === 'test'}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Send template test emails
-            </button>
-          </div>
-        </form>
-
         <form
           onSubmit={(e) => saveSection('tickets', e)}
           className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"

@@ -5,7 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Briefcase,
+  Bot,
   Calculator as CalcIcon,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
@@ -17,8 +19,10 @@ import {
   Pin,
   Receipt,
   Settings,
+  Target,
   Ticket,
   Users,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
@@ -60,20 +64,30 @@ const nav: Array<{
   { href: '/tickets', label: 'Tickets', icon: Ticket, roles: ['admin', 'technician', 'client'] },
   { href: '/billing', label: 'Billing', icon: Receipt, roles: ['client'] },
   { href: '/orders', label: 'Orders', icon: Package, roles: ['admin', 'technician', 'client'] },
+  { href: '/sales', label: 'Sales', icon: Target, roles: ['admin', 'technician'] },
+  { href: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['admin', 'technician'] },
   { href: '/clients', label: 'Clients', icon: Users, roles: ['admin', 'technician'] },
   { href: '/msp', label: 'MSP', icon: Briefcase, roles: ['admin', 'technician'] },
   { href: '/accounting', label: 'Accounting', icon: PieChart, roles: ['admin', 'technician'] },
+  { href: '/developer-toolbox', label: 'Developer Toolbox', icon: Wrench, roles: ['admin'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
 ];
 
 export function PortalSidebar({
   user,
   onWidthChange,
+  miniDockActive = false,
 }: {
   user: { firstName: string; lastName: string; role: string; securityClearance: string };
   onWidthChange: (px: number) => void;
+  miniDockActive?: boolean;
 }) {
   const visibleNav = nav.filter((item) => item.roles.includes(user.role));
+  const miniNavItem =
+    user.role === 'admin' && miniDockActive
+      ? [{ href: '/mini', label: 'Mini', icon: Bot, roles: ['admin'] as string[] }]
+      : [];
+  const sidebarNav = [...visibleNav.slice(0, -1), ...miniNavItem, ...visibleNav.slice(-1)];
   const pathname = usePathname();
   const router = useRouter();
   const showCalculatorTool = user.role === 'admin' || user.role === 'technician';
@@ -255,7 +269,7 @@ export function PortalSidebar({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {visibleNav.map(({ href, label, icon: Icon }) => {
+        {sidebarNav.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           const displayLabel =
             user.role === 'client' && href === '/tickets'
