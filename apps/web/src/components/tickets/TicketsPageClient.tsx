@@ -61,12 +61,12 @@ export function TicketsPageClient({
   const canCreate = isStaff || (userRole === 'client' && clientCanCreate);
 
   useEffect(() => {
-    if (searchParams.get('create') === '1' && canCreate) {
+    if (searchParams?.get('create') === '1' && canCreate) {
       setShowCreate(true);
     }
   }, [searchParams, canCreate]);
 
-  const presetClientId = searchParams.get('clientId') ?? '';
+  const presetClientId = searchParams?.get('clientId') ?? '';
 
   const filtered = useMemo(() => {
     return tickets.filter((t) => {
@@ -304,6 +304,7 @@ export function TicketsPageClient({
           technicians={technicians}
           clientMode={userRole === 'client'}
           defaultClientId={presetClientId}
+          canAddClient={isStaff}
           onClose={() => setShowCreate(false)}
         />
       )}

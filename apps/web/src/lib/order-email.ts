@@ -19,6 +19,7 @@ import {
 export type OrderEmailType =
   | 'created'
   | 'status_update'
+  | 'location_update'
   | 'arrived'
   | 'delivered'
   | 'cancelled'
@@ -40,6 +41,7 @@ export type OrderEmailPayload = {
   clientPrice?: number;
   quantity?: number;
   currentLocation?: string | null;
+  serialNumber?: string | null;
   client?: { name?: string; email?: string };
 };
 
@@ -69,6 +71,8 @@ function actionText(type: OrderEmailType, order: OrderEmailPayload, previousStat
       return previousStatus
         ? `Your order status changed from <strong>${escapeHtml(statusLabel(previousStatus))}</strong> to <strong>${escapeHtml(statusLabel(order.status))}</strong>.`
         : `Your order status has been updated to <strong>${escapeHtml(statusLabel(order.status))}</strong>.`;
+    case 'location_update':
+      return `Your shipment update: <strong>${escapeHtml(stageLabel(order.shippingStage))}</strong>${order.currentLocation ? ` — ${escapeHtml(order.currentLocation)}` : ''}.`;
     case 'arrived':
       return `Good news! Your order for <strong>${escapeHtml(order.itemName)}</strong> has arrived and is ready for the next step.`;
     case 'delivered':
@@ -110,6 +114,9 @@ function orderRows(order: OrderEmailPayload, type: OrderEmailType) {
   }
   if (order.trackingNumber) {
     rows.push(infoRow('Tracking #', escapeHtml(order.trackingNumber)));
+  }
+  if (order.serialNumber) {
+    rows.push(infoRow('Serial #', escapeHtml(order.serialNumber)));
   }
   if (order.estimatedArrival) {
     rows.push(infoRow('Estimated arrival', escapeHtml(formatDate(order.estimatedArrival))));
@@ -169,6 +176,7 @@ export async function buildOrderEmailHtml(
   const subjectMap: Record<OrderEmailType, string> = {
     created: `Order #${order.orderNumber} placed — ${order.itemName}`,
     status_update: `Order #${order.orderNumber} update — ${statusLabel(order.status)}`,
+    location_update: `Order #${order.orderNumber} shipment update — ${stageLabel(order.shippingStage)}`,
     arrived: `Order #${order.orderNumber} has arrived`,
     delivered: `Order #${order.orderNumber} delivered`,
     cancelled: `Order #${order.orderNumber} cancelled`,
@@ -178,6 +186,7 @@ export async function buildOrderEmailHtml(
   const titleMap: Record<OrderEmailType, string> = {
     created: 'Order placed',
     status_update: 'Order status updated',
+    location_update: 'Shipment location updated',
     arrived: 'Order arrived',
     delivered: 'Order delivered',
     cancelled: 'Order cancelled',
@@ -214,7 +223,7 @@ export async function sendOrderEmailToClient(
     ...options,
     type: options?.type ?? 'created',
   });
-  return sendEmail({ to: clientEmail, subject, html, attachments });
+  return sendEmail({ to: clientEmail, subject, html, attachments, log: { category: 'order' } });
 }
 
 export async function sendOrderEmailToStaff(
@@ -231,5 +240,5 @@ export async function sendOrderEmailToStaff(
     ...options,
     type: options?.type ?? 'pre_alert',
   });
-  return sendEmail({ to: staffEmail, subject, html, attachments });
+  return sendEmail({ to: staffEmail, subject, html, attachments, log: { category: 'order' } });
 }

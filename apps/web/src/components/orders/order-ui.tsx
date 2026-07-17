@@ -15,6 +15,7 @@ import { ClientSearchSelect, formatClientLabel } from '@/components/clients/Clie
 import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 import type { ClientPickerOption } from '@/lib/client-picker';
 import { ClientLink, InvoiceLink, LinkedDocumentLink, OrderLink, TicketLink } from '@/components/links/DocumentLinks';
+import { ShipmentJourney } from '@/components/orders/ShipmentJourney';
 import {
   AlertTriangle,
   Calculator,
@@ -34,6 +35,8 @@ import {
   Unlink,
   X,
 } from 'lucide-react';
+import { InvoiceOrderItemPicker } from '@/components/orders/InvoiceOrderItemPicker';
+import type { SelectedInvoiceOrderSource, TicketInvoiceLineItem } from '@/lib/ticket-invoice-order';
 import { useRegisterOrderPriceForm } from '@/contexts/PriceCalculatorContext';
 import { useOrderPriceAutofill } from '@/hooks/use-order-price-autofill';
 import { openPriceCalculator } from '@/lib/price-calculator-storage';
@@ -49,6 +52,7 @@ export type OrderView = {
   vendor?: string | null;
   vendorOrderNumber?: string | null;
   trackingNumber?: string | null;
+  serialNumber?: string | null;
   orderDate: string;
   estimatedArrival?: string | null;
   actualArrival?: string | null;
@@ -95,6 +99,7 @@ export type OrderFormValues = {
   vendor: string;
   vendorOrderNumber: string;
   trackingNumber: string;
+  serialNumber: string;
   orderDate: string;
   estimatedArrival: string;
   status: string;
@@ -118,6 +123,7 @@ export function emptyOrderForm(clientId = ''): OrderFormValues {
     vendor: '',
     vendorOrderNumber: '',
     trackingNumber: '',
+    serialNumber: '',
     orderDate: new Date().toISOString().slice(0, 10),
     estimatedArrival: '',
     status: 'ordered',
@@ -142,6 +148,7 @@ export function orderToForm(order: OrderView): OrderFormValues {
     vendor: order.vendor ?? '',
     vendorOrderNumber: order.vendorOrderNumber ?? '',
     trackingNumber: order.trackingNumber ?? '',
+    serialNumber: order.serialNumber ?? '',
     orderDate: order.orderDate?.slice(0, 10) ?? '',
     estimatedArrival: order.estimatedArrival?.slice(0, 10) ?? '',
     status: order.status,
@@ -153,6 +160,107 @@ export function orderToForm(order: OrderView): OrderFormValues {
   };
 }
 
+export function canSubmitNewOrder(
+  form: OrderFormValues,
+  showCost?: boolean,
+  options?: { allowSkipUsCost?: boolean }
+) {
+  if (!form.clientId.trim() || !form.title.trim() || !form.itemName.trim()) return false;
+  if (form.clientPrice === '' || Number.isNaN(Number(form.clientPrice))) return false;
+  if (options?.allowSkipUsCost) return true;
+  if (showCost && (form.costPrice === '' || Number.isNaN(Number(form.costPrice)))) return false;
+  return true;
+}
+
+export function OrderFormModal({
+  title,
+  form,
+  onChange,
+  clients,
+  showCost,
+  loading,
+  error,
+  onClose,
+  onSubmit,
+  isNewOrder,
+  linkToTicket,
+  submitLabel,
+  invoiceOrderItems,
+  selectedInvoiceSource,
+  onInvoiceSourceChange,
+  allowSkipUsCost,
+}: {
+  title: string;
+  form: OrderFormValues;
+  onChange: (patch: Partial<OrderFormValues>) => void;
+  clients: ClientPickerOption[];
+  showCost?: boolean;
+  loading?: boolean;
+  error?: string;
+  onClose: () => void;
+  onSubmit: () => void;
+  isNewOrder?: boolean;
+  linkToTicket?: { ticketNumber: string };
+  submitLabel?: string;
+  invoiceOrderItems?: TicketInvoiceLineItem[];
+  selectedInvoiceSource?: SelectedInvoiceOrderSource | null;
+  onInvoiceSourceChange?: (source: SelectedInvoiceOrderSource | null) => void;
+  allowSkipUsCost?: boolean;
+}) {
+  const canSubmit = !isNewOrder || canSubmitNewOrder(form, showCost, { allowSkipUsCost });
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+            {isNewOrder && !linkToTicket && (
+              <p className="mt-0.5 text-sm text-slate-500">Client required · ticket created automatically</p>
+            )}
+            {linkToTicket && (
+              <p className="mt-0.5 text-sm text-slate-500">
+                Linked to ticket <span className="font-mono font-medium text-indigo-700">{linkToTicket.ticketNumber}</span>
+              </p>
+            )}
+          </div>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {invoiceOrderItems && invoiceOrderItems.length > 0 && onInvoiceSourceChange ? (
+          <InvoiceOrderItemPicker
+            items={invoiceOrderItems}
+            form={form}
+            onApply={onChange}
+            onSelectSource={onInvoiceSourceChange}
+            selectedSource={selectedInvoiceSource ?? null}
+          />
+        ) : null}
+        <OrderFormFields
+          form={form}
+          onChange={onChange}
+          clients={clients}
+          showCost={showCost}
+          isNewOrder={isNewOrder}
+          linkToTicket={linkToTicket}
+          allowSkipUsCost={allowSkipUsCost}
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={loading || !canSubmit}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {loading ? 'Saving…' : submitLabel ?? (isNewOrder ? (linkToTicket ? 'Create order & link ticket' : 'Create order & ticket') : 'Create order')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const inputClass = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm';
 
 export function OrderFormFields({
@@ -161,12 +269,16 @@ export function OrderFormFields({
   clients,
   showCost,
   isNewOrder,
+  linkToTicket,
+  allowSkipUsCost,
 }: {
   form: OrderFormValues;
   onChange: (patch: Partial<OrderFormValues>) => void;
   clients: ClientPickerOption[];
   showCost?: boolean;
   isNewOrder?: boolean;
+  linkToTicket?: { ticketNumber: string };
+  allowSkipUsCost?: boolean;
 }) {
   const selectedClient = clients.find((c) => c.id === form.clientId);
 
@@ -181,7 +293,12 @@ export function OrderFormFields({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {isNewOrder && (
+      {isNewOrder && linkToTicket && (
+        <p className="sm:col-span-2 rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-sm text-indigo-900">
+          This order will be linked to ticket <strong>{linkToTicket.ticketNumber}</strong>. Fill in the part details below.
+        </p>
+      )}
+      {isNewOrder && !linkToTicket && (
         <p className="sm:col-span-2 rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-sm text-indigo-900">
           Select the client first. A support ticket (<strong>Awaiting Part</strong>) will be created automatically and linked to this order.
         </p>
@@ -196,6 +313,7 @@ export function OrderFormFields({
           onChange={(clientId) => onChange({ clientId })}
           placeholder="Type client or company name…"
           required={isNewOrder}
+          disabled={Boolean(linkToTicket && form.clientId)}
           inputClassName={`${inputClass}${isNewOrder && !form.clientId ? ' border-amber-300 ring-1 ring-amber-200' : ''}`}
         />
         {isNewOrder && !form.clientId && (
@@ -203,8 +321,17 @@ export function OrderFormFields({
         )}
         {selectedClient && (
           <p className="mt-1 text-xs text-slate-500">
-            Ticket will be opened for{' '}
-            <span className="font-medium text-slate-700">{formatClientLabel(selectedClient)}</span>
+            {linkToTicket ? (
+              <>
+                Order for{' '}
+                <span className="font-medium text-slate-700">{formatClientLabel(selectedClient)}</span>
+              </>
+            ) : (
+              <>
+                Ticket will be opened for{' '}
+                <span className="font-medium text-slate-700">{formatClientLabel(selectedClient)}</span>
+              </>
+            )}
             {selectedClient.phone ? (
               <>
                 {' '}
@@ -227,6 +354,9 @@ export function OrderFormFields({
         <label>
           <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
             US cost
+            {allowSkipUsCost ? (
+              <span className="ml-1 font-normal normal-case text-slate-500">(optional when using invoice price)</span>
+            ) : null}
           </span>
           <div className="flex gap-2">
             <input
@@ -236,7 +366,7 @@ export function OrderFormFields({
               min="0"
               step="0.01"
               className={inputClass}
-              required
+              required={!allowSkipUsCost}
               placeholder="0.00"
             />
             <button
@@ -310,6 +440,10 @@ export function OrderFormFields({
       <label>
         <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Tracking number</span>
         <input value={form.trackingNumber} onChange={(e) => onChange({ trackingNumber: e.target.value })} className={inputClass} />
+      </label>
+      <label>
+        <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Serial number</span>
+        <input value={form.serialNumber} onChange={(e) => onChange({ serialNumber: e.target.value })} className={inputClass} placeholder="Device serial (optional)" />
       </label>
       <label>
         <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">Current location</span>
@@ -692,8 +826,19 @@ export function StaffOrderDetailModal({
       if (showCost) body.costPrice = Number(form.costPrice);
 
       const statusChanged = form.status !== order.status;
-      if (statusChanged) {
-        body.sendEmail = askToEmailClient('Email the client about this order status update?');
+      const locationChanged =
+        form.shippingStage !== order.shippingStage ||
+        (form.currentLocation || '') !== (order.currentLocation || '');
+      if (statusChanged || locationChanged) {
+        body.sendEmail = askToEmailClient(
+          statusChanged
+            ? 'Email the client about this order status update?'
+            : 'Email the client about this shipment location update?'
+        );
+      }
+
+      if (form.serialNumber.trim()) {
+        body.serialNumber = form.serialNumber.trim();
       }
 
       const res = await fetch(`/api/msp/orders/${order.id}`, {
@@ -819,6 +964,30 @@ export function OrderDetailBody({ order, showCost }: { order: OrderView; showCos
 
   return (
     <div className="space-y-4 text-sm">
+      <ShipmentJourney shippingStage={order.shippingStage} />
+
+      {(order.locationHistory?.length ?? 0) > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Location history</p>
+          <ul className="space-y-2 rounded-xl border border-slate-200 bg-white">
+            {[...(order.locationHistory ?? [])].reverse().map((entry, index) => (
+              <li key={index} className="border-b border-slate-100 px-4 py-3 last:border-0">
+                <p className="font-medium text-slate-900">{entry.location ?? entry.stage ?? 'Update'}</p>
+                <p className="text-xs text-slate-500">
+                  {[
+                    entry.stage ? SHIPPING_STAGE_LABELS[entry.stage] ?? entry.stage : null,
+                    entry.timestamp ? formatDate(entry.timestamp) : null,
+                    entry.source ? `via ${entry.source}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={order.status} />
         <StageBadge stage={order.shippingStage} />
@@ -847,6 +1016,7 @@ export function OrderDetailBody({ order, showCost }: { order: OrderView; showCos
         <Info label="Client price" value={formatMoney(order.clientPrice)} />
         {showCost && order.costPrice != null && <Info label="Cost price" value={formatMoney(order.costPrice)} />}
         {order.vendorOrderNumber && <Info label="Vendor order #" value={order.vendorOrderNumber} />}
+        {order.serialNumber && <Info label="Serial number" value={order.serialNumber} />}
       </div>
 
       {order.description && (
@@ -890,24 +1060,6 @@ export function OrderDetailBody({ order, showCost }: { order: OrderView; showCos
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </p>
-      )}
-
-      {(order.locationHistory?.length ?? 0) > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Location history</p>
-          <ul className="space-y-2 rounded-xl border border-slate-200">
-            {order.locationHistory!.map((entry, index) => (
-              <li key={index} className="border-b border-slate-100 px-4 py-3 last:border-0">
-                <p className="font-medium text-slate-900">{entry.location ?? entry.stage ?? 'Update'}</p>
-                <p className="text-xs text-slate-500">
-                  {[entry.stage ? SHIPPING_STAGE_LABELS[entry.stage] ?? entry.stage : null, entry.timestamp ? formatDate(entry.timestamp) : null, entry.source]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
       )}
 
       {order.notes && (

@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { normalizeStoredPhone } from '@/lib/phone-utils';
 import { Op } from 'sequelize';
 import { Client, User } from '@cd-v2/database';
 
@@ -34,10 +35,17 @@ export async function listUsers(options?: {
   role?: string;
   search?: string;
   active?: 'all' | 'active' | 'inactive';
+  staffOnly?: boolean;
 }) {
   const where: Record<string, unknown> = {};
 
-  if (options?.role && options.role !== 'all') {
+  if (options?.staffOnly) {
+    if (options.role && options.role !== 'all' && options.role !== 'client') {
+      where.role = options.role;
+    } else {
+      where.role = { [Op.in]: ['admin', 'technician'] };
+    }
+  } else if (options?.role && options.role !== 'all') {
     where.role = options.role;
   }
   if (options?.active === 'active') where.isActive = true;
@@ -68,13 +76,32 @@ export async function listUsers(options?: {
   return users.map(serializeUser);
 }
 
-export async function getUserById(id: number) {
-  const user = await User.findByPk(id, { attributes: SAFE_USER_ATTRS });
-  return user ? serializeUser(user) : null;
+export function isStaffRole(role: string) {
+  return role === 'admin' || role === 'technician';
+}
+
+export async function getStaffUserById(id: number) {
+  const user = await getUserById(id);
+  if (!user || !isStaffRole(user.role)) return null;
+  return user;
+}
+
+export async function assertStaffAccount(id: number) {
+  const user = await User.findByPk(id, { attributes: ['id', 'role'] });
+  if (!user) return null;
+  if (!isStaffRole(user.role)) {
+    throw new Error('Client portal accounts are managed on the client profile page.');
+  }
+  return user;
 }
 
 function generateTempPassword() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+export async function getUserById(id: number) {
+  const user = await User.findByPk(id, { attributes: SAFE_USER_ATTRS });
+  return user ? serializeUser(user) : null;
 }
 
 export async function createUser(input: {
@@ -109,7 +136,7 @@ export async function createUser(input: {
     role: input.role,
     securityClearance: input.securityClearance,
     password: tempPassword,
-    phone: input.phone ?? null,
+    phone: normalizeStoredPhone(input.phone ?? null),
     bio: input.bio ?? null,
     isActive: input.isActive !== false,
     isLocked: false,
@@ -140,10 +167,18 @@ export async function updateUser(
     bio: string | null;
     isActive: boolean;
     password: string;
-  }>
+  }>,
+  options?: { allowClient?: boolean }
 ) {
   const user = await User.findByPk(id);
   if (!user) return null;
+
+  if (!options?.allowClient && !isStaffRole(user.role)) {
+    throw new Error('Client portal accounts are managed on the client profile page.');
+  }
+  if (updates.role === 'client') {
+    throw new Error('Create client portal accounts from the client profile, not staff settings.');
+  }
 
   if (updates.username && updates.username !== user.username) {
     const clash = await User.findOne({ where: { username: updates.username } });
@@ -155,6 +190,9 @@ export async function updateUser(
   }
 
   const patch: Record<string, unknown> = { ...updates };
+  if (updates.phone !== undefined) {
+    patch.phone = normalizeStoredPhone(updates.phone);
+  }
   if (updates.password?.trim()) {
     patch.password = updates.password.trim();
     patch.passwordSet = true;
@@ -177,6 +215,10 @@ export async function deleteUser(id: number, actorId: number) {
   const user = await User.findByPk(id);
   if (!user) return false;
 
+  if (!isStaffRole(user.role)) {
+    throw new Error('Client portal accounts are managed on the client profile page.');
+  }
+
   const linkedClients = await Client.count({ where: { userId: id } });
   if (linkedClients > 0) {
     throw new Error('Cannot delete user linked to a client portal account. Deactivate instead.');
@@ -189,6 +231,10 @@ export async function deleteUser(id: number, actorId: number) {
 export async function resetUserPassword(id: number) {
   const user = await User.findByPk(id);
   if (!user) return null;
+
+  if (!isStaffRole(user.role)) {
+    throw new Error('Reset client portal access from the client profile page.');
+  }
 
   const tempPassword = generateTempPassword();
   await user.update({

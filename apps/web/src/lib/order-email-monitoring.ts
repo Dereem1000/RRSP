@@ -1,7 +1,17 @@
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import { SystemConfig } from '@cd-v2/database';
-import { applyEmailMonitoringUpdate } from '@/lib/orders';
+import { DEFAULT_OFFICE_LOCATION } from '@/lib/order-constants';
+import { parseShipmentEmailWithMini } from '@/lib/order-email-mini-parse';
+import {
+  clampEmailShippingStage,
+  isAmbiguousShipmentEmailPhrase,
+  locationForShippingStage,
+  shouldAskMiniForShipmentStage,
+  shippingStageLabel,
+  statusForShippingStage,
+} from '@/lib/order-shipment-stages';
+import { applyEmailMonitoringUpdate, findOrderForEmailMonitoring, type SerializedOrder } from '@/lib/orders';
 
 export type EmailMonitoringConfig = {
   enabled: boolean;
@@ -56,7 +66,7 @@ export async function saveEmailMonitoringConfig(config: Partial<EmailMonitoringC
   }
 }
 
-type ParsedEmailUpdate = {
+export type ParsedEmailUpdate = {
   trackingNumber?: string;
   vendorOrderNumber?: string;
   orderNumber?: string;
@@ -65,12 +75,21 @@ type ParsedEmailUpdate = {
   shippingStage?: string;
   currentLocation?: string;
   notes?: string;
+  emailSubject?: string;
+  miniAssisted?: boolean;
+  stageGuarded?: boolean;
+  miniReason?: string;
 };
 
-function extractEmailUpdates(subject: string, text: string, from: string): ParsedEmailUpdate | null {
+function isUsVendor(from: string, fullText: string, vendor?: string) {
+  const vendorLower = (vendor ?? '').toLowerCase();
+  return /amazon|ebay|walmart|newegg|target/i.test(vendorLower) || /amazon\.com|ebay\.com/i.test(fullText) || /amazon|ebay/i.test(from);
+}
+
+export function extractEmailUpdates(subject: string, text: string, from: string): ParsedEmailUpdate | null {
   const body = `${subject}\n${text}`.toLowerCase();
   const fullText = `${subject}\n${text}`;
-  const update: ParsedEmailUpdate = {};
+  const update: ParsedEmailUpdate = { emailSubject: subject };
 
   const vendorOrderMatch =
     fullText.match(/order\s*(?:#|number:?|no\.?)\s*([A-Z0-9-]+)/i) ||
@@ -85,27 +104,55 @@ function extractEmailUpdates(subject: string, text: string, from: string): Parse
   const wrMatch = fullText.match(/\b(WR-?\d+|WHR-?\d+)\b/i);
   if (wrMatch) update.notes = `Email update: ${wrMatch[1]}`;
 
+  const portalOrderMatch = fullText.match(/\b(ORD-\d+-[A-Z0-9]+)\b/i);
+  if (portalOrderMatch) update.orderNumber = portalOrderMatch[1];
+
   if (/jetbox/i.test(from) || /jetbox/i.test(fullText)) update.vendor = 'JetBox';
   else if (/amazon/i.test(from) || /amazon/i.test(fullText)) update.vendor = 'Amazon';
   else if (/aliexpress|ali express/i.test(fullText)) update.vendor = 'AliExpress';
   else if (/ebay/i.test(fullText)) update.vendor = 'eBay';
 
-  if (/delivered|was delivered|delivery completed|arrived at destination/i.test(body)) {
+  const usVendor = isUsVendor(from, fullText, update.vendor);
+  const trinidadContext = /trinidad|jetbox|malabar|arima|computer dynamics|customs/i.test(body);
+
+  if (
+    /\b(was delivered|has been delivered|successfully delivered|delivery completed|package delivered)\b/i.test(
+      body
+    ) &&
+    (trinidadContext || !usVendor)
+  ) {
     update.status = 'delivered';
     update.shippingStage = 'delivered';
     update.currentLocation = 'Delivered';
-  } else if (/customs|clearance/i.test(body)) {
+  } else if (/arrived at destination/i.test(body) && trinidadContext) {
+    update.status = 'delivered';
+    update.shippingStage = 'delivered';
+    update.currentLocation = 'Delivered';
+  } else if (
+    /malabar|arima|local office|at our office|received at office|arrived at (?:the )?office|computer dynamics(?: office| warehouse)?|ready for pickup/i.test(
+      body
+    )
+  ) {
+    update.status = 'shipped';
+    update.shippingStage = 'local_office';
+    update.currentLocation = DEFAULT_OFFICE_LOCATION;
+  } else if (/customs|clearance/i.test(body) && trinidadContext) {
     update.status = 'shipped';
     update.shippingStage = 'customs';
     update.currentLocation = 'In Customs';
-  } else if (/miami|warehouse|jetbox/i.test(body)) {
+  } else if (/miami|warehouse|jetbox/i.test(body) && /miami|jetbox|warehouse|received|arrived/i.test(body)) {
     update.status = 'shipped';
     update.shippingStage = 'miami_warehouse';
     update.currentLocation = 'Miami Warehouse';
-  } else if (/in transit|on the way|out for delivery/i.test(body)) {
+  } else if (/in transit|on the way/i.test(body) && trinidadContext) {
     update.status = 'shipped';
-    update.shippingStage = /out for delivery/i.test(body) ? 'out_for_delivery' : 'in_transit';
-    update.currentLocation = update.shippingStage === 'out_for_delivery' ? 'Out for Delivery' : 'In Transit to Trinidad';
+    update.shippingStage = 'in_transit';
+    update.currentLocation = 'In Transit to Trinidad';
+  } else if (/out for delivery/i.test(body)) {
+    update.status = 'shipped';
+    update.shippingStage = usVendor && !trinidadContext ? 'manufacturer_shipped' : 'out_for_delivery';
+    update.currentLocation =
+      update.shippingStage === 'out_for_delivery' ? 'Out for Delivery' : `Shipped from ${update.vendor || 'vendor'}`;
   } else if (/shipped|has shipped|dispatched|departed/i.test(body)) {
     update.status = 'shipped';
     update.shippingStage = 'manufacturer_shipped';
@@ -117,6 +164,80 @@ function extractEmailUpdates(subject: string, text: string, from: string): Parse
 
   if (!update.status && !update.trackingNumber && !update.vendorOrderNumber) return null;
   return update;
+}
+
+async function refineEmailUpdateWithMini(
+  extracted: ParsedEmailUpdate,
+  existing: SerializedOrder,
+  subject: string,
+  text: string,
+  from: string
+): Promise<ParsedEmailUpdate> {
+  if (!extracted.shippingStage) return extracted;
+
+  let proposedStage = extracted.shippingStage;
+  let miniAssisted = false;
+  let miniReason: string | undefined;
+  let miniConfidence: number | undefined;
+
+  if (
+    shouldAskMiniForShipmentStage({
+      currentStage: existing.shippingStage,
+      proposedStage,
+      subject,
+      text,
+      vendor: extracted.vendor ?? existing.vendor,
+    })
+  ) {
+    const mini = await parseShipmentEmailWithMini({
+      subject,
+      from,
+      text,
+      currentStage: existing.shippingStage,
+      vendor: extracted.vendor ?? existing.vendor,
+      orderNumber: existing.orderNumber,
+      vendorOrderNumber: extracted.vendorOrderNumber ?? existing.vendorOrderNumber,
+    });
+    if (mini) {
+      proposedStage = mini.shippingStage;
+      miniAssisted = true;
+      miniReason = mini.reason;
+      miniConfidence = mini.confidence;
+      extracted.currentLocation = mini.currentLocation;
+    }
+  }
+
+  const { stage, guarded } = clampEmailShippingStage(existing.shippingStage, proposedStage, {
+    miniApproved: miniAssisted,
+    miniConfidence,
+  });
+
+  extracted.shippingStage = stage;
+  extracted.status = statusForShippingStage(stage);
+  if (!extracted.currentLocation || guarded) {
+    extracted.currentLocation = locationForShippingStage(stage, extracted.vendor ?? existing.vendor);
+  }
+  extracted.miniAssisted = miniAssisted;
+  extracted.stageGuarded = guarded;
+  extracted.miniReason = miniReason;
+
+  const noteParts: string[] = [];
+  if (extracted.emailSubject) noteParts.push(`Email: ${extracted.emailSubject}`);
+  if (miniAssisted && miniReason) noteParts.push(`Mini: ${miniReason}`);
+  if (guarded) {
+    noteParts.push(
+      `Stage guard: limited advance to ${shippingStageLabel(stage)} (was ${shippingStageLabel(proposedStage)})`
+    );
+  }
+  if (isAmbiguousShipmentEmailPhrase(subject, text, extracted.vendor ?? existing.vendor) && !miniAssisted) {
+    noteParts.push('Ambiguous vendor tracking phrasing detected');
+  }
+  if (noteParts.length) {
+    const block = noteParts.join(' — ');
+    extracted.notes = extracted.notes ? `${extracted.notes}\n\n${block}` : block;
+  }
+
+  return extracted;
 }
 
 function fetchRecentMessages(config: EmailMonitoringConfig, limit = 15): Promise<Buffer[]> {
@@ -185,6 +306,11 @@ export async function runEmailMonitoringCheck() {
   const rawMessages = await fetchRecentMessages(config);
   let processed = 0;
   let updated = 0;
+  const shipmentUpdates: Array<{
+    previous: SerializedOrder;
+    order: SerializedOrder;
+    meta?: { miniAssisted?: boolean; stageGuarded?: boolean; emailSubject?: string };
+  }> = [];
 
   for (const raw of rawMessages) {
     processed += 1;
@@ -192,10 +318,26 @@ export async function runEmailMonitoringCheck() {
     const subject = parsed.subject ?? '';
     const text = parsed.text ?? parsed.html?.toString() ?? '';
     const from = parsed.from?.text ?? '';
-    const extracted = extractEmailUpdates(subject, text, from);
+    let extracted = extractEmailUpdates(subject, text, from);
     if (!extracted) continue;
-    const order = await applyEmailMonitoringUpdate(extracted);
-    if (order) updated += 1;
+
+    const existing = await findOrderForEmailMonitoring(extracted);
+    if (existing?.shippingStage && extracted.shippingStage) {
+      extracted = await refineEmailUpdateWithMini(extracted, existing, subject, text, from);
+    }
+
+    const outcome = await applyEmailMonitoringUpdate(extracted);
+    if (outcome) {
+      updated += 1;
+      shipmentUpdates.push({
+        ...outcome,
+        meta: {
+          miniAssisted: extracted.miniAssisted,
+          stageGuarded: extracted.stageGuarded,
+          emailSubject: subject,
+        },
+      });
+    }
   }
 
   await SystemConfig.setConfig('email_monitoring_last_check', new Date().toISOString(), 'string', 'email_monitoring');
@@ -205,6 +347,7 @@ export async function runEmailMonitoringCheck() {
     message: `Processed ${processed} email(s), updated ${updated} order(s)`,
     processed,
     updated,
+    updates: shipmentUpdates,
   };
 }
 

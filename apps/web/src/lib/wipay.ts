@@ -153,6 +153,10 @@ export async function recordWiPayPayment(params: WiPayResponseParams) {
     return { ok: false as const, reason: 'Invalid payment amount.' };
   }
 
+  if (!meta.invoiceId) {
+    return { ok: false as const, reason: 'Invalid payment metadata.' };
+  }
+
   const result = await addInvoicePayment(meta.invoiceId, 1, {
     amount,
     paymentMethod: 'wipay',

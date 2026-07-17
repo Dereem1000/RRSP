@@ -2,6 +2,10 @@
 
 Marketing pages show an **Open Live Demo** button (injected by `public/js/multiserver-demos.js`) next to Request Demo / WhatsApp. It opens the product demo at `/demo/<slug>/` via the Next.js proxy.
 
+**Request Demo** buttons open a shared modal (`public/js/public-demo-request.js`) that posts to `/api/public/demo-request` with Google reCAPTCHA when enabled in **Settings → Integrations**.
+
+**Open Live Demo** verifies CAPTCHA via `/api/public/live-demo-access` before opening the demo tab (when CAPTCHA is enabled). Pages must load `public-captcha.js` before `multiserver-demos.js`.
+
 ## Setup
 
 1. **MultiServer** — `MultiServer/launch.bat` → add/start each demo system.

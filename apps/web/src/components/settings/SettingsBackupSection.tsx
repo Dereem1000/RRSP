@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import {
+  Clock,
   DatabaseBackup,
   Download,
   Loader2,
@@ -32,6 +33,30 @@ type StatusInfo = {
   lastBackup: string | null;
 };
 
+type AutoBackupSettings = {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  time: string;
+  day: number;
+  type: 'full' | 'database' | 'files';
+  retention: number;
+  lastRun: string | null;
+  nextRun: string | null;
+};
+
+const DEFAULT_AUTO: AutoBackupSettings = {
+  enabled: true,
+  frequency: 'daily',
+  time: '02:00',
+  day: 0,
+  type: 'full',
+  retention: 30,
+  lastRun: null,
+  nextRun: null,
+};
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export function SettingsBackupSection({
   onMessage,
   onError,
@@ -42,6 +67,7 @@ export function SettingsBackupSection({
   const [loading, setLoading] = useState('');
   const [backups, setBackups] = useState<BackupRow[]>([]);
   const [status, setStatus] = useState<StatusInfo | null>(null);
+  const [auto, setAuto] = useState<AutoBackupSettings>(DEFAULT_AUTO);
   const [showRecovery, setShowRecovery] = useState(false);
   const [recovery, setRecovery] = useState({
     restoreType: 'database' as 'database' | 'files' | 'license' | 'full',
@@ -55,16 +81,33 @@ export function SettingsBackupSection({
   const loadAll = useCallback(async () => {
     setLoading('load');
     try {
-      const [listRes, statusRes] = await Promise.all([
+      const [listRes, statusRes, autoRes] = await Promise.all([
         fetch('/api/backup/list'),
         fetch('/api/backup/status'),
+        fetch('/api/backup/auto-settings'),
       ]);
       const listData = await listRes.json();
       const statusData = await statusRes.json();
+      const autoData = await autoRes.json();
       if (!listRes.ok) throw new Error(listData.message);
       if (!statusRes.ok) throw new Error(statusData.message);
+      if (!autoRes.ok) throw new Error(autoData.message);
       setBackups(listData.backups ?? []);
       setStatus(statusData.status ?? null);
+      if (autoData.config) {
+        setAuto({
+          enabled: autoData.config.enabled ?? DEFAULT_AUTO.enabled,
+          frequency: autoData.config.frequency ?? DEFAULT_AUTO.frequency,
+          time: autoData.config.time ?? DEFAULT_AUTO.time,
+          day: autoData.config.day ?? DEFAULT_AUTO.day,
+          type: autoData.config.type ?? DEFAULT_AUTO.type,
+          retention: autoData.config.retention ?? DEFAULT_AUTO.retention,
+          lastRun: autoData.config.lastRun ?? null,
+          nextRun: autoData.config.nextRun ?? null,
+        });
+      } else if (statusData.auto) {
+        setAuto((prev) => ({ ...prev, ...statusData.auto }));
+      }
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to load backups');
     } finally {
@@ -75,6 +118,37 @@ export function SettingsBackupSection({
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  async function saveAutoSettings(e: FormEvent) {
+    e.preventDefault();
+    setLoading('auto');
+    try {
+      const res = await fetch('/api/backup/auto-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(auto),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      if (data.config) {
+        setAuto({
+          enabled: data.config.enabled ?? auto.enabled,
+          frequency: data.config.frequency ?? auto.frequency,
+          time: data.config.time ?? auto.time,
+          day: data.config.day ?? auto.day,
+          type: data.config.type ?? auto.type,
+          retention: data.config.retention ?? auto.retention,
+          lastRun: data.config.lastRun ?? null,
+          nextRun: data.config.nextRun ?? null,
+        });
+      }
+      onMessage('Auto-backup settings saved');
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to save auto-backup settings');
+    } finally {
+      setLoading('');
+    }
+  }
 
   async function createBackup(type: string) {
     setLoading('create');
@@ -179,6 +253,125 @@ export function SettingsBackupSection({
           </div>
         </div>
       )}
+
+      <form
+        onSubmit={saveAutoSettings}
+        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="flex items-center gap-2 font-semibold text-slate-900">
+              <Clock className="h-4 w-4 text-indigo-600" />
+              Automatic backup
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Runs on the security worker schedule. Defaults to a daily full backup at 2:00 AM.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={auto.enabled}
+              onChange={(e) => setAuto({ ...auto, enabled: e.target.checked })}
+            />
+            Enabled
+          </label>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Frequency</span>
+            <select
+              value={auto.frequency}
+              onChange={(e) =>
+                setAuto({ ...auto, frequency: e.target.value as AutoBackupSettings['frequency'] })
+              }
+              className={inputClass}
+              disabled={!auto.enabled}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Time</span>
+            <input
+              type="time"
+              value={auto.time}
+              onChange={(e) => setAuto({ ...auto, time: e.target.value })}
+              className={inputClass}
+              disabled={!auto.enabled}
+            />
+          </label>
+          {auto.frequency === 'weekly' && (
+            <label className="block">
+              <span className="text-xs font-medium text-slate-600">Day</span>
+              <select
+                value={auto.day}
+                onChange={(e) => setAuto({ ...auto, day: Number(e.target.value) })}
+                className={inputClass}
+                disabled={!auto.enabled}
+              >
+                {WEEKDAYS.map((name, i) => (
+                  <option key={name} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Backup type</span>
+            <select
+              value={auto.type}
+              onChange={(e) => setAuto({ ...auto, type: e.target.value as AutoBackupSettings['type'] })}
+              className={inputClass}
+              disabled={!auto.enabled}
+            >
+              <option value="full">Full</option>
+              <option value="database">Database only</option>
+              <option value="files">Files only</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Retention (days)</span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={auto.retention}
+              onChange={(e) => setAuto({ ...auto, retention: Number(e.target.value) || 30 })}
+              className={inputClass}
+              disabled={!auto.enabled}
+            />
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+          <div className="space-y-1">
+            <p>
+              Last auto-backup:{' '}
+              {auto.lastRun ? new Date(auto.lastRun).toLocaleString() : 'Not run yet'}
+            </p>
+            <p>
+              Next scheduled:{' '}
+              {auto.enabled && auto.nextRun
+                ? new Date(auto.nextRun).toLocaleString()
+                : auto.enabled
+                  ? 'Pending worker cycle'
+                  : 'Disabled'}
+            </p>
+          </div>
+          <button
+            type="submit"
+            disabled={loading === 'auto'}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {loading === 'auto' ? 'Saving…' : 'Save schedule'}
+          </button>
+        </div>
+      </form>
 
       <div className="flex flex-wrap gap-2">
         <button

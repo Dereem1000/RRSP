@@ -13,8 +13,164 @@
 
 html {
   @apply scroll-smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   @apply bg-slate-100 text-slate-900 antialiased;
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/* Reliable portal layout split — pure CSS, no hydration mismatch */
+@media (max-width: 1023px) {
+  .portal-sidebar {
+    display: none !important;
+  }
+
+  .portal-mobile-chrome {
+    display: block !important;
+  }
+
+  .portal-desktop-header {
+    display: none !important;
+  }
+
+  .portal-desktop-only {
+    display: none !important;
+  }
+
+  .cd-mobile-main h1 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .cd-mobile-main .grid {
+    min-width: 0;
+  }
+
+  .cd-mobile-header-actions {
+    display: flex;
+    max-width: 42vw;
+    flex-shrink: 0;
+    gap: 0.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cd-mobile-header-actions a,
+  .cd-mobile-header-actions button {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .cd-mobile-main table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cd-mobile-main .overflow-hidden > table {
+    display: table;
+  }
+
+  .cd-mobile-main [class*='min-w-['] {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .portal-mobile-chrome {
+    display: none !important;
+  }
+
+  .portal-mobile-only {
+    display: none !important;
+  }
+}
+
+/* Mobile app shell */
+.cd-mobile-app {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@media (min-width: 1280px) {
+  .cd-mobile-app {
+    overflow-x: visible;
+  }
+}
+
+.cd-mobile-main {
+  width: 100%;
+  min-width: 0;
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+  .cd-mobile-main {
+    padding-bottom: 2rem;
+  }
+
+  .cd-mobile-main--mini-dock {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 1280px) {
+  .msp-systems-detail-panel {
+    position: sticky;
+    top: 5.25rem;
+    align-self: start;
+    z-index: 10;
+  }
+}
+
+.cd-mobile-tabbar {
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Compact phones — icon-only tabs, tighter header */
+@media (max-width: 479px) {
+  .cd-mobile-tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .cd-mobile-tab-link {
+    min-height: 2.75rem;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  .cd-mobile-header-brand {
+    display: none;
+  }
+
+  .cd-mobile-header-actions a,
+  .cd-mobile-header-actions button {
+    font-size: 0;
+    gap: 0;
+    padding: 0.5rem;
+  }
+
+  .cd-mobile-header-actions a svg,
+  .cd-mobile-header-actions button svg {
+    width: 1rem;
+    height: 1rem;
+    font-size: initial;
+  }
 }

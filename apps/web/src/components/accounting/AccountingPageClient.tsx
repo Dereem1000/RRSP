@@ -13,22 +13,30 @@ import {
   Link2,
   Loader2,
   Mail,
-  Plus,
   Printer,
   Receipt,
-  RefreshCw,
   Send,
-  Settings,
   Trash2,
   X,
 } from 'lucide-react';
 import { ClientSearchSelect } from '@/components/clients/ClientSearchSelect';
+import { EmailSentHistory } from '@/components/accounting/EmailSentHistory';
+import { InvoiceLinksSection, type InvoiceLinkView } from '@/components/accounting/InvoiceLinksSection';
+import { ACCOUNTING_HEADER_EVENTS } from '@/components/accounting/AccountingHeaderActions';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ClientLink, InvoiceLink, QuoteLink } from '@/components/links/DocumentLinks';
 import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 import type { AccountingSummary, RecentFinancialTransaction } from '@/lib/accounting';
+import type { EmailLogEntry } from '@/lib/email-log';
+import { useUrlTab } from '@/lib/use-url-tab';
+import {
+  buildTicketAccountingPrefill,
+  type TicketAccountingPrefill,
+} from '@/lib/ticket-accounting-prefill';
 
 type Tab = 'overview' | 'invoices' | 'quotes';
+
+const ACCOUNTING_TABS: Tab[] = ['overview', 'invoices', 'quotes'];
 
 type Invoice = {
   id: string;
@@ -42,6 +50,7 @@ type Invoice = {
   paidDate?: string | null;
   client?: { id?: string; name?: string; email?: string; serviceLevel?: string };
   description?: string | null;
+  items?: QuoteLineItem[];
 };
 
 type Payment = {
@@ -178,7 +187,7 @@ export function AccountingPageClient({
 }) {
   const searchParams = useSearchParams();
   const { confirmBeforeClientEmail, askToEmailClient } = useClientEmailPolicy();
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useUrlTab(ACCOUNTING_TABS, 'overview');
   const [summary, setSummary] = useState<AccountingSummary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<RecentFinancialTransaction[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -202,13 +211,21 @@ export function AccountingPageClient({
   const [convertDueDate, setConvertDueDate] = useState('');
   const [invoiceDetailId, setInvoiceDetailId] = useState<string | null>(null);
   const [invoiceDetail, setInvoiceDetail] = useState<Invoice | null>(null);
+  const [invoiceEditing, setInvoiceEditing] = useState(false);
+  const [editInvoiceAmount, setEditInvoiceAmount] = useState('');
+  const [editInvoiceDueDate, setEditInvoiceDueDate] = useState('');
+  const [editInvoiceDescription, setEditInvoiceDescription] = useState('');
+  const [editInvoiceItems, setEditInvoiceItems] = useState<QuoteLineItem[]>([]);
   const [invoicePayments, setInvoicePayments] = useState<Payment[]>([]);
+  const [invoiceEmailHistory, setInvoiceEmailHistory] = useState<EmailLogEntry[]>([]);
+  const [invoiceLinks, setInvoiceLinks] = useState<InvoiceLinkView[]>([]);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'paypal' | 'bank_transfer'>('CASH');
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [quoteDetailId, setQuoteDetailId] = useState<string | null>(null);
   const [quoteDetail, setQuoteDetail] = useState<Quote | null>(null);
+  const [quoteEmailHistory, setQuoteEmailHistory] = useState<EmailLogEntry[]>([]);
   const [quoteEditing, setQuoteEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editAmount, setEditAmount] = useState('');
@@ -218,24 +235,63 @@ export function AccountingPageClient({
   const [editNotes, setEditNotes] = useState('');
   const [editItems, setEditItems] = useState<QuoteLineItem[]>([]);
   const [createItems, setCreateItems] = useState<QuoteLineItem[]>([emptyLineItem()]);
+  const [ticketPrefill, setTicketPrefill] = useState<TicketAccountingPrefill | null>(null);
+  const [formPrefillKey, setFormPrefillKey] = useState(0);
   const [showQuoteSettings, setShowQuoteSettings] = useState(false);
   const [quoteSettings, setQuoteSettings] = useState<QuoteSettings | null>(null);
 
+  function resetCreateForms() {
+    setCreateQuoteClientId('');
+    setCreateInvoiceClientId('');
+    setTicketPrefill(null);
+    setCreateItems([emptyLineItem()]);
+    setFormPrefillKey(0);
+  }
+
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || !searchParams) return;
+
     const create = searchParams.get('create');
     const clientIdParam = searchParams.get('clientId');
-    if (create === 'quote') {
-      setShowQuoteForm(true);
-      if (clientIdParam) setCreateQuoteClientId(clientIdParam);
+    const ticketIdParam = searchParams.get('ticketId');
+    if (create !== 'quote' && create !== 'invoice') return;
+
+    async function applyCreateParams() {
+      let prefill: TicketAccountingPrefill | null = null;
+      if (ticketIdParam) {
+        try {
+          const res = await fetch(`/api/tickets/${ticketIdParam}`);
+          const data = await res.json();
+          if (res.ok && data.ticket) {
+            prefill = buildTicketAccountingPrefill(data.ticket);
+          }
+        } catch {
+          // Ignore ticket prefill errors; client selection still works.
+        }
+      }
+
+      const clientId = prefill?.clientId ?? clientIdParam ?? '';
+      if (prefill) {
+        setTicketPrefill(prefill);
+        if (prefill.lineItems?.length) setCreateItems(prefill.lineItems);
+        setFormPrefillKey((key) => key + 1);
+      }
+
+      if (create === 'quote') {
+        setShowQuoteForm(true);
+        if (clientId) setCreateQuoteClientId(clientId);
+      }
+      if (create === 'invoice') {
+        setShowInvoiceForm(true);
+        if (clientId) setCreateInvoiceClientId(clientId);
+      }
     }
-    if (create === 'invoice') {
-      setShowInvoiceForm(true);
-      if (clientIdParam) setCreateInvoiceClientId(clientIdParam);
-    }
+
+    void applyCreateParams();
   }, [searchParams, isAdmin]);
 
   useEffect(() => {
+    if (!searchParams) return;
     const invoiceId = searchParams.get('invoice');
     const quoteId = searchParams.get('quote');
     if (invoiceId) {
@@ -308,6 +364,38 @@ export function AccountingPageClient({
     if (tab === 'quotes') loadQuotes();
   }, [tab, loadQuotes]);
 
+  useEffect(() => {
+    async function onQuoteSettings() {
+      setShowQuoteSettings(true);
+      await loadQuoteSettings();
+    }
+
+    function onNewQuote() {
+      setShowQuoteForm(true);
+    }
+
+    function onNewInvoice() {
+      setShowInvoiceForm(true);
+    }
+
+    async function onRefresh() {
+      await refresh();
+      window.dispatchEvent(new CustomEvent(ACCOUNTING_HEADER_EVENTS.REFRESH_COMPLETE));
+    }
+
+    window.addEventListener(ACCOUNTING_HEADER_EVENTS.NEW_QUOTE, onNewQuote);
+    window.addEventListener(ACCOUNTING_HEADER_EVENTS.NEW_INVOICE, onNewInvoice);
+    window.addEventListener(ACCOUNTING_HEADER_EVENTS.QUOTE_SETTINGS, onQuoteSettings);
+    window.addEventListener(ACCOUNTING_HEADER_EVENTS.REFRESH, onRefresh);
+
+    return () => {
+      window.removeEventListener(ACCOUNTING_HEADER_EVENTS.NEW_QUOTE, onNewQuote);
+      window.removeEventListener(ACCOUNTING_HEADER_EVENTS.NEW_INVOICE, onNewInvoice);
+      window.removeEventListener(ACCOUNTING_HEADER_EVENTS.QUOTE_SETTINGS, onQuoteSettings);
+      window.removeEventListener(ACCOUNTING_HEADER_EVENTS.REFRESH, onRefresh);
+    };
+  }, [refresh]);
+
   async function markPaid(id: string) {
     if (!confirm('Mark this invoice as paid?')) return;
     const sendEmail = askToEmailClient('Send a payment confirmation email to the client?');
@@ -334,20 +422,72 @@ export function AccountingPageClient({
     setLoading(`inv-${id}`);
     setError('');
     try {
-      const [invRes, payRes] = await Promise.all([fetch(`/api/msp/invoices/${id}`), fetch(`/api/msp/invoices/${id}/payments`)]);
+      const [invRes, payRes, emailRes, linksRes] = await Promise.all([
+        fetch(`/api/msp/invoices/${id}`),
+        fetch(`/api/msp/invoices/${id}/payments`),
+        fetch(`/api/msp/invoices/${id}/email-history`),
+        fetch(`/api/msp/invoices/${id}/links`),
+      ]);
       const invData = await invRes.json();
       const payData = await payRes.json();
+      const emailData = await emailRes.json();
+      const linksData = await linksRes.json();
       if (!invRes.ok) throw new Error(invData.message || 'Failed to load invoice');
       if (!payRes.ok) throw new Error(payData.message || 'Failed to load payments');
-      setInvoiceDetail(invData.invoice);
+      const invoice = invData.invoice as Invoice;
+      setInvoiceDetail(invoice);
       setInvoicePayments(payData.payments ?? []);
+      setInvoiceEmailHistory(emailRes.ok ? (emailData.logs ?? []) : []);
+      setInvoiceLinks(linksRes.ok ? (linksData.links ?? []) : []);
       setInvoiceDetailId(id);
+      setInvoiceEditing(false);
+      setEditInvoiceAmount(String(invoice.amount));
+      setEditInvoiceDueDate(String(invoice.dueDate).slice(0, 10));
+      setEditInvoiceDescription(invoice.description ?? '');
+      setEditInvoiceItems((invoice.items ?? []).length ? (invoice.items as QuoteLineItem[]) : [emptyLineItem()]);
       setPaymentAmount('');
       setPaymentReference('');
       setPaymentNotes('');
       setPaymentMethod('CASH');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load invoice');
+    } finally {
+      setLoading('');
+    }
+  }
+
+  async function saveInvoiceEdit() {
+    if (!invoiceDetailId) return;
+    const items = editInvoiceItems
+      .filter((item) => item.name.trim())
+      .map((item) => ({
+        ...item,
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
+        total: (Number(item.quantity) || 1) * (Number(item.price) || 0),
+      }));
+    const amount = items.length ? sumItems(items) : Number(editInvoiceAmount);
+    setLoading(`save-inv-${invoiceDetailId}`);
+    setError('');
+    try {
+      const res = await fetch(`/api/msp/invoices/${invoiceDetailId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          dueDate: editInvoiceDueDate,
+          description: editInvoiceDescription || null,
+          items,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      setMessage('Invoice updated');
+      setInvoiceEditing(false);
+      await openInvoiceDetail(invoiceDetailId);
+      await loadInvoices();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update invoice');
     } finally {
       setLoading('');
     }
@@ -474,12 +614,17 @@ export function AccountingPageClient({
     setLoading(`quote-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${id}`);
+      const [res, emailRes] = await Promise.all([
+        fetch(`/api/msp/quotes/${id}`),
+        fetch(`/api/msp/quotes/${id}/email-history`),
+      ]);
       const data = await res.json();
+      const emailData = await emailRes.json();
       if (!res.ok) throw new Error(data.message || 'Failed to load quote');
       const quote = data.quote as Quote;
       setQuoteDetail(quote);
       setQuoteDetailId(id);
+      setQuoteEmailHistory(emailRes.ok ? (emailData.logs ?? []) : []);
       setQuoteEditing(false);
       setEditTitle(quote.title);
       setEditAmount(String(quote.amount));
@@ -747,8 +892,7 @@ export function AccountingPageClient({
       }
       setMessage('Quote created');
       setShowQuoteForm(false);
-      setCreateQuoteClientId('');
-      setCreateItems([emptyLineItem()]);
+      resetCreateForms();
       setTab('quotes');
       await loadQuotes();
     } catch (err) {
@@ -766,55 +910,9 @@ export function AccountingPageClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Accounting</h1>
-          <p className="mt-1 text-sm text-slate-500">MSP invoices, quotes, and financial overview</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowQuoteForm(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              <Plus className="h-4 w-4" />
-              New quote
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowInvoiceForm(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              <Plus className="h-4 w-4" />
-              New invoice
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={async () => {
-                setShowQuoteSettings(true);
-                await loadQuoteSettings();
-              }}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <Settings className="h-4 w-4" />
-              Quote settings
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={!!loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-          >
-            {loading === 'refresh' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh
-          </button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Accounting</h1>
+        <p className="mt-1 text-sm text-slate-500">MSP invoices, quotes, and financial overview</p>
       </div>
 
       {(error || message) && (
@@ -1026,8 +1124,15 @@ export function AccountingPageClient({
       )}
 
       {showQuoteForm && (
-        <Modal title="Create quote" onClose={() => { setShowQuoteForm(false); setCreateQuoteClientId(''); }} wide>
-          <form onSubmit={createQuote} className="space-y-4">
+        <Modal title="Create quote" onClose={() => { setShowQuoteForm(false); resetCreateForms(); }} wide>
+          <form key={`create-quote-${formPrefillKey}`} onSubmit={createQuote} className="space-y-4">
+            {ticketPrefill?.ticketNumber && (
+              <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                {ticketPrefill.hasCostData
+                  ? `Prefilled from ticket ${ticketPrefill.ticketNumber} including cost details.`
+                  : `Client prefilled from ticket ${ticketPrefill.ticketNumber}.`}
+              </p>
+            )}
             <Field label="Client">
               <ClientSearchSelect
                 clients={clients}
@@ -1039,14 +1144,27 @@ export function AccountingPageClient({
               />
               <ClientPrefillHint clients={clients} clientId={createQuoteClientId} />
             </Field>
-            <Field label="Title"><input name="title" required className={inputClass} /></Field>
+            <Field label="Title">
+              <input name="title" required className={inputClass} defaultValue={ticketPrefill?.title ?? ''} />
+            </Field>
             <Field label="Amount (TTD) — auto-calculated if line items added">
-              <input name="amount" type="number" step="0.01" min="0" className={inputClass} defaultValue={sumItems(createItems) || ''} />
+              <input
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                className={inputClass}
+                defaultValue={sumItems(createItems) || ticketPrefill?.amount || ''}
+              />
             </Field>
             <Field label="Valid until"><input name="validUntil" type="date" required className={inputClass} /></Field>
-            <Field label="Description"><textarea name="description" rows={2} className={inputClass} /></Field>
+            <Field label="Description">
+              <textarea name="description" rows={2} className={inputClass} defaultValue={ticketPrefill?.description ?? ''} />
+            </Field>
             <Field label="Terms"><textarea name="terms" rows={2} className={inputClass} /></Field>
-            <Field label="Notes"><textarea name="notes" rows={2} className={inputClass} /></Field>
+            <Field label="Notes">
+              <textarea name="notes" rows={2} className={inputClass} defaultValue={ticketPrefill?.notes ?? ''} />
+            </Field>
             <LineItemsEditor items={createItems} onChange={setCreateItems} />
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input type="checkbox" name="sendNow" className="rounded" />
@@ -1063,8 +1181,9 @@ export function AccountingPageClient({
       )}
 
       {showInvoiceForm && (
-        <Modal title="Create invoice" onClose={() => { setShowInvoiceForm(false); setCreateInvoiceClientId(''); }}>
+        <Modal title="Create invoice" onClose={() => { setShowInvoiceForm(false); resetCreateForms(); }} wide>
           <form
+            key={`create-invoice-${formPrefillKey}`}
             onSubmit={async (e) => {
               e.preventDefault();
               if (!createInvoiceClientId) {
@@ -1078,16 +1197,26 @@ export function AccountingPageClient({
               const sendEmail =
                 wantsEmail && askToEmailClient('Email this invoice to the client after it is created?');
               try {
+                const items = createItems
+                  .filter((item) => item.name.trim())
+                  .map((item) => ({
+                    ...item,
+                    quantity: Number(item.quantity) || 1,
+                    price: Number(item.price) || 0,
+                    total: (Number(item.quantity) || 1) * (Number(item.price) || 0),
+                  }));
+                const amount = items.length ? sumItems(items) : Number(form.get('amount'));
                 const res = await fetch('/api/msp/invoices', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     clientId: createInvoiceClientId,
-                    amount: Number(form.get('amount')),
+                    amount,
                     dueDate: form.get('dueDate'),
                     billingCycle: form.get('billingCycle'),
                     paymentGateway: form.get('paymentGateway'),
                     description: form.get('description') || null,
+                    items,
                     sendEmail,
                   }),
                 });
@@ -1095,7 +1224,7 @@ export function AccountingPageClient({
                 if (!res.ok) throw new Error(data.message || 'Failed');
                 setMessage('Invoice created');
                 setShowInvoiceForm(false);
-                setCreateInvoiceClientId('');
+                resetCreateForms();
                 setTab('invoices');
                 await refresh();
               } catch (err) {
@@ -1106,6 +1235,13 @@ export function AccountingPageClient({
             }}
             className="space-y-4"
           >
+            {ticketPrefill?.ticketNumber && (
+              <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                {ticketPrefill.hasCostData
+                  ? `Prefilled from ticket ${ticketPrefill.ticketNumber} including cost details.`
+                  : `Client prefilled from ticket ${ticketPrefill.ticketNumber}.`}
+              </p>
+            )}
             <Field label="Client">
               <ClientSearchSelect
                 clients={clients}
@@ -1117,8 +1253,15 @@ export function AccountingPageClient({
               />
               <ClientPrefillHint clients={clients} clientId={createInvoiceClientId} />
             </Field>
-            <Field label="Amount (TTD)">
-              <input name="amount" type="number" step="0.01" min="0" required className={inputClass} />
+            <Field label="Amount (TTD) — auto-calculated if line items added">
+              <input
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                className={inputClass}
+                defaultValue={sumItems(createItems) || ticketPrefill?.amount || ''}
+              />
             </Field>
             <Field label="Due date">
               <input name="dueDate" type="date" required className={inputClass} />
@@ -1141,8 +1284,14 @@ export function AccountingPageClient({
               </select>
             </Field>
             <Field label="Description">
-              <textarea name="description" rows={3} className={inputClass} />
+              <textarea
+                name="description"
+                rows={3}
+                className={inputClass}
+                defaultValue={ticketPrefill?.description ?? ''}
+              />
             </Field>
+            <LineItemsEditor items={createItems} onChange={setCreateItems} />
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input type="checkbox" name="sendNow" className="rounded" />
               Email client after create{confirmBeforeClientEmail ? ' (confirmation required)' : ''}
@@ -1166,13 +1315,28 @@ export function AccountingPageClient({
       {invoiceDetailId && invoiceDetail && (
         <Modal
           title={`Invoice ${invoiceDetail.invoiceNumber}`}
+          wide
           onClose={() => {
             setInvoiceDetailId(null);
             setInvoiceDetail(null);
+            setInvoiceEditing(false);
             setInvoicePayments([]);
+            setInvoiceEmailHistory([]);
+            setInvoiceLinks([]);
           }}
         >
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <StatusBadge status={invoiceDetail.status} colors={INVOICE_STATUS_COLORS} />
+              {isAdmin && invoiceDetail.status !== 'cancelled' && invoiceDetail.status !== 'paid' && !invoiceEditing && (
+                <button type="button" onClick={() => setInvoiceEditing(true)} className="text-sm font-semibold text-indigo-600 hover:underline">
+                  Edit invoice
+                </button>
+              )}
+            </div>
+
+            {!invoiceEditing ? (
+              <>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Client</p>
@@ -1212,6 +1376,33 @@ export function AccountingPageClient({
                 </div>
               )}
             </div>
+            {invoiceDetail.description && <p className="text-sm text-slate-600">{invoiceDetail.description}</p>}
+            {(invoiceDetail.items?.length ?? 0) > 0 && (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="min-w-full text-sm">
+                  <thead><tr className="bg-slate-50"><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-left">Description</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Price</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
+                  <tbody>
+                    {invoiceDetail.items!.map((item, i) => (
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="px-3 py-2">{item.name}</td>
+                        <td className="px-3 py-2">{item.description}</td>
+                        <td className="px-3 py-2 text-right">{item.quantity}</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(item.price, invoiceDetail.currency)}</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(item.total ?? item.quantity * item.price, invoiceDetail.currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <InvoiceLinksSection
+              invoiceId={invoiceDetail.id}
+              clientId={invoiceDetail.clientId ?? invoiceDetail.client?.id}
+              links={invoiceLinks}
+              onLinksChange={setInvoiceLinks}
+              canEdit={isAdmin}
+            />
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Add payment</p>
@@ -1278,6 +1469,8 @@ export function AccountingPageClient({
               </div>
             </div>
 
+            <EmailSentHistory logs={invoiceEmailHistory} />
+
             <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
               <button
                 type="button"
@@ -1318,6 +1511,29 @@ export function AccountingPageClient({
                 </button>
               )}
             </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Amount">
+                    <input value={editInvoiceAmount} onChange={(e) => setEditInvoiceAmount(e.target.value)} type="number" step="0.01" className={inputClass} />
+                  </Field>
+                  <Field label="Due date">
+                    <input value={editInvoiceDueDate} onChange={(e) => setEditInvoiceDueDate(e.target.value)} type="date" className={inputClass} />
+                  </Field>
+                </div>
+                <Field label="Description">
+                  <textarea value={editInvoiceDescription} onChange={(e) => setEditInvoiceDescription(e.target.value)} rows={3} className={inputClass} />
+                </Field>
+                <LineItemsEditor items={editInvoiceItems} onChange={setEditInvoiceItems} />
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setInvoiceEditing(false)} className="rounded-xl border px-4 py-2 text-sm">Cancel</button>
+                  <button type="button" onClick={saveInvoiceEdit} disabled={loading === `save-inv-${invoiceDetailId}`} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                    {loading === `save-inv-${invoiceDetailId}` ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -1330,6 +1546,7 @@ export function AccountingPageClient({
             setQuoteDetailId(null);
             setQuoteDetail(null);
             setQuoteEditing(false);
+            setQuoteEmailHistory([]);
           }}
         >
           <div className="space-y-4">
@@ -1391,6 +1608,8 @@ export function AccountingPageClient({
                 </div>
               </div>
             )}
+
+            {!quoteEditing && <EmailSentHistory logs={quoteEmailHistory} />}
 
             {!quoteEditing && (
               <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">

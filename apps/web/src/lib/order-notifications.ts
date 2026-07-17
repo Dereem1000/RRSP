@@ -24,6 +24,7 @@ function toPayload(order: OrderLike): OrderEmailPayload {
     clientPrice: order.clientPrice,
     quantity: order.quantity,
     currentLocation: order.currentLocation,
+    serialNumber: order.serialNumber,
     client: order.client,
   };
 }
@@ -90,6 +91,24 @@ export async function notifyOrderStatusChange(
     origin: options?.origin,
     type,
     previousStatus,
+  });
+}
+
+export async function notifyOrderLocationChange(
+  order: OrderLike,
+  previous: Pick<OrderLike, 'shippingStage' | 'currentLocation' | 'status'>,
+  options?: { origin?: string; force?: boolean }
+) {
+  if (
+    order.shippingStage === previous.shippingStage &&
+    (order.currentLocation ?? '') === (previous.currentLocation ?? '')
+  ) {
+    return false;
+  }
+
+  return emailClientIfAllowed(order, 'location_update', {
+    origin: options?.origin,
+    force: options?.force ?? true,
   });
 }
 

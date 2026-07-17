@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
-    "dev": "next dev --turbo -H 0.0.0.0 -p 3000",
-    "dev:showcase": "next dev --turbo -H 0.0.0.0",
-    "build": "next build",
-    "start": "next start -p 3000",
-    "start:showcase": "next start -H 0.0.0.0",
+    "dev": "node --max-old-space-size=8192 ../../node_modules/next/dist/bin/next dev -H 0.0.0.0 -p 3000",
+    "dev:turbo": "node --max-old-space-size=8192 ../../node_modules/next/dist/bin/next dev --turbo -H 0.0.0.0 -p 3000",
+    "dev:showcase": "node --max-old-space-size=8192 ../../node_modules/next/dist/bin/next dev -H 0.0.0.0",
+    "build": "node --max-old-space-size=8192 ../../node_modules/next/dist/bin/next build",
+    "start": "node --max-old-space-size=4096 ../../node_modules/next/dist/bin/next start -p 3000",
+    "start:showcase": "node --max-old-space-size=4096 ../../node_modules/next/dist/bin/next start -H 0.0.0.0",
     "lint": "next lint"
   },
   "dependencies": {
@@ -18,6 +19,7 @@
     "bcryptjs": "^2.4.3",
     "csv-parse": "^6.2.1",
     "dotenv": "^16.5.0",
+    "html5-qrcode": "^2.3.8",
     "imap": "0.8.17",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.511.0",

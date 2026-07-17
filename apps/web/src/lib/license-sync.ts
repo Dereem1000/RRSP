@@ -6,6 +6,10 @@ import {
   mapServiceLevelToLicense,
   type ActivationFeature,
 } from '@/lib/license-constants';
+import {
+  generateCompanySerial,
+  generateLicenseSerial,
+} from '@/lib/license-serial';
 import { all, get, run, withLicenseDb } from '@/lib/license-service';
 
 function buildLicenseFeaturesForFeature(mspFeature: ActivationFeature): Record<string, boolean> {
@@ -48,7 +52,7 @@ export async function syncClientToLicenseSystem(client: Client) {
     )) as CompanyRef | undefined;
 
     if (!company) {
-      const serial = `MSP-${client.id.slice(0, 8)}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+      const serial = generateCompanySerial(client.id);
       const { lastID } = await run(
         db,
         `INSERT INTO company_registration (company_name, contact_person, email, phone, address, serial_number, msp_client_id, registration_date, created_at, is_verified)
@@ -117,9 +121,23 @@ export async function syncClientToLicenseSystem(client: Client) {
           ]
         );
         updated.push(match.id);
+      } else if (existing.some((row) => {
+        if (!row.features) return false;
+        try {
+          const f = JSON.parse(row.features) as Record<string, boolean>;
+          return Boolean(f[licenseKey]);
+        } catch {
+          return false;
+        }
+      })) {
+        // Company already has a license for this system (may be bound to a device).
+        // Issue extra device licenses from the License GUI — do not auto-create duplicates.
       } else {
-        const ts = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
-        const licenseSerial = `LIC-${company.serial_number}-${mspFeature.toUpperCase()}-${ts}`;
+        const licenseSerial = generateLicenseSerial({
+          mspFeature,
+          mspClientId: client.id,
+          deviceSeat: 1,
+        });
         const { lastID } = await run(
           db,
           `INSERT INTO license_activation (serial_number, company_id, license_type, service_level, max_users, features, activation_date, expiration_date, is_active, created_at, updated_at)

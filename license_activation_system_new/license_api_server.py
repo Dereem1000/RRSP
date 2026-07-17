@@ -66,7 +66,52 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import the license validator
 from license_validator import LicenseValidator
 from license_response_signature import sign_valid_license_response
-from models import db, LicenseActivation, SystemConfiguration
+from models import db, LicenseActivation, CompanyRegistration, SystemConfiguration
+from license_serial import parse_license_features
+
+SYSTEM_TYPE_TO_FEATURE_KEY = {
+    'crm': 'customer_management',
+    'customer_management': 'customer_management',
+    'pos': 'pos_systems',
+    'pos_system': 'pos_systems',
+    'restaurant': 'restaurant_management',
+    'restaurant_management': 'restaurant_management',
+    'document': 'document_management',
+    'document_management': 'document_management',
+    'ecommerce': 'ecommerce_websites',
+    'ecommerce_websites': 'ecommerce_websites',
+    'auto': 'auto_system',
+    'auto_system': 'auto_system',
+    'distribution': 'distribution_system',
+    'distribution_system': 'distribution_system',
+}
+
+
+def license_matches_requested_system(license_row, system_info: dict) -> tuple[bool, str | None]:
+    """Return (ok, error_message). Skips check when client omits system_type."""
+    if not system_info or not isinstance(system_info, dict):
+        return True, None
+
+    raw_type = (
+        system_info.get('system_type')
+        or system_info.get('system_key')
+        or system_info.get('product')
+        or ''
+    )
+    system_type = str(raw_type).strip().lower()
+    if not system_type:
+        return True, None
+
+    required_key = SYSTEM_TYPE_TO_FEATURE_KEY.get(system_type)
+    if not required_key:
+        return True, None
+
+    features = parse_license_features(license_row.features if license_row else {})
+    if features.get(required_key):
+        return True, None
+
+    product = str(system_info.get('product') or system_type).upper()
+    return False, f'License is not enabled for {product}'
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('LICENSE_SECRET_KEY', 'your-secret-key-here')
@@ -428,6 +473,36 @@ def validate_license():
             raise
         
         if validation_result.get('valid'):
+            with app.app_context():
+                license_row = LicenseActivation.query.filter_by(serial_number=serial_number).first()
+                if license_row:
+                    system_ok, system_err = license_matches_requested_system(license_row, system_info)
+                    if not system_ok:
+                        print(f'🚫 REJECTING validation: {system_err}')
+                        return jsonify({
+                            'success': False,
+                            'valid': False,
+                            'error': system_err,
+                            'message': system_err,
+                            'timestamp': datetime.now(timezone.utc).isoformat(),
+                        }), 403
+                    from license_serial import parse_license_features, resolve_license_feature_key
+                    from msp_integration import MSPClientIntegration
+
+                    feature_key = resolve_license_feature_key(
+                        license_row.features,
+                        license_row.serial_number,
+                    )
+                    if feature_key and not parse_license_features(license_row.features).get(feature_key):
+                        msp = MSPClientIntegration()
+                        license_row.features = json.dumps(
+                            msp._build_license_features_for_key(feature_key)
+                        )
+                        db.session.commit()
+                        print(
+                            f'✅ Repaired missing features for license: {serial_number} -> {feature_key}'
+                        )
+
             # Convert expiration_date to ISO format string if it exists
             expiration_date = validation_result.get('expiration_date')
             expiration_date_str = None
@@ -456,15 +531,10 @@ def validate_license():
                 from datetime import timedelta
                 
                 # Default durations based on license type
-                license_durations = {
-                    'Day Pass': 1,  # 1 day
-                    'Trial 7 Days': 7,  # 7 days
-                    'Extended 30 Days': 30,  # 30 days
-                    'One Time License': 365,  # 1 year
-                    'No Time Limit': None  # No expiration
-                }
-                
-                duration_days = license_durations.get(license_type, 365)
+                from license_types import API_DURATION_BY_LICENSE_TYPE, normalize_license_type
+
+                license_type = normalize_license_type(license_type, 'One Time License')
+                duration_days = API_DURATION_BY_LICENSE_TYPE.get(license_type, 365)
                 
                 # Ensure duration_days is a number
                 if duration_days is not None and not isinstance(duration_days, (int, float)):
@@ -593,7 +663,8 @@ def license_info():
                     'restaurant_management',
                     'pos_system',
                     'inventory_management',
-                    'customer_management'
+                    'customer_management',
+                    'crm',
                 ],
                 'validation_methods': [
                     'online',
@@ -616,6 +687,98 @@ def license_info():
             'error': 'Internal server error',
             'message': 'An error occurred while retrieving license system information'
         }), 500
+
+@app.route('/api/license/account-licenses', methods=['POST'])
+@require_api_key
+@rate_limit(max_requests=30, window=60)
+def account_licenses():
+    """
+    Return active licenses for a company account email (server-to-server only).
+    Used by product installers after CD account login — never call from browsers directly.
+    """
+    try:
+        data = request.get_json() or {}
+        email = str(data.get('email') or '').strip().lower()
+        if not email or '@' not in email:
+            return jsonify({
+                'success': False,
+                'error': 'email is required',
+                'message': 'Provide the account email from authenticated CD login',
+            }), 400
+
+        system_info = data.get('system_info') or {}
+        if not isinstance(system_info, dict):
+            system_info = {}
+        if data.get('system_type') and not system_info.get('system_type'):
+            system_info['system_type'] = data.get('system_type')
+        if data.get('product') and not system_info.get('product'):
+            system_info['product'] = data.get('product')
+
+        with app.app_context():
+            companies = CompanyRegistration.query.filter(
+                CompanyRegistration.email.ilike(email)
+            ).all()
+            if not companies:
+                return jsonify({
+                    'success': True,
+                    'licenses': [],
+                    'count': 0,
+                    'message': 'No company registration found for this email',
+                })
+
+            company_ids = [c.id for c in companies]
+            rows = LicenseActivation.query.filter(
+                LicenseActivation.company_id.in_(company_ids)
+            ).all()
+
+            now = datetime.now(timezone.utc)
+            licenses_data = []
+            for license_row in rows:
+                if not license_row.is_active:
+                    continue
+                exp = license_row.expiration_date
+                if exp is not None:
+                    if getattr(exp, 'tzinfo', None) is None:
+                        exp = exp.replace(tzinfo=timezone.utc)
+                    if exp < now:
+                        continue
+                system_ok, _system_err = license_matches_requested_system(license_row, system_info)
+                if not system_ok:
+                    continue
+                features = parse_license_features(license_row.features)
+                licenses_data.append({
+                    'serial_number': license_row.serial_number,
+                    'license_type': license_row.license_type,
+                    'is_active': bool(license_row.is_active),
+                    'max_users': license_row.max_users,
+                    'features': features,
+                    'activation_date': license_row.activation_date.isoformat() if license_row.activation_date else None,
+                    'expiration_date': license_row.expiration_date.isoformat() if license_row.expiration_date else None,
+                    'company_name': license_row.company.company_name if license_row.company else None,
+                    'company_email': license_row.company.email if license_row.company else email,
+                })
+
+            # Prefer longest remaining term
+            licenses_data.sort(
+                key=lambda item: item.get('expiration_date') or '',
+                reverse=True,
+            )
+
+            return jsonify({
+                'success': True,
+                'licenses': licenses_data,
+                'count': len(licenses_data),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+            })
+    except Exception as e:
+        print(f'❌ Account licenses error: {e}')
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'message': 'An error occurred while retrieving account licenses',
+            'details': str(e) if app.debug else None,
+        }), 500
+
 
 @app.route('/api/license/licenses', methods=['GET'])
 @require_api_key

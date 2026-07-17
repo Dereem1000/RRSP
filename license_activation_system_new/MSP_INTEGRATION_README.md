@@ -159,6 +159,28 @@ The system uses the existing database models with enhanced support for:
 - License expiration dates are managed based on service tier
 - Usage tracking is integrated with MSP service limits
 
+### 5. Device binding and extra licenses
+
+Each license is tied to **one device or browser** on first successful activation:
+
+| Product | Binding | When customer needs another license |
+|---------|---------|-------------------------------------|
+| Web / POS (API validation) | Browser fingerprint stored in the license DB | Second checkout PC, another browser profile, or kiosk |
+| Restaurant desktop | Machine/install fingerprint (local cache) | Second POS terminal or back-office PC |
+
+**MSP / portal sync** creates **one license per system** (POS, Restaurant, etc.). It does not auto-create duplicates for extra registers.
+
+To add another device for the same system:
+
+1. Open **License Activation GUI** → **All Licenses**
+2. Select the existing license for that company/system
+3. Click **Add Device License** — serial includes `-D2`, `-D3`, … for additional seats
+4. Activate the new serial on the extra device
+
+**Clear Device Binding** removes the stored browser fingerprint so a web/POS license can be moved to a new browser (support transfer). For restaurant desktop installs, issue a new device license instead.
+
+Serial format: `CD-LIC-{SYSTEM}-{CLIENT8}[-D{seat}]-{UNIQUE16}`
+
 ## API Integration
 
 ### MSP API Endpoints

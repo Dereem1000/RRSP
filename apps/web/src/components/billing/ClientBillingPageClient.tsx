@@ -4,8 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Loader2, Printer, Receipt, Send, CreditCard } from 'lucide-react';
 import { InvoiceLink, QuoteLink } from '@/components/links/DocumentLinks';
+import { useUrlTab } from '@/lib/use-url-tab';
 
 type Tab = 'invoices' | 'quotes';
+
+const BILLING_TABS: Tab[] = ['invoices', 'quotes'];
 
 type Invoice = {
   id: string;
@@ -73,7 +76,7 @@ export function ClientBillingPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const handledQuery = useRef<string | null>(null);
-  const [tab, setTab] = useState<Tab>('invoices');
+  const [tab, setTab] = useUrlTab(BILLING_TABS, 'invoices');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [invoicePagination, setInvoicePagination] = useState<PaginationMeta>(EMPTY_PAGINATION);
@@ -128,10 +131,11 @@ export function ClientBillingPageClient() {
   }, [loadInvoices, loadQuotes]);
 
   const clearBillingUrl = useCallback(() => {
-    router.replace('/billing', { scroll: false });
-  }, [router]);
+    router.replace(`/billing?tab=${tab}`, { scroll: false });
+  }, [router, tab]);
 
   useEffect(() => {
+    if (!searchParams) return;
     const query = searchParams.toString();
     if (!query) {
       handledQuery.current = null;

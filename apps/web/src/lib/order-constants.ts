@@ -1,5 +1,8 @@
 export const ORDER_STATUSES = ['ordered', 'shipped', 'delivered', 'cancelled', 'returned'] as const;
 
+/** Default label when a shipment is marked received at the office. */
+export const DEFAULT_OFFICE_LOCATION = 'Computer Dynamics — Malabar, Arima';
+
 export const SHIPPING_STAGES = [
   'ordered',
   'manufacturer_shipped',

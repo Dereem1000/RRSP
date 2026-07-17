@@ -867,6 +867,9 @@
                 <a href="/" class="back-btn">
                     <i class="fas fa-arrow-left"></i> Back to Home
                 </a>
+                <a href="#" class="demo-btn" data-cd-demo-request>
+                    <i class="fas fa-calendar-alt"></i> Request Demo
+                </a>
                 <a href="https://wa.me/18683168851?text=Hi! I'm interested in learning more about the POS System." class="demo-btn" target="_blank">
                     <i class="fab fa-whatsapp"></i> Get Quote
                 </a>
@@ -893,6 +896,9 @@
                             </a>
                             <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn btn-secondary" target="_blank">
                                 <i class="fas fa-comments"></i> Request Quote
+                            </a>
+                            <a href="#" class="btn btn-secondary" data-cd-demo-request>
+                                <i class="fas fa-calendar-alt"></i> Request Demo
                             </a>
                 <a href="#modules" class="btn btn-secondary">
                     <i class="fas fa-info-circle"></i> View Modules
@@ -1429,6 +1435,14 @@
                     });
                 }
             });
+        });
+    </script>
+    <script src="/js/public-captcha.js"></script>
+    <script src="/js/public-phone-input.js"></script>
+    <script src="/js/public-demo-request.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            CDDemoRequest.init({ product: 'Cloud POS System' });
         });
     </script>
     <script src="/js/multiserver-demos.js" defer></script>

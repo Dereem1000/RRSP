@@ -77,6 +77,8 @@ export async function buildQuoteEmailHtml(
   const portalUrl = (await buildPortalUrl(options?.origin)).replace(/\/login$/, '/billing');
   const viewUrl = buildQuotePublicPrintUrl(quote.id, options?.origin);
   const terms = quote.terms || quoteSettings.paymentTerms;
+  const warranty = quoteSettings.warrantyTerms;
+  const closing = quoteSettings.closingMessage;
   const clientName = escapeHtml(quote.client?.name || 'Valued Client');
 
   const rows = [
@@ -87,7 +89,9 @@ export async function buildQuoteEmailHtml(
   ];
   if (quote.description) rows.push(infoRow('Description', escapeHtml(quote.description)));
   if (quote.notes) rows.push(infoRow('Notes', escapeHtml(quote.notes)));
-  rows.push(infoRow('Terms', escapeHtml(terms)));
+  rows.push(infoRow('Payment terms', escapeHtml(terms)));
+  if (warranty) rows.push(infoRow('Warranty terms', escapeHtml(warranty)));
+  if (closing) rows.push(infoRow('Closing message', escapeHtml(closing)));
 
   const bodyHtml = [
     paragraph(`Dear ${clientName},`),
@@ -116,8 +120,19 @@ export async function buildQuoteEmailHtml(
 export async function sendQuoteToClient(
   quote: QuoteEmailPayload,
   clientEmail: string,
-  options?: { origin?: string }
+  options?: { origin?: string; sentBy?: number }
 ) {
   const { subject, html, attachments } = await buildQuoteEmailHtml(quote, options);
-  return sendEmail({ to: clientEmail, subject, html, attachments });
+  return sendEmail({
+    to: clientEmail,
+    subject,
+    html,
+    attachments,
+    log: {
+      category: 'quote',
+      relatedType: 'quote',
+      relatedId: quote.id,
+      sentBy: options?.sentBy,
+    },
+  });
 }

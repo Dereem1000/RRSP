@@ -118,8 +118,20 @@ export async function buildInvoiceEmailHtml(
 export async function sendInvoiceToClient(
   invoice: InvoiceEmailPayload,
   clientEmail: string,
-  options?: { origin?: string; type?: InvoiceEmailType; paymentAmount?: number }
+  options?: { origin?: string; type?: InvoiceEmailType; paymentAmount?: number; sentBy?: number }
 ) {
   const { subject, html, attachments } = await buildInvoiceEmailHtml(invoice, options);
-  return sendEmail({ to: clientEmail, subject, html, attachments });
+  return sendEmail({
+    to: clientEmail,
+    subject,
+    html,
+    attachments,
+    log: {
+      category: 'invoice',
+      relatedType: 'invoice',
+      relatedId: invoice.id,
+      detail: options?.type ?? 'created',
+      sentBy: options?.sentBy,
+    },
+  });
 }

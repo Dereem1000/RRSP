@@ -20,6 +20,7 @@ export interface TicketCommentAttributes {
   timestamp: string;
   isInternal: number;
   isActive: number;
+  linkedOrderId?: string | null;
 }
 
 export type TicketCommentCreationAttributes = Optional<
@@ -40,6 +41,7 @@ export class TicketComment
   declare timestamp: string;
   declare isInternal: number;
   declare isActive: number;
+  declare linkedOrderId: string | null;
 
   static getStatusFromCommentType(commentType: CommentType): string | null {
     const map: Record<CommentType, string | null> = {
@@ -71,6 +73,7 @@ TicketComment.init(
     timestamp: { type: DataTypes.TEXT, allowNull: false, field: 'timestamp' },
     isInternal: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, field: 'isInternal' },
     isActive: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1, field: 'isActive' },
+    linkedOrderId: { type: DataTypes.TEXT, allowNull: true, field: 'linkedOrderId' },
   },
   {
     sequelize: getSequelize(),

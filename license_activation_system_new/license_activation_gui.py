@@ -16,6 +16,15 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from models import db, CompanyRegistration, LicenseActivation, LicenseValidationLog, SystemConfiguration
 from msp_integration import MSPClientIntegration
+from license_types import (
+    DURATION_BY_LICENSE_TYPE,
+    LICENSE_TYPE_OPTIONS,
+    NO_TIME_LIMIT_DURATION,
+    expiration_from_activation,
+    normalize_license_type,
+    parse_duration_days,
+    validate_license_type,
+)
 
 def create_app():
     """Create Flask app for database context"""
@@ -28,6 +37,92 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     return app
+
+# DB feature keys ↔ labels shown in the GUI (keep in sync with msp_integration gui_feature_mapping).
+GUI_LICENSE_FEATURE_KEY_TO_LABEL = {
+    'pos_systems': 'Point of Sale Systems',
+    'restaurant_management': 'Restaurant Management',
+    'document_management': 'Document Management',
+    'ecommerce_websites': 'E-commerce Websites',
+    'auto_system': 'Auto System',
+    'distribution_system': 'Distribution System',
+    'customer_management': 'Event Sponsor CRM',
+    'inventory_management': 'Inventory Management',
+    'reporting_analytics': 'Reporting & Analytics',
+    'multi_location': 'Multi-Location Support',
+}
+GUI_LICENSE_FEATURE_LABEL_TO_KEY = {v: k for k, v in GUI_LICENSE_FEATURE_KEY_TO_LABEL.items()}
+GUI_LICENSE_FEATURE_OPTIONS = list(GUI_LICENSE_FEATURE_KEY_TO_LABEL.values())
+TECHNICAL_LICENSE_FEATURES = frozenset({
+    'inventory_management',
+    'reporting_analytics',
+    'multi_location',
+    'advanced_reporting',
+    'api_access',
+})
+BUSINESS_LICENSE_FEATURE_KEYS = (
+    'pos_systems',
+    'restaurant_management',
+    'document_management',
+    'ecommerce_websites',
+    'auto_system',
+    'distribution_system',
+    'customer_management',
+)
+
+
+def license_row_display_status(license_row, now=None):
+    """Active, Expired (past date), or Inactive (pending / deactivated, not past expiry)."""
+    now = now or datetime.now(timezone.utc)
+    exp = license_row.expiration_date
+    if exp is not None:
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp < now:
+            return 'Expired'
+    if license_row.is_active:
+        return 'Active'
+    return 'Inactive'
+
+
+def summarize_license_statuses(licenses):
+    counts = {'Active': 0, 'Inactive': 0, 'Expired': 0}
+    for lic in licenses:
+        status = license_row_display_status(lic)
+        counts[status] = counts.get(status, 0) + 1
+    return counts
+
+
+def enabled_business_feature_labels(features_raw, serial_number=None):
+    labels = []
+    try:
+        from license_serial import (
+            MSP_FEATURE_TO_LICENSE_KEY,
+            resolve_license_feature_key,
+        )
+
+        features = json.loads(features_raw) if isinstance(features_raw, str) else features_raw
+        if isinstance(features, dict):
+            for feature, enabled in features.items():
+                if not enabled or feature in TECHNICAL_LICENSE_FEATURES:
+                    continue
+                license_key = feature
+                if feature not in GUI_LICENSE_FEATURE_KEY_TO_LABEL:
+                    license_key = MSP_FEATURE_TO_LICENSE_KEY.get(feature, feature)
+                label = GUI_LICENSE_FEATURE_KEY_TO_LABEL.get(license_key)
+                if label and label not in labels:
+                    labels.append(label)
+
+        if not labels and serial_number:
+            resolved = resolve_license_feature_key(features_raw, serial_number)
+            if resolved:
+                label = GUI_LICENSE_FEATURE_KEY_TO_LABEL.get(resolved)
+                if label:
+                    labels.append(label)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return labels
+
 
 class LicenseActivationGUI:
     def __init__(self, root):
@@ -240,34 +335,15 @@ class LicenseActivationGUI:
                     # Calculate license statistics
                     licenses = LicenseActivation.query.filter_by(company_id=company.id).all()
                     total_licenses = len(licenses)
-                    active_licenses = len([l for l in licenses if l.is_active])
-                    now = datetime.now(timezone.utc)
-                    expired_licenses = len([l for l in licenses if l.expiration_date and l.expiration_date.replace(tzinfo=timezone.utc) < now])
-                    inactive_licenses = total_licenses - active_licenses - expired_licenses
-                    
-                    # Get current features for all licenses
+                    status_counts = summarize_license_statuses(licenses)
+                    active_licenses = status_counts['Active']
+                    expired_licenses = status_counts['Expired']
+                    inactive_licenses = status_counts['Inactive']
+
                     current_features = []
                     for license in licenses:
-                        if license.features:
-                            try:
-                                features = json.loads(license.features)
-                                for feature, enabled in features.items():
-                                    # Filter out technical features that shouldn't be displayed
-                                    technical_features = ['inventory_management', 'reporting_analytics', 'multi_location', 'advanced_reporting', 'api_access']
-                                    if enabled and feature not in technical_features:
-                                        feature_names = {
-                                            'pos_systems': 'POS Systems',
-                                            'restaurant_management': 'Restaurant Mgmt',
-                                            'document_management': 'Document Mgmt',
-                                            'ecommerce_websites': 'E-commerce',
-                                            'auto_system': 'Auto System',
-                                            'distribution_system': 'Distribution',
-                                            'customer_management': 'Customer Mgmt'
-                                        }
-                                        if feature in feature_names:
-                                            current_features.append(feature_names.get(feature, feature))
-                            except:
-                                pass
+                        current_features.extend(enabled_business_feature_labels(license.features))
+                    current_features = list(dict.fromkeys(current_features))
                     
                     # Compact display
                     details_text = f"""COMPANY: {company.company_name}
@@ -300,6 +376,8 @@ FEATURES: {', '.join(current_features) if current_features else 'None'}"""
         top_frame.pack(fill=tk.X, padx=5, pady=5)
         
         ttk.Button(top_frame, text="Add License", command=self.add_new_license).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text="Add Device License", command=self.add_device_license_for_selected).pack(side=tk.LEFT, padx=2)
+        ttk.Button(top_frame, text="Clear Device Binding", command=self.clear_device_binding_for_selected).pack(side=tk.LEFT, padx=2)
         ttk.Button(top_frame, text="Refresh", command=self.load_all_licenses).pack(side=tk.LEFT, padx=2)
         ttk.Button(top_frame, text="Validate", command=self.validate_selected_license).pack(side=tk.LEFT, padx=2)
         ttk.Button(top_frame, text="Extend", command=self.extend_selected_license).pack(side=tk.LEFT, padx=2)
@@ -364,7 +442,7 @@ FEATURES: {', '.join(current_features) if current_features else 'None'}"""
         ttk.Label(type_frame, text="Type:").pack(side=tk.LEFT)
         self.license_type_var = tk.StringVar()
         self.license_type_combo = ttk.Combobox(type_frame, textvariable=self.license_type_var, 
-                                             values=['Day Pass', 'Trial 7 Days', 'Extended 30 Days', 'One Time License', 'No Time Limit'],
+                                             values=list(LICENSE_TYPE_OPTIONS),
                                              state='readonly', width=15)
         self.license_type_combo.pack(side=tk.LEFT, padx=(5, 10))
         self.license_type_combo.bind('<<ComboboxSelected>>', self.on_license_type_change)
@@ -372,9 +450,7 @@ FEATURES: {', '.join(current_features) if current_features else 'None'}"""
         ttk.Label(type_frame, text="Feature:").pack(side=tk.LEFT)
         self.feature_var = tk.StringVar()
         self.feature_combo = ttk.Combobox(type_frame, textvariable=self.feature_var,
-                                        values=['Point of Sale Systems', 'Restaurant Management', 'Document Management', 'E-commerce Websites', 
-                                               'Auto System', 'Distribution System', 'Inventory Management', 'Reporting & Analytics', 
-                                               'Customer Management', 'Multi-Location Support'],
+                                        values=GUI_LICENSE_FEATURE_OPTIONS,
                                         state='readonly', width=15)
         self.feature_combo.pack(side=tk.LEFT, padx=(5, 0))
         self.feature_combo.bind('<<ComboboxSelected>>', self.on_feature_change)
@@ -424,8 +500,12 @@ FEATURES: {', '.join(current_features) if current_features else 'None'}"""
 Company: {company_name}
 Type: {license.license_type} | Users: {license.max_users}
 Status: {'Active' if license.is_active else 'Inactive'} | Service: {license.service_level or 'N/A'}
+Device: {self._binding_status_label(license)}
 Activated: {license.activation_date or 'Not activated'}
-Expires: {license.expiration_date or 'No expiration'}"""
+Expires: {license.expiration_date or 'No expiration'}
+
+Note: Each license binds to one browser (web/POS) or one machine install on first activation.
+Issue "Add Device License" for a second register, PC, or browser profile."""
                     
                     self.license_info_text.delete(1.0, tk.END)
                     self.license_info_text.insert(1.0, info_text)
@@ -447,7 +527,7 @@ Expires: {license.expiration_date or 'No expiration'}"""
                         self.primary_action_button.config(text="License is Active")
                     else:
                         # Populate form for inactive licenses
-                        self.license_type_var.set(license.license_type or "Day Pass")
+                        self.license_type_var.set(normalize_license_type(license.license_type, 'Day Pass'))
                         self.duration_var.set(str(license.max_users or 1))
                         self.max_users_var.set(str(license.max_users or 1))
                         
@@ -456,15 +536,8 @@ Expires: {license.expiration_date or 'No expiration'}"""
                             try:
                                 features = json.loads(license.features)
                                 for feature, enabled in features.items():
-                                    if enabled and feature in ['pos_systems', 'restaurant_management', 'document_management', 'ecommerce_websites', 'auto_system', 'distribution_system', 'inventory_management', 'reporting_analytics', 'customer_management', 'multi_location']:
-                                        feature_names = {
-                                            'pos_systems': 'Point of Sale Systems',
-                                            'inventory_management': 'Inventory Management',
-                                            'reporting_analytics': 'Reporting & Analytics',
-                                            'customer_management': 'Customer Management',
-                                            'multi_location': 'Multi-Location Support'
-                                        }
-                                        self.feature_var.set(feature_names.get(feature, 'Point of Sale Systems'))
+                                    if enabled and feature in GUI_LICENSE_FEATURE_KEY_TO_LABEL:
+                                        self.feature_var.set(GUI_LICENSE_FEATURE_KEY_TO_LABEL[feature])
                                         break
                                 else:
                                     self.feature_var.set('Point of Sale Systems')
@@ -494,13 +567,7 @@ Expires: {license.expiration_date or 'No expiration'}"""
         license_type = self.license_type_var.get()
         
         # Update duration based on license type
-        duration_map = {
-            'Day Pass': 1,
-            'Trial 7 Days': 7,
-            'Extended 30 Days': 30,
-            'One Time License': 365,
-            'No Time Limit': 9999
-        }
+        duration_map = DURATION_BY_LICENSE_TYPE
         
         if license_type in duration_map:
             self.duration_var.set(str(duration_map[license_type]))
@@ -551,7 +618,7 @@ Expires: {license.expiration_date or 'No expiration'}"""
 • Historical data analysis
 • KPI tracking and monitoring""",
             
-            'Customer Management': f"""Customer Management License Features:
+            'Event Sponsor CRM': f"""Event Sponsor CRM License Features:
 • Customer database management
 • Customer profile tracking
 • Purchase history analysis
@@ -641,65 +708,22 @@ Expires: {license.expiration_date or 'No expiration'}"""
             app = create_app()
             with app.app_context():
                 licenses = LicenseActivation.query.all()
-                print(f"DEBUG: Found {len(licenses)} licenses in database")
                 
                 for license in licenses:
                     company = db.session.get(CompanyRegistration, license.company_id)
                     company_name = company.company_name if company else "Unknown Company"
                     
-                    # Determine status with better logic
-                    now = datetime.now(timezone.utc)
-                    if license.is_active:
-                        if license.expiration_date:
-                            # Handle timezone comparison properly
-                            try:
-                                # If expiration_date is naive, assume UTC
-                                if license.expiration_date.tzinfo is None:
-                                    exp_date = license.expiration_date.replace(tzinfo=timezone.utc)
-                                else:
-                                    exp_date = license.expiration_date
-                                
-                                if exp_date < now:
-                                    status = "Expired"
-                                else:
-                                    status = "Active"
-                            except Exception as e:
-                                print(f"DEBUG: Error comparing dates for license {license.id}: {e}")
-                                status = "Active"  # Default to active if comparison fails
-                        else:
-                            status = "Active"  # No expiration date means active
-                    else:
-                        status = "Inactive"
-                    
-                    print(f"DEBUG: License {license.id} - Active: {license.is_active}, Expires: {license.expiration_date}, Status: {status}")
+                    status = license_row_display_status(license)
                     
                     # Parse features to show only enabled business features
                     features_display = "All Features"
                     if license.features:
                         try:
-                            features = json.loads(license.features)
-                            enabled_features = []
-                            feature_display_map = {
-                                'pos_systems': 'POS Systems',
-                                'restaurant_management': 'Restaurant Mgmt',
-                                'document_management': 'Document Mgmt',
-                                'ecommerce_websites': 'E-commerce',
-                                'auto_system': 'Auto System',
-                                'distribution_system': 'Distribution',
-                                'customer_management': 'Customer Mgmt'
-                            }
-                            
-                            # Filter out technical features that shouldn't be displayed
-                            technical_features = ['inventory_management', 'reporting_analytics', 'multi_location', 'advanced_reporting', 'api_access']
-                            
-                            for feature, enabled in features.items():
-                                if enabled and feature in feature_display_map and feature not in technical_features:
-                                    enabled_features.append(feature_display_map[feature])
+                            enabled_features = enabled_business_feature_labels(license.features)
                             
                             if enabled_features:
                                 features_display = ", ".join(enabled_features)
-                        except Exception as e:
-                            print(f"DEBUG: Error parsing features for license {license.id}: {e}")
+                        except Exception:
                             features_display = "Unknown"
                     
                     # Format dates
@@ -716,8 +740,6 @@ Expires: {license.expiration_date or 'No expiration'}"""
                         expires
                     ))
                     
-                    print(f"DEBUG: Added license {license.id} to tree with status: {status}")
-                    
                     # Color code based on status
                     if status == "Active":
                         self.all_licenses_tree.set(item_id, 'Status', 'Active')
@@ -725,8 +747,6 @@ Expires: {license.expiration_date or 'No expiration'}"""
                         self.all_licenses_tree.set(item_id, 'Status', 'Expired')
                     else:
                         self.all_licenses_tree.set(item_id, 'Status', 'Inactive')
-                
-                print(f"DEBUG: Loaded {len(licenses)} total licenses into tree")
                 
         except Exception as e:
             print(f"Error loading licenses: {e}")
@@ -745,8 +765,8 @@ Expires: {license.expiration_date or 'No expiration'}"""
             license_id = int(item['values'][0])
             
             # Get configuration
-            license_type = self.license_type_var.get()
-            duration = int(self.duration_var.get()) if self.duration_var.get().isdigit() else 1
+            license_type = validate_license_type(self.license_type_var.get())
+            duration = parse_duration_days(self.duration_var.get(), license_type)
             max_users = int(self.max_users_var.get()) if self.max_users_var.get().isdigit() else 1
             feature = self.feature_var.get()
             
@@ -772,33 +792,14 @@ Expires: {license.expiration_date or 'No expiration'}"""
                 # Set activation and expiration dates
                 now = datetime.now(timezone.utc)
                 license.activation_date = now
-                
-                if duration == 9999:  # No time limit
-                    license.expiration_date = None
-                else:
-                    license.expiration_date = now + timedelta(days=duration)
+                license.expiration_date = expiration_from_activation(now, license_type, duration)
                 
                 # Set features - only the selected business feature is enabled
-                feature_mapping = {
-                    'Point of Sale Systems': 'pos_systems',
-                    'Restaurant Management': 'restaurant_management',
-                    'Document Management': 'document_management',
-                    'E-commerce Websites': 'ecommerce_websites',
-                    'Auto System': 'auto_system',
-                    'Distribution System': 'distribution_system',
-                    'Inventory Management': 'inventory_management',
-                    'Reporting & Analytics': 'reporting_analytics',
-                    'Customer Management': 'customer_management',
-                    'Multi-Location Support': 'multi_location'
-                }
-                
-                selected_feature_key = feature_mapping.get(feature, 'pos_systems')
+                selected_feature_key = GUI_LICENSE_FEATURE_LABEL_TO_KEY.get(feature, 'pos_systems')
                 
                 features = {
-                    'inventory_management': True,  # Technical feature - always enabled
-                    'advanced_reporting': True,   # Technical feature - always enabled
-                    'api_access': True,           # Technical feature - always enabled
-                    'multi_location': True,       # Technical feature - always enabled
+                    'advanced_reporting': True,
+                    'api_access': True,
                     'pos_systems': selected_feature_key == 'pos_systems',
                     'restaurant_management': selected_feature_key == 'restaurant_management',
                     'document_management': selected_feature_key == 'document_management',
@@ -808,14 +809,13 @@ Expires: {license.expiration_date or 'No expiration'}"""
                     'inventory_management': selected_feature_key == 'inventory_management',
                     'reporting_analytics': selected_feature_key == 'reporting_analytics',
                     'customer_management': selected_feature_key == 'customer_management',
-                    'multi_location': selected_feature_key == 'multi_location'
+                    'multi_location': selected_feature_key == 'multi_location',
                 }
                 
                 license.features = json.dumps(features)
                 license.is_active = True
                 
                 db.session.commit()
-                print(f"DEBUG: License {license.id} activated successfully - is_active: {license.is_active}")
                 
                 messagebox.showinfo("Success", f"""License activated successfully!
 
@@ -826,8 +826,6 @@ License Details:
 • Max Users: {max_users}
 • Serial Number: {license.serial_number}""")
                 
-                # Refresh the license list
-                print("DEBUG: Refreshing license list after activation")
                 self.load_all_licenses()
                 
         except Exception as e:
@@ -924,14 +922,15 @@ License Details:
                     messagebox.showerror("Error", "Selected company not found.")
                     return
                 
-                # Generate unique serial number
-                import uuid
-                serial_number = f"LIC-{uuid.uuid4().hex[:8].upper()}"
-                
-                # Check if serial number already exists (very unlikely, but check anyway)
-                existing_license = LicenseActivation.query.filter_by(serial_number=serial_number).first()
-                if existing_license:
-                    serial_number = f"LIC-{uuid.uuid4().hex[:8].upper()}"  # Regenerate
+                from license_serial import ensure_unique_license_serial, is_legacy_short_license_serial
+                serial_number = ensure_unique_license_serial(
+                    db.session,
+                    LicenseActivation,
+                    msp_client_id=company.msp_client_id,
+                    features_raw={'pos_systems': True},
+                )
+                if is_legacy_short_license_serial(serial_number):
+                    raise RuntimeError('Generated short or legacy license serial; aborting')
                 
                 # Create new inactive license
                 now = datetime.now(timezone.utc)
@@ -972,6 +971,147 @@ License Details:
                 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add license: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _binding_status_label(self, license_row):
+        from license_serial import binding_status_label
+        return binding_status_label(license_row)
+
+    def _primary_license_feature_key(self, license_row):
+        from license_serial import parse_license_features
+        business_keys = BUSINESS_LICENSE_FEATURE_KEYS
+        features = parse_license_features(license_row.features)
+        for key in business_keys:
+            if features.get(key):
+                return key
+        return 'pos_systems'
+
+    def add_device_license_for_selected(self):
+        """Issue another license for the same system (second register, PC, or browser)."""
+        try:
+            selection = self.all_licenses_tree.selection()
+            if not selection:
+                messagebox.showwarning("Warning", "Select a license first, then click Add Device License.")
+                return
+
+            item = self.all_licenses_tree.item(selection[0])
+            license_id = int(item['values'][0])
+
+            app = create_app()
+            with app.app_context():
+                source = db.session.get(LicenseActivation, license_id)
+                if not source:
+                    messagebox.showerror("Error", "Selected license not found.")
+                    return
+
+                company = db.session.get(CompanyRegistration, source.company_id)
+                if not company:
+                    messagebox.showerror("Error", "Company not found for this license.")
+                    return
+
+                feature_key = self._primary_license_feature_key(source)
+                company_licenses = LicenseActivation.query.filter_by(company_id=company.id).all()
+                from license_serial import (
+                    next_device_seat,
+                    ensure_unique_license_serial,
+                    is_legacy_short_license_serial,
+                    LICENSE_KEY_TO_CODE,
+                )
+
+                seat = next_device_seat(company_licenses, feature_key)
+                msp_from_key = {
+                    'pos_systems': 'pos',
+                    'restaurant_management': 'restaurant',
+                    'document_management': 'document',
+                    'ecommerce_websites': 'ecommerce',
+                    'auto_system': 'auto',
+                    'distribution_system': 'distribution',
+                    'customer_management': 'crm',
+                }
+                serial_number = ensure_unique_license_serial(
+                    db.session,
+                    LicenseActivation,
+                    msp_feature=msp_from_key.get(feature_key, 'pos'),
+                    msp_client_id=company.msp_client_id,
+                    features_raw=source.features,
+                    device_seat=seat,
+                )
+                if is_legacy_short_license_serial(serial_number):
+                    raise RuntimeError('Generated short or legacy device license serial; aborting')
+
+                now = datetime.now(timezone.utc)
+                new_license = LicenseActivation(
+                    serial_number=serial_number,
+                    company_id=company.id,
+                    license_type=source.license_type,
+                    service_level=source.service_level,
+                    max_users=source.max_users,
+                    features=source.features,
+                    activation_date=now,
+                    expiration_date=source.expiration_date or (now + timedelta(days=365)),
+                    is_active=False,
+                )
+                db.session.add(new_license)
+                db.session.commit()
+
+                feature_label = LICENSE_KEY_TO_CODE.get(feature_key, feature_key)
+                messagebox.showinfo(
+                    "Device license created",
+                    f"Added device license #{seat} for {company.company_name} ({feature_label}).\n\n"
+                    f"Serial: {serial_number}\n\n"
+                    "Activate this serial on the additional register, PC, or browser.\n"
+                    "Web/POS binds to browser fingerprint; desktop restaurant binds to machine install on first use.",
+                )
+                self.load_all_licenses()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to add device license: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def clear_device_binding_for_selected(self):
+        """Clear browser binding so the license can be moved to another browser (support transfer)."""
+        try:
+            selection = self.all_licenses_tree.selection()
+            if not selection:
+                messagebox.showwarning("Warning", "Select a license to clear its device binding.")
+                return
+
+            item = self.all_licenses_tree.item(selection[0])
+            license_id = int(item['values'][0])
+
+            if not messagebox.askyesno(
+                "Clear device binding",
+                "Clear browser/device binding for this license?\n\n"
+                "Use when moving a web/POS install to a new browser or PC.\n"
+                "Restaurant desktop installs use a local machine fingerprint — issue a new device license instead if needed.\n\n"
+                "Continue?",
+            ):
+                return
+
+            app = create_app()
+            with app.app_context():
+                license_row = db.session.get(LicenseActivation, license_id)
+                if not license_row:
+                    messagebox.showerror("Error", "Selected license not found.")
+                    return
+
+                if not license_row.browser_fingerprint:
+                    messagebox.showinfo("No binding", "This license has no browser fingerprint stored.")
+                    return
+
+                license_row.browser_fingerprint = None
+                db.session.commit()
+                messagebox.showinfo(
+                    "Binding cleared",
+                    f"Browser binding cleared for {license_row.serial_number}.\n"
+                    "The next successful activation will bind to the new device/browser.",
+                )
+                self.load_all_licenses()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to clear binding: {str(e)}")
             import traceback
             traceback.print_exc()
 
@@ -1082,9 +1222,6 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                 license.is_active = False
                 db.session.commit()
                 
-                print(f"DEBUG: License {license.id} deactivated successfully - is_active: {license.is_active}")
-                print("DEBUG: Refreshing license list after deactivation")
-                
                 messagebox.showinfo("Success", f"License for {company_name} has been deactivated.")
                 
                 # Refresh the license list
@@ -1123,9 +1260,6 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                 license.expiration_date = datetime.now(timezone.utc) - timedelta(days=1)
                 license.is_active = False
                 db.session.commit()
-                
-                print(f"DEBUG: License {license.id} marked as expired - is_active: {license.is_active}, expires: {license.expiration_date}")
-                print("DEBUG: Refreshing license list after marking as expired")
                 
                 messagebox.showinfo("Success", f"License for {company_name} has been marked as expired.")
                 
@@ -1183,9 +1317,6 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                 license.is_active = True
                 license.activation_date = now
                 db.session.commit()
-                
-                print(f"DEBUG: License {license.id} reactivated successfully - is_active: {license.is_active}")
-                print("DEBUG: Refreshing license list after reactivation")
                 
                 messagebox.showinfo("Success", f"License for {company_name} has been reactivated.")
                 
@@ -1380,11 +1511,15 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                     with app.app_context():
                         company = CompanyRegistration.query.filter_by(msp_client_id=client['id']).first()
                         if company:
-                            license = LicenseActivation.query.filter_by(company_id=company.id, is_active=True).first()
-                            if license:
-                                license_status = f"Active: {license.license_type}"
+                            company_licenses = LicenseActivation.query.filter_by(company_id=company.id).all()
+                            if not company_licenses:
+                                license_status = "No License"
                             else:
-                                license_status = "Inactive License"
+                                active = next((l for l in company_licenses if l.is_active), None)
+                                if active:
+                                    license_status = f"Active: {active.license_type}"
+                                else:
+                                    license_status = "Inactive License"
                 except:
                     pass
                 
@@ -1605,9 +1740,8 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                                     return
                             else:
                                 # Create company with minimal data if client not found in API
-                                import uuid
-                                from datetime import datetime
-                                serial_number = f"MSP-{str(client_id)[:8]}-{datetime.now().strftime('%Y%m%d')}"
+                                from license_serial import ensure_unique_company_serial
+                                serial_number = ensure_unique_company_serial(db.session, CompanyRegistration, str(client_id))
                                 company = CompanyRegistration(
                                     company_name=company_name,
                                     contact_person="Unknown",
@@ -1626,9 +1760,8 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                                                   f"Company '{company_name}' was automatically created.")
                         else:
                             # Create company with minimal data if API call fails
-                            import uuid
-                            from datetime import datetime
-                            serial_number = f"MSP-{str(client_id)[:8]}-{datetime.now().strftime('%Y%m%d')}"
+                            from license_serial import ensure_unique_company_serial
+                            serial_number = ensure_unique_company_serial(db.session, CompanyRegistration, str(client_id))
                             company = CompanyRegistration(
                                 company_name=company_name,
                                 contact_person="Unknown",
@@ -1706,7 +1839,7 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
             ttk.Label(type_frame, text="License Type:").pack(side=tk.LEFT)
             license_type_var = tk.StringVar()
             license_type_combo = ttk.Combobox(type_frame, textvariable=license_type_var,
-                                            values=['Day Pass', 'Trial 7 Days', 'Extended 30 Days', 'One Time License', 'No Time Limit'],
+                                            values=list(LICENSE_TYPE_OPTIONS),
                                             state='readonly', width=20)
             license_type_combo.pack(side=tk.LEFT, padx=(5, 0))
             
@@ -1744,18 +1877,7 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
             features_frame.pack(fill=tk.X, pady=5)
             
             feature_vars = {}
-            feature_options = [
-                'Point of Sale Systems',
-                'Restaurant Management',
-                'Document Management',
-                'E-commerce Websites',
-                'Auto System',
-                'Distribution System',
-                'Inventory Management', 
-                'Reporting & Analytics',
-                'Customer Management',
-                'Multi-Location Support'
-            ]
+            feature_options = GUI_LICENSE_FEATURE_OPTIONS
             
             for i, feature in enumerate(feature_options):
                 var = tk.BooleanVar()
@@ -1768,7 +1890,7 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
             # Load existing license data if available
             if has_license and existing_license_data:
                 # Pre-populate form with existing license data
-                license_type_var.set(existing_license_data['license_type'] or 'Day Pass')
+                license_type_var.set(normalize_license_type(existing_license_data['license_type'], 'Day Pass'))
                 max_users_var.set(str(existing_license_data['max_users'] or 1))
                 
                 # Calculate duration from expiration date
@@ -1787,18 +1909,7 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                 if existing_license_data['features']:
                     try:
                         features_dict = json.loads(existing_license_data['features'])
-                        feature_mapping = {
-                            'pos_systems': 'Point of Sale Systems',
-                            'restaurant_management': 'Restaurant Management',
-                            'document_management': 'Document Management',
-                            'ecommerce_websites': 'E-commerce Websites',
-                            'auto_system': 'Auto System',
-                            'distribution_system': 'Distribution System',
-                            'inventory_management': 'Inventory Management',
-                            'reporting_analytics': 'Reporting & Analytics',
-                            'customer_management': 'Customer Management',
-                            'multi_location': 'Multi-Location Support'
-                        }
+                        feature_mapping = GUI_LICENSE_FEATURE_KEY_TO_LABEL
                         
                         for feature_key, feature_name in feature_mapping.items():
                             if features_dict.get(feature_key, False):
@@ -1846,8 +1957,8 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
                     # Update license (pass license_id if editing existing, None if creating new)
                     result = self.msp_integration.update_msp_client_license(
                         client_id, 
-                        license_type_var.get(),
-                        int(duration_var.get()) if duration_var.get().isdigit() else 1,
+                        validate_license_type(license_type_var.get()),
+                        parse_duration_days(duration_var.get(), license_type_var.get()),
                         int(max_users_var.get()) if max_users_var.get().isdigit() else 1,
                         selected_features,
                         license_id=selected_license_id if has_license else None
@@ -1917,18 +2028,18 @@ Expiration Date: {license.expiration_date or 'No expiration'}""")
             with app.app_context():
                 # Get counts
                 total_companies = CompanyRegistration.query.count()
-                total_licenses = LicenseActivation.query.count()
-                active_licenses = LicenseActivation.query.filter_by(is_active=True).count()
-                inactive_licenses = LicenseActivation.query.filter_by(is_active=False).count()
+                all_licenses = LicenseActivation.query.all()
+                total_licenses = len(all_licenses)
+                status_counts = summarize_license_statuses(all_licenses)
                 
-                # Get recent activity
                 recent_licenses = LicenseActivation.query.order_by(LicenseActivation.created_at.desc()).limit(5).all()
                 
                 stats_text = f"""System Statistics:
 • Total Companies: {total_companies}
 • Total Licenses: {total_licenses}
-• Active Licenses: {active_licenses}
-• Inactive Licenses: {inactive_licenses}
+• Active Licenses: {status_counts['Active']}
+• Pending / Inactive: {status_counts['Inactive']}
+• Expired Licenses: {status_counts['Expired']}
 
 Recent License Activity:
 """
@@ -1936,7 +2047,7 @@ Recent License Activity:
                 for license in recent_licenses:
                     company = db.session.get(CompanyRegistration, license.company_id)
                     company_name = company.company_name if company else "Unknown"
-                    status = "Active" if license.is_active else "Inactive"
+                    status = license_row_display_status(license)
                     stats_text += f"• {license.serial_number} - {company_name} ({status})\n"
                 
                 self.system_stats_text.delete(1.0, tk.END)
@@ -1957,16 +2068,19 @@ Recent License Activity:
                 companies = CompanyRegistration.query.all()
                 
                 for company in companies:
-                    # Get license status
                     licenses = LicenseActivation.query.filter_by(company_id=company.id).all()
                     if not licenses:
                         status = "No Licenses"
                     else:
-                        active_licenses = [l for l in licenses if l.is_active]
-                        if active_licenses:
-                            status = f"Active: {len(active_licenses)}"
-                        else:
-                            status = "Inactive License"
+                        counts = summarize_license_statuses(licenses)
+                        parts = []
+                        if counts['Active']:
+                            parts.append(f"Active: {counts['Active']}")
+                        if counts['Inactive']:
+                            parts.append(f"Pending: {counts['Inactive']}")
+                        if counts['Expired']:
+                            parts.append(f"Expired: {counts['Expired']}")
+                        status = ', '.join(parts) if parts else 'No Licenses'
                     
                     # Insert into tree (compact format)
                     self.companies_tree.insert('', 'end', values=(
@@ -1975,8 +2089,6 @@ Recent License Activity:
                         company.contact_person,
                         status
                     ))
-                
-                print(f"Loaded {len(companies)} companies")
                 
         except Exception as e:
             print(f"Error loading companies: {e}")
@@ -2086,18 +2198,16 @@ Recent License Activity:
                                 messagebox.showerror("Error", f"MSP Client ID '{msp_client_id}' is already assigned to company '{existing.company_name}'")
                                 return
                     
-                    # Generate unique serial number
-                    import uuid
-                    serial_number = f"COMP-{uuid.uuid4().hex[:8].upper()}"
-                    
-                    # Save to database
+                    from license_serial import ensure_unique_company_serial
+
                     app = create_app()
                     with app.app_context():
-                        # Check if serial number already exists (very unlikely, but check anyway)
-                        existing_serial = CompanyRegistration.query.filter_by(serial_number=serial_number).first()
-                        if existing_serial:
-                            serial_number = f"COMP-{uuid.uuid4().hex[:8].upper()}"  # Regenerate
-                        
+                        serial_number = ensure_unique_company_serial(
+                            db.session,
+                            CompanyRegistration,
+                            msp_client_id if msp_client_id else None,
+                        )
+
                         company = CompanyRegistration(
                             company_name=company_name,
                             contact_person=contact_person,

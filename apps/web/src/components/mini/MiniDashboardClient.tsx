@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Activity,
   AlertTriangle,
@@ -12,22 +13,36 @@ import {
   MessageSquare,
   RefreshCw,
   ScrollText,
+  Shield,
   Sparkles,
   TrendingUp,
   Zap,
+  ExternalLink,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { MiniSystemLogsTab } from '@/components/mini/MiniSystemLogsTab';
+import { MiniProjectGuardTab } from '@/components/mini/MiniProjectGuardTab';
 import { MiniLibraryTab } from '@/components/mini/MiniLibraryTab';
 import {
   companionBubbleClass,
   companionKindBadgeClass,
   companionKindLabel,
+  formatMiniActivityHeadline,
   type MiniChatEntry,
   type MiniGrowthPayload,
 } from '@/lib/mini-companion-ui';
+import { type MiniPortalAction } from '@/lib/mini-portal-actions';
+import {
+  apiErrorMessage,
+  isTransientMiniHttpStatus,
+  parseFetchJsonResponse,
+} from '@/lib/parse-fetch-json';
+import { useAdaptiveMiniPoll } from '@/lib/use-adaptive-mini-poll';
+import { useUrlTab } from '@/lib/use-url-tab';
 
-type MiniTab = 'overview' | 'system-logs' | 'library';
+type MiniTab = 'overview' | 'system-logs' | 'project-guard' | 'library';
+
+const MINI_TABS: MiniTab[] = ['overview', 'system-logs', 'project-guard', 'library'];
 
 type MiniLlmUsage = {
   status?: string;
@@ -125,34 +140,67 @@ function llmUsageHeadline(usage: MiniLlmUsage | undefined): string {
   return usage.label || 'Unknown';
 }
 
-export function MiniDashboardClient() {
-  const [tab, setTab] = useState<MiniTab>('overview');
+export function MiniDashboardClient({ miniDashboardUrl }: { miniDashboardUrl: string }) {
+  const router = useRouter();
+  const [tab, setTab] = useUrlTab(MINI_TABS, 'overview');
   const [payload, setPayload] = useState<MiniDashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
+  const transientFailsRef = useRef(0);
 
-  const load = useCallback(async () => {
-    setError('');
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/mini/dashboard/summary', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
+        if (cancelled || !res.ok) return;
+        const data = await parseFetchJsonResponse<MiniDashboardPayload & { error?: string }>(res);
+        setPayload(data);
+        setLoading(false);
+      } catch {
+        /* full dashboard load will retry */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const load = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch('/api/mini/dashboard', { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load Mini dashboard');
+      const res = await fetch('/api/mini/dashboard', { cache: 'no-store', credentials: 'include' });
+      if (isTransientMiniHttpStatus(res.status)) {
+        const data = await parseFetchJsonResponse<{ error?: string }>(res).catch(() => ({}));
+        const detail = apiErrorMessage(data, 'Mini is busy or still waking up');
+        transientFailsRef.current += 1;
+        setNotice(`${detail} — retrying automatically…`);
+        if (transientFailsRef.current >= 6) {
+          setError(detail);
+        }
+        return false;
+      }
+      const data = await parseFetchJsonResponse<MiniDashboardPayload & { error?: string }>(res);
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Failed to load Mini dashboard'));
+      setNotice('');
+      setError('');
+      transientFailsRef.current = 0;
       setPayload(data);
+      return !data.hydration?.loading;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Mini dashboard');
+      return false;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (tab !== 'overview') return;
-    load();
-    const id = window.setInterval(load, 15000);
-    return () => window.clearInterval(id);
-  }, [load, tab]);
+  useAdaptiveMiniPoll(tab === 'overview', load, { baseMs: 30_000, maxMs: 90_000 });
 
   const core = payload?.state?.state;
   const activity = payload?.activity;
@@ -173,6 +221,13 @@ export function MiniDashboardClient() {
   );
 
   const growth = payload?.growth;
+  const activityHeadline = useMemo(
+    () =>
+      formatMiniActivityHeadline(activity, {
+        hydrationLoading: payload?.hydration?.loading,
+      }),
+    [activity, payload?.hydration?.loading],
+  );
   const chatFeedItems = useMemo(() => {
     return (payload?.chat_history || [])
       .map((entry, index) => ({
@@ -200,11 +255,16 @@ export function MiniDashboardClient() {
       const res = await fetch('/api/mini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        credentials: 'include',
+        body: JSON.stringify({ message, page: '/mini', pageLabel: 'Mini' }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Chat failed');
+      const data = await parseFetchJsonResponse<{ error?: string; portal_action?: MiniPortalAction | null }>(res);
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Chat failed'));
       setChatInput('');
+      const action = data.portal_action as MiniPortalAction | null | undefined;
+      if (action?.type === 'navigate' && action.href) {
+        router.push(action.href);
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chat failed');
@@ -230,20 +290,58 @@ export function MiniDashboardClient() {
     );
   }
 
+  if (!payload) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-8 text-sm text-amber-900">
+        <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+        <div>
+          <p className="font-medium text-amber-950">Waiting for Mini…</p>
+          <p className="mt-1">
+            {notice || 'Mini is starting or busy. This page will refresh automatically every 15 seconds.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
+      {notice ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {notice}
+        </div>
+      ) : null}
+      {payload.hydration?.loading ? (
+        <div className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          Loading companion feed and external systems…
+        </div>
+      ) : null}
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <Bot className="h-6 w-6 text-sky-700" />
-            <h1 className="text-2xl font-bold text-slate-900">{payload?.state?.name || 'Mini'}</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              <a
+                href={miniDashboardUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open Mini dashboard (${miniDashboardUrl})`}
+                className="inline-flex items-center gap-1.5 text-sky-800 hover:text-sky-950 hover:underline"
+              >
+                {payload?.state?.name || 'Mini'}
+                <ExternalLink className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                <span className="sr-only">Open Mini dashboard in a new tab</span>
+              </a>
+            </h1>
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneClass(activity?.status || 'ready')}`}>
               {activity?.status || 'ready'}
             </span>
           </div>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            {activity?.summary || 'Mini assistant dashboard — live data from your docked Mini instance.'}
-          </p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">{activityHeadline}</p>
         </div>
         {tab === 'overview' && (
           <button
@@ -265,6 +363,7 @@ export function MiniDashboardClient() {
           [
             ['overview', 'Overview', LayoutDashboard],
             ['library', 'Library', BookOpen],
+            ['project-guard', 'Project Guard', Shield],
             ['system-logs', 'System Logs', ScrollText],
           ] as const
         ).map(([id, label, Icon]) => (
@@ -286,6 +385,8 @@ export function MiniDashboardClient() {
 
       {tab === 'system-logs' ? (
         <MiniSystemLogsTab />
+      ) : tab === 'project-guard' ? (
+        <MiniProjectGuardTab />
       ) : tab === 'library' ? (
         <MiniLibraryTab />
       ) : (

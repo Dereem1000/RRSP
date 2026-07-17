@@ -875,7 +875,7 @@
                 <h2>Currently in Development</h2>
                 <p>Our Auto System is currently under active development. We're building a comprehensive automotive business management solution that will revolutionize how service centers operate.</p>
                 <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                    <a href="#" class="demo-button" onclick="openDemoModal()">Request Demo</a>
+                    <a href="#" class="demo-button" data-cd-demo-request>Request Demo</a>
                     <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
                     <a href="https://wa.me/18683168851" target="_blank" class="btn-whatsapp" title="WhatsApp Chat">
                         <i class="fab fa-whatsapp"></i>
@@ -974,6 +974,17 @@
 
         mobileMenuBtn.addEventListener('click', () => {
             navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+        });
+    </script>
+    <script src="/js/public-captcha.js"></script>
+    <script src="/js/public-phone-input.js"></script>
+    <script src="/js/public-demo-request.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            CDDemoRequest.init({
+                product: 'Auto System',
+                subtitle: 'Our Auto System is in active development. Leave your details and we will contact you when a demo is available.',
+            });
         });
     </script>
     <script src="/js/multiserver-demos.js" defer></script>

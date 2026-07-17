@@ -10,9 +10,76 @@ from typing import List, Dict, Optional
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from models import db, CompanyRegistration, LicenseActivation
+from license_serial import (
+    BUSINESS_LICENSE_FEATURE_KEYS,
+    CODE_TO_LICENSE_KEY,
+    ensure_unique_company_serial,
+    ensure_unique_license_serial,
+    feature_code_for_msp_feature,
+    is_legacy_short_license_serial,
+    parse_license_features,
+    primary_system_code,
+    primary_system_code_from_serial,
+    resolve_license_feature_key,
+    count_licenses_for_feature,
+    next_device_seat,
+    binding_status_label,
+    LICENSE_KEY_TO_CODE,
+)
+from license_types import (
+    DEFAULT_LICENSE_TYPE,
+    DURATION_BY_LICENSE_TYPE,
+    NO_TIME_LIMIT_DURATION,
+    expiration_from_activation,
+    normalize_license_type,
+    resolve_duration_for_update,
+    validate_license_type,
+)
 
 class MSPClientIntegration:
     """Handles MSP client integration with license activation system"""
+
+    MSP_FEATURE_TO_LICENSE_KEY = {
+        'pos': 'pos_systems',
+        'restaurant': 'restaurant_management',
+        'document': 'document_management',
+        'ecommerce': 'ecommerce_websites',
+        'auto': 'auto_system',
+        'distribution': 'distribution_system',
+        'crm': 'customer_management',
+        'customer': 'customer_management',
+        'inventory': 'inventory_management',
+        'analytics': 'reporting_analytics',
+        'multi_location': 'multi_location',
+    }
+
+    LICENSE_KEY_TO_MSP_FEATURE = {
+        'pos_systems': 'pos',
+        'restaurant_management': 'restaurant',
+        'document_management': 'document',
+        'ecommerce_websites': 'ecommerce',
+        'auto_system': 'auto',
+        'distribution_system': 'distribution',
+        'customer_management': 'crm',
+    }
+
+    GUI_LABEL_TO_LICENSE_KEY = {
+        'Point of Sale Systems': 'pos_systems',
+        'Restaurant Management': 'restaurant_management',
+        'Document Management': 'document_management',
+        'E-commerce Websites': 'ecommerce_websites',
+        'Auto System': 'auto_system',
+        'Distribution System': 'distribution_system',
+        'Inventory Management': 'inventory_management',
+        'Reporting & Analytics': 'reporting_analytics',
+        'Customer Management': 'customer_management',
+        'Event Sponsor CRM': 'customer_management',
+        'Multi-Location Support': 'multi_location',
+    }
+
+    ACTIVATION_FEATURES = frozenset({
+        'pos', 'restaurant', 'document', 'ecommerce', 'auto', 'distribution', 'crm',
+    })
     
     def __init__(self):
         self.msp_api_url = os.environ.get(
@@ -49,7 +116,7 @@ class MSPClientIntegration:
     def filter_clients_with_activation_features(self, clients: List[Dict]) -> List[Dict]:
         """Filter clients that have activation features selected"""
         # Define the activation features that require license activation
-        activation_features = ['pos', 'restaurant', 'document', 'ecommerce', 'auto', 'distribution']
+        activation_features = list(self.ACTIVATION_FEATURES)
         
         filtered_clients = []
         for client in clients:
@@ -186,67 +253,126 @@ class MSPClientIntegration:
         
         return mapping.get(service_level, mapping['basic'])
     
+    @staticmethod
+    def _parse_client_feature_list(raw) -> List[str]:
+        if isinstance(raw, list):
+            return [str(f) for f in raw]
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+                return [str(f) for f in parsed] if isinstance(parsed, list) else []
+            except json.JSONDecodeError:
+                return []
+        return []
+
+    @staticmethod
+    def _first_text(*values, default: str = '') -> str:
+        """Return the first non-empty string; portal JSON often sends null instead of omitting keys."""
+        for value in values:
+            if value is not None and str(value).strip():
+                return str(value).strip()
+        return default
+
+    @classmethod
+    def _client_company_name(cls, client: Dict, msp_client_id: str = '') -> str:
+        return cls._first_text(
+            client.get('companyName'),
+            client.get('company_name'),
+            client.get('name'),
+            default=f'MSP Client {msp_client_id}' if msp_client_id else 'Unknown Company',
+        )
+
+    @classmethod
+    def _client_contact_person(cls, client: Dict) -> str:
+        """Map portal client to license DB contact_person (matches license-sync: contactPerson || name)."""
+        first = cls._first_text(client.get('firstName'), client.get('first_name'))
+        last = cls._first_text(client.get('lastName'), client.get('last_name'))
+        full_name = f'{first} {last}'.strip()
+        return cls._first_text(
+            client.get('contactPerson'),
+            client.get('contact_person'),
+            client.get('name'),
+            client.get('contactName'),
+            client.get('contact_name'),
+            full_name,
+            default='Unknown',
+        )
+
+    @classmethod
+    def _client_email(cls, client: Dict) -> str:
+        return cls._first_text(client.get('email'), default='no-email@local')
+
+    @classmethod
+    def _apply_client_fields(cls, company: CompanyRegistration, client: Dict) -> None:
+        msp_client_id = str(client.get('id') or company.msp_client_id or '')
+        company.company_name = cls._client_company_name(client, msp_client_id)
+        company.contact_person = cls._client_contact_person(client)
+        company.email = cls._client_email(client)
+        company.phone = cls._first_text(client.get('phone'))
+        company.address = cls._first_text(client.get('address'))
+
+    @classmethod
+    def _build_license_features_for_key(cls, license_feature_key: str) -> Dict[str, bool]:
+        return {
+            'inventory_management': True,
+            'advanced_reporting': True,
+            'api_access': True,
+            'multi_location': True,
+            'pos_systems': license_feature_key == 'pos_systems',
+            'restaurant_management': license_feature_key == 'restaurant_management',
+            'document_management': license_feature_key == 'document_management',
+            'ecommerce_websites': license_feature_key == 'ecommerce_websites',
+            'auto_system': license_feature_key == 'auto_system',
+            'distribution_system': license_feature_key == 'distribution_system',
+            'reporting_analytics': license_feature_key == 'reporting_analytics',
+            'customer_management': license_feature_key == 'customer_management',
+        }
+
     def sync_msp_client_to_license_system(self, client: Dict) -> Dict:
-        """Sync a single MSP client to the license system"""
+        """Sync a single MSP client to the license system (one license per management system)."""
         try:
             with self.create_app().app_context():
-                # Check if company already exists
-                existing_company = CompanyRegistration.query.filter_by(
-                    msp_client_id=client['id']
-                ).first()
-                
-                if existing_company:
-                    # Update existing company
-                    existing_company.company_name = client.get('companyName', client.get('name', ''))
-                    existing_company.contact_person = client.get('contactPerson', client.get('name', ''))
-                    existing_company.email = client.get('email', '')
-                    existing_company.phone = client.get('phone', '')
-                    existing_company.address = client.get('address', '')
-                    db.session.commit()
-                    
-                    # Update license
-                    license = LicenseActivation.query.filter_by(
-                        company_id=existing_company.id
+                try:
+                    existing_company = CompanyRegistration.query.filter_by(
+                        msp_client_id=client['id']
                     ).first()
-                    
-                    if license:
-                        service_config = self.map_service_level_to_license(client.get('serviceLevel', 'basic'))
-                        license.license_type = service_config['license_type']
-                        license.max_users = service_config['max_users']
-                        license.service_level = client.get('serviceLevel', 'basic')
-                        license.features = json.dumps(service_config['features'])
+
+                    if existing_company:
+                        self._apply_client_fields(existing_company, client)
                         db.session.commit()
-                        db.session.refresh(license)
-                        
+
+                        self._repair_combined_licenses_impl(existing_company.id)
+                        sync_result = self._sync_licenses_for_msp_client(existing_company, client)
                         return {
                             'success': True,
                             'action': 'updated',
                             'company_id': existing_company.id,
-                            'license_id': license.id
+                            'license_ids': sync_result['license_ids'],
+                            'license_count': len(sync_result['license_ids']),
+                            'licenses_created': sync_result['created'],
+                            'licenses_updated': sync_result['updated'],
                         }
-                    else:
-                        # Create new licenses for each feature
-                        licenses = self._create_license_for_msp_client(existing_company, client)
-                        return {
-                            'success': True,
-                            'action': 'created_license',
-                            'company_id': existing_company.id,
-                            'license_ids': [license.id for license in licenses],
-                            'license_count': len(licenses)
-                        }
-                else:
-                    # Create new company and licenses for each feature
+
                     company = self._create_company_for_msp_client(client)
-                    licenses = self._create_license_for_msp_client(company, client)
-                    
+                    sync_result = self._sync_licenses_for_msp_client(company, client)
+
                     return {
                         'success': True,
                         'action': 'created',
                         'company_id': company.id,
-                        'license_ids': [license.id for license in licenses],
-                        'license_count': len(licenses)
+                        'license_ids': sync_result['license_ids'],
+                        'license_count': len(sync_result['license_ids']),
+                        'licenses_created': sync_result['created'],
+                        'licenses_updated': sync_result['updated'],
                     }
-                    
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"Error syncing client {client.get('name', 'Unknown')}: {e}")
+                    return {
+                        'success': False,
+                        'error': str(e)
+                    }
+
         except Exception as e:
             print(f"Error syncing client {client.get('name', 'Unknown')}: {e}")
             return {
@@ -254,20 +380,335 @@ class MSPClientIntegration:
                 'error': str(e)
             }
     
+    def _enabled_business_feature_keys(self, features_raw) -> List[str]:
+        features = parse_license_features(features_raw)
+        keys = [key for key in BUSINESS_LICENSE_FEATURE_KEYS if features.get(key)]
+        if keys:
+            return keys
+        from license_serial import MSP_FEATURE_TO_LICENSE_KEY
+
+        for alias, key in MSP_FEATURE_TO_LICENSE_KEY.items():
+            if features.get(alias) and key not in keys:
+                keys.append(key)
+        return keys
+
+    def _primary_feature_key_for_license(self, license_row: LicenseActivation) -> str:
+        enabled = self._enabled_business_feature_keys(license_row.features)
+        if not enabled:
+            resolved = resolve_license_feature_key(
+                license_row.features,
+                license_row.serial_number,
+            )
+            return resolved or 'pos_systems'
+        serial = str(license_row.serial_number or '')
+        if serial.upper().startswith('CD-LIC-'):
+            parts = serial.split('-')
+            if len(parts) >= 3:
+                system_code = parts[2].upper()
+                matched = CODE_TO_LICENSE_KEY.get(system_code)
+                if matched and matched in enabled:
+                    return matched
+        return enabled[0]
+
+    def _find_dedicated_license_for_feature(
+        self, company_id: int, license_feature_key: str
+    ) -> Optional[LicenseActivation]:
+        for row in LicenseActivation.query.filter_by(company_id=company_id).all():
+            enabled = self._enabled_business_feature_keys(row.features)
+            if len(enabled) == 1 and enabled[0] == license_feature_key:
+                return row
+        return None
+
+    def _repair_combined_licenses_impl(self, company_id: Optional[int] = None) -> Dict:
+        """Split legacy rows that bundle multiple systems into one license per system."""
+        from datetime import datetime, timezone
+
+        if company_id is not None:
+            license_rows = LicenseActivation.query.filter_by(company_id=company_id).all()
+        else:
+            license_rows = LicenseActivation.query.all()
+
+        licenses_split = 0
+        licenses_created = 0
+
+        for license_row in license_rows:
+            enabled = self._enabled_business_feature_keys(license_row.features)
+            if len(enabled) <= 1:
+                continue
+
+            licenses_split += 1
+            primary_key = self._primary_feature_key_for_license(license_row)
+            extra_keys = [key for key in enabled if key != primary_key]
+
+            license_row.features = json.dumps(self._build_license_features_for_key(primary_key))
+
+            company = db.session.get(CompanyRegistration, license_row.company_id)
+            msp_client_id = str(company.msp_client_id if company else '')
+
+            for extra_key in extra_keys:
+                if self._find_dedicated_license_for_feature(license_row.company_id, extra_key):
+                    continue
+
+                msp_feature = self.LICENSE_KEY_TO_MSP_FEATURE.get(extra_key, 'pos')
+                license_serial = ensure_unique_license_serial(
+                    db.session,
+                    LicenseActivation,
+                    msp_feature=msp_feature,
+                    msp_client_id=msp_client_id,
+                    device_seat=1,
+                )
+                if is_legacy_short_license_serial(str(license_serial)):
+                    raise RuntimeError('Generated short or legacy license serial during repair')
+
+                new_license = LicenseActivation(
+                    serial_number=license_serial,
+                    company_id=license_row.company_id,
+                    license_type=license_row.license_type,
+                    max_users=license_row.max_users,
+                    service_level=license_row.service_level,
+                    features=json.dumps(self._build_license_features_for_key(extra_key)),
+                    activation_date=license_row.activation_date or datetime.now(timezone.utc),
+                    expiration_date=license_row.expiration_date,
+                    is_active=False,
+                    browser_fingerprint=None,
+                )
+                db.session.add(new_license)
+                licenses_created += 1
+
+        if licenses_split:
+            db.session.commit()
+
+        return {
+            'success': True,
+            'licenses_split': licenses_split,
+            'licenses_created': licenses_created,
+        }
+
+    def _repair_missing_license_features_impl(self, company_id: Optional[int] = None) -> Dict:
+        """Set features JSON from serial when a row has no enabled business features."""
+        if company_id is not None:
+            license_rows = LicenseActivation.query.filter_by(company_id=company_id).all()
+        else:
+            license_rows = LicenseActivation.query.all()
+
+        repaired = 0
+        for license_row in license_rows:
+            if self._enabled_business_feature_keys(license_row.features):
+                continue
+            key = resolve_license_feature_key(
+                license_row.features,
+                license_row.serial_number,
+            )
+            if not key:
+                continue
+            license_row.features = json.dumps(self._build_license_features_for_key(key))
+            repaired += 1
+
+        if repaired:
+            db.session.commit()
+
+        return {'success': True, 'licenses_repaired': repaired}
+
+    def repair_missing_license_features(self, company_id: Optional[int] = None) -> Dict:
+        try:
+            with self.create_app().app_context():
+                return self._repair_missing_license_features_impl(company_id)
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def repair_combined_licenses(self, company_id: Optional[int] = None) -> Dict:
+        try:
+            with self.create_app().app_context():
+                return self._repair_combined_licenses_impl(company_id)
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def _find_license_for_feature(self, company_id: int, license_feature_key: str) -> Optional[LicenseActivation]:
+        """Return the dedicated license row for this company + product feature."""
+        dedicated = self._find_dedicated_license_for_feature(company_id, license_feature_key)
+        if dedicated:
+            return dedicated
+
+        licenses = LicenseActivation.query.filter_by(company_id=company_id).all()
+        for row in licenses:
+            features = parse_license_features(row.features)
+            if features.get(license_feature_key):
+                return row
+        return None
+
+    def _find_unbound_inactive_license_for_feature(
+        self, company_id: int, license_feature_key: str
+    ) -> Optional[LicenseActivation]:
+        """License waiting to be assigned to a device (not yet bound)."""
+        licenses = LicenseActivation.query.filter_by(company_id=company_id).all()
+        for row in licenses:
+            features = parse_license_features(row.features)
+            if features.get(license_feature_key) and not row.browser_fingerprint and not row.is_active:
+                return row
+        return None
+
+    def _licenses_for_feature(self, company_id: int, license_feature_key: str) -> List[LicenseActivation]:
+        rows = LicenseActivation.query.filter_by(company_id=company_id).all()
+        matched = []
+        for row in rows:
+            features = parse_license_features(row.features)
+            if features.get(license_feature_key):
+                matched.append(row)
+        return matched
+
+    def _sync_licenses_for_msp_client(
+        self,
+        company: CompanyRegistration,
+        client: Dict,
+        *,
+        license_type: Optional[str] = None,
+        duration: int = 365,
+        max_users: Optional[int] = None,
+        feature_labels: Optional[List[str]] = None,
+    ) -> Dict:
+        """Ensure one license row per management system for this company."""
+        from datetime import datetime, timezone, timedelta
+
+        service_config = self.map_service_level_to_license(client.get('serviceLevel', 'basic'))
+        if license_type:
+            resolved_license_type = validate_license_type(license_type)
+        else:
+            resolved_license_type = DEFAULT_LICENSE_TYPE
+        resolved_max_users = max_users if max_users is not None else service_config['max_users']
+        service_level = client.get('serviceLevel', 'basic')
+        duration_days, no_expiry = resolve_duration_for_update(
+            resolved_license_type,
+            duration if duration is not None else DURATION_BY_LICENSE_TYPE[resolved_license_type],
+        )
+
+        if feature_labels is not None:
+            license_keys: List[tuple[str, str]] = []
+            for label in feature_labels:
+                license_key = self.GUI_LABEL_TO_LICENSE_KEY.get(label)
+                if not license_key:
+                    continue
+                msp_feature = self.LICENSE_KEY_TO_MSP_FEATURE.get(license_key, 'pos')
+                license_keys.append((msp_feature, license_key))
+        else:
+            client_features = self._parse_client_feature_list(client.get('features', []))
+            license_keys = []
+            for msp_feature in client_features:
+                license_key = self.MSP_FEATURE_TO_LICENSE_KEY.get(msp_feature)
+                if license_key:
+                    license_keys.append((msp_feature, license_key))
+
+        created_ids: List[int] = []
+        updated_ids: List[int] = []
+        company_licenses = LicenseActivation.query.filter_by(company_id=company.id).all()
+        msp_client_id = str(client.get('id') or company.msp_client_id or '')
+        now = datetime.now(timezone.utc)
+
+        def apply_expiration(row: LicenseActivation) -> None:
+            row.expiration_date = (
+                None
+                if no_expiry
+                else expiration_from_activation(now, resolved_license_type, duration_days)
+            )
+
+        for msp_feature, license_feature_key in license_keys:
+            license_features = self._build_license_features_for_key(license_feature_key)
+            existing = self._find_license_for_feature(company.id, license_feature_key)
+
+            if existing:
+                existing.license_type = resolved_license_type
+                existing.max_users = resolved_max_users
+                existing.service_level = service_level
+                existing.features = json.dumps(license_features)
+                apply_expiration(existing)
+                updated_ids.append(existing.id)
+                continue
+
+            reusable = self._find_unbound_inactive_license_for_feature(company.id, license_feature_key)
+            if reusable:
+                reusable.license_type = resolved_license_type
+                reusable.max_users = resolved_max_users
+                reusable.service_level = service_level
+                reusable.features = json.dumps(license_features)
+                apply_expiration(reusable)
+                updated_ids.append(reusable.id)
+                continue
+
+            if count_licenses_for_feature(company_licenses, license_feature_key) > 0:
+                print(
+                    f"Skipping auto-create for {msp_feature} — company already has "
+                    f"{count_licenses_for_feature(company_licenses, license_feature_key)} license(s). "
+                    f"Use Add device license in the GUI for extra registers/PCs."
+                )
+                continue
+
+            license_serial = ensure_unique_license_serial(
+                db.session,
+                LicenseActivation,
+                msp_feature=msp_feature,
+                msp_client_id=msp_client_id,
+                device_seat=1,
+            )
+            if is_legacy_short_license_serial(str(license_serial)):
+                raise RuntimeError('Generated short or legacy license serial; aborting license creation')
+
+            activation_date = datetime.now(timezone.utc)
+            expiration_date = (
+                None
+                if no_expiry
+                else expiration_from_activation(activation_date, resolved_license_type, duration_days)
+            )
+            license_row = LicenseActivation(
+                serial_number=license_serial,
+                company_id=company.id,
+                license_type=resolved_license_type,
+                max_users=resolved_max_users,
+                service_level=service_level,
+                features=json.dumps(license_features),
+                activation_date=activation_date,
+                expiration_date=expiration_date,
+                is_active=False,
+            )
+            db.session.add(license_row)
+            db.session.flush()
+            created_ids.append(license_row.id)
+            company_licenses.append(license_row)
+
+        db.session.commit()
+
+        return {
+            'license_ids': created_ids + updated_ids,
+            'created': len(created_ids),
+            'updated': len(updated_ids),
+        }
+
+    @classmethod
+    def _create_stub_company(cls, msp_client_id: str) -> CompanyRegistration:
+        """Minimal company row when portal client details are unavailable."""
+        serial_number = ensure_unique_company_serial(db.session, CompanyRegistration, str(msp_client_id))
+        company = CompanyRegistration(
+            company_name=f'MSP Client {msp_client_id}',
+            contact_person='Unknown',
+            email='no-email@local',
+            phone='',
+            address='',
+            serial_number=serial_number,
+            msp_client_id=str(msp_client_id),
+        )
+        db.session.add(company)
+        db.session.commit()
+        db.session.refresh(company)
+        return company
+
     def _create_company_for_msp_client(self, client: Dict) -> CompanyRegistration:
         """Create a new company registration for MSP client"""
-        import uuid
-        from datetime import datetime, timezone
-        
-        # Generate a unique serial number
-        serial_number = f"MSP-{client['id'][:8]}-{datetime.now().strftime('%Y%m%d')}"
+        serial_number = ensure_unique_company_serial(db.session, CompanyRegistration, client.get('id'))
         
         company = CompanyRegistration(
-            company_name=client.get('companyName', client.get('name', '')),
-            contact_person=client.get('contactPerson', client.get('name', '')),
-            email=client.get('email', ''),
-            phone=client.get('phone', ''),
-            address=client.get('address', ''),
+            company_name=self._client_company_name(client, str(client.get('id', ''))),
+            contact_person=self._client_contact_person(client),
+            email=self._client_email(client),
+            phone=self._first_text(client.get('phone')),
+            address=self._first_text(client.get('address')),
             serial_number=serial_number,
             msp_client_id=client['id']
         )
@@ -278,332 +719,125 @@ class MSPClientIntegration:
         return company
     
     def _create_license_for_msp_client(self, company: CompanyRegistration, client: Dict) -> List[LicenseActivation]:
-        """Create separate licenses for each selected feature"""
-        from datetime import datetime, timezone, timedelta
-        import uuid
-        
-        service_config = self.map_service_level_to_license(client.get('serviceLevel', 'basic'))
-        
-        # Get client activation features
-        client_features = client.get('features', [])
-        if isinstance(client_features, str):
-            try:
-                client_features = json.loads(client_features)
-            except:
-                client_features = []
-        
-        # Map MSP feature names to license feature keys
-        feature_mapping = {
-            'pos': 'pos_systems',
-            'restaurant': 'restaurant_management', 
-            'document': 'document_management',
-            'ecommerce': 'ecommerce_websites',
-            'auto': 'auto_system',
-            'distribution': 'distribution_system',
-            'inventory': 'inventory_management',
-            'analytics': 'reporting_analytics',
-            'customer': 'customer_management',
-            'multi_location': 'multi_location'
-        }
-        
-        created_licenses = []
-        
-        # Create a separate license for each selected feature
-        for msp_feature in client_features:
-            if msp_feature in feature_mapping:
-                license_feature_key = feature_mapping[msp_feature]
-                
-                # Generate unique serial number for this specific feature license
-                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-                license_serial = f"LIC-{company.serial_number}-{msp_feature.upper()}-{timestamp}"
-                
-                # Set activation and expiration dates
-                activation_date = datetime.now(timezone.utc)
-                expiration_date = activation_date + timedelta(days=365)  # 1 year license
-                
-                # Create features object with only this specific feature enabled
-                license_features = {
-                    'inventory_management': True,  # Technical feature - always enabled
-                    'advanced_reporting': True,   # Technical feature - always enabled
-                    'api_access': True,           # Technical feature - always enabled
-                    'multi_location': True,       # Technical feature - always enabled
-                    'pos_systems': license_feature_key == 'pos_systems',
-                    'restaurant_management': license_feature_key == 'restaurant_management',
-                    'document_management': license_feature_key == 'document_management',
-                    'ecommerce_websites': license_feature_key == 'ecommerce_websites',
-                    'auto_system': license_feature_key == 'auto_system',
-                    'distribution_system': license_feature_key == 'distribution_system',
-                    'inventory_management': license_feature_key == 'inventory_management',
-                    'reporting_analytics': license_feature_key == 'reporting_analytics',
-                    'customer_management': license_feature_key == 'customer_management',
-                    'multi_location': license_feature_key == 'multi_location'
-                }
-                
-                license = LicenseActivation(
-                    serial_number=license_serial,
-                    company_id=company.id,
-                    license_type=service_config['license_type'],
-                    max_users=service_config['max_users'],
-                    service_level=client.get('serviceLevel', 'basic'),
-                    features=json.dumps(license_features),
-                    activation_date=activation_date,
-                    expiration_date=expiration_date,
-                    is_active=False  # Created but not activated - requires manual activation
-                )
-                
-                db.session.add(license)
-                created_licenses.append(license)
-        
-        db.session.commit()
-        
-        # Refresh all licenses to get their IDs
-        for license in created_licenses:
-            db.session.refresh(license)
-        
-        return created_licenses
+        """Create separate licenses for each selected feature (legacy wrapper)."""
+        result = self._sync_licenses_for_msp_client(company, client)
+        if not result['license_ids']:
+            return []
+        return LicenseActivation.query.filter(LicenseActivation.id.in_(result['license_ids'])).all()
     
     def update_msp_client_license(self, msp_client_id: str, license_type: str, duration: int = 365, max_users: int = 5, features: list = None, license_id: int = None) -> Dict:
-        """Update or create license for MSP client
+        """Update or create one license per selected management system for an MSP client."""
+        print(f"\n[MSP-UPDATE-LICENSE] CALLED with:")
+        print(f"  msp_client_id: {msp_client_id}")
+        print(f"  license_type: {license_type}")
+        print(f"  duration: {duration}")
+        print(f"  features: {features}")
+        print(f"  license_id: {license_id}")
         
-        Args:
-            msp_client_id: The MSP client ID
-            license_type: License type (e.g., 'Day Pass', 'Trial 7 Days', etc.)
-            duration: Duration in days (default: 365)
-            max_users: Maximum number of users (default: 5)
-            features: List of selected features (default: None)
-            license_id: Specific license ID to update (None to create new or update first) (default: None)
-        """
         try:
             from datetime import datetime, timezone, timedelta
-            import uuid
             
             with self.create_app().app_context():
-                company = CompanyRegistration.query.filter_by(msp_client_id=msp_client_id).first()
-                if not company:
-                    # Automatically create company from MSP client data
-                    # Fetch client data from MSP API
-                    try:
-                        # Get all clients and find the one we need
-                        clients_response = self.get_msp_clients()
-                        if 'error' not in clients_response:
-                            clients = clients_response.get('clients', [])
-                            client_data = None
-                            for client in clients:
-                                if str(client.get('id')) == str(msp_client_id):
-                                    client_data = client
-                                    break
-                            
-                            if client_data:
-                                # Create company using the helper method
-                                company = self._create_company_for_msp_client(client_data)
+                try:
+                    company = CompanyRegistration.query.filter_by(msp_client_id=msp_client_id).first()
+                    if not company:
+                        try:
+                            clients_response = self.get_msp_clients()
+                            if 'error' not in clients_response:
+                                clients = clients_response.get('clients', [])
+                                client_data = None
+                                for client in clients:
+                                    if str(client.get('id')) == str(msp_client_id):
+                                        client_data = client
+                                        break
+
+                                if client_data:
+                                    company = self._create_company_for_msp_client(client_data)
+                                else:
+                                    company = self._create_stub_company(str(msp_client_id))
                             else:
-                                # If client not found in API, create with minimal data
-                                from datetime import datetime
-                                serial_number = f"MSP-{str(msp_client_id)[:8]}-{datetime.now().strftime('%Y%m%d')}"
-                                company = CompanyRegistration(
-                                    company_name=f"MSP Client {msp_client_id}",
-                                    contact_person="Unknown",
-                                    email="",
-                                    phone="",
-                                    address="",
-                                    serial_number=serial_number,
-                                    msp_client_id=str(msp_client_id)
-                                )
-                                db.session.add(company)
-                                db.session.commit()
-                                db.session.refresh(company)
-                        else:
-                            # If API call fails, create with minimal data
-                            from datetime import datetime
-                            serial_number = f"MSP-{str(msp_client_id)[:8]}-{datetime.now().strftime('%Y%m%d')}"
-                            company = CompanyRegistration(
-                                company_name=f"MSP Client {msp_client_id}",
-                                contact_person="Unknown",
-                                email="",
-                                phone="",
-                                address="",
-                                serial_number=serial_number,
-                                msp_client_id=str(msp_client_id)
-                            )
-                            db.session.add(company)
-                            db.session.commit()
-                            db.session.refresh(company)
-                    except Exception as e:
-                        # If API call fails, create with minimal data
-                        from datetime import datetime
-                        serial_number = f"MSP-{str(msp_client_id)[:8]}-{datetime.now().strftime('%Y%m%d')}"
-                        company = CompanyRegistration(
-                            company_name=f"MSP Client {msp_client_id}",
-                            contact_person="Unknown",
-                            email="",
-                            phone="",
-                            address="",
-                            serial_number=serial_number,
-                            msp_client_id=str(msp_client_id)
-                        )
-                        db.session.add(company)
-                        db.session.commit()
-                        db.session.refresh(company)
-                
-                # If license_id is provided, update that specific license
-                # If license_id is None, create a new license (even if others exist)
-                license = None
-                if license_id:
-                    license = LicenseActivation.query.filter_by(id=license_id, company_id=company.id).first()
-                    if not license:
-                        return {'success': False, 'error': f'License with ID {license_id} not found for this company'}
-                
-                if not license:
-                    # Create new license if it doesn't exist
-                    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-                    license_serial = f"LIC-{company.serial_number}-{timestamp}"
-                    
-                    # Set activation and expiration dates
-                    activation_date = datetime.now(timezone.utc)
-                    if duration == 9999:  # No time limit
-                        expiration_date = None
-                    else:
-                        expiration_date = activation_date + timedelta(days=duration)
-                    
-                    # Map features
-                    feature_mapping = {
-                        'Point of Sale Systems': 'pos_systems',
-                        'Restaurant Management': 'restaurant_management',
-                        'Document Management': 'document_management',
-                        'E-commerce Websites': 'ecommerce_websites',
-                        'Auto System': 'auto_system',
-                        'Distribution System': 'distribution_system',
-                        'Inventory Management': 'inventory_management',
-                        'Reporting & Analytics': 'reporting_analytics',
-                        'Customer Management': 'customer_management',
-                        'Multi-Location Support': 'multi_location'
-                    }
-                    
-                    # Build features dictionary
-                    if features:
-                        updated_features = {
-                            'inventory_management': True,  # Technical feature - always enabled
-                            'advanced_reporting': True,   # Technical feature - always enabled
-                            'api_access': True,           # Technical feature - always enabled
-                            'multi_location': True,       # Technical feature - always enabled
-                            'pos_systems': False,
-                            'restaurant_management': False,
-                            'document_management': False,
-                            'ecommerce_websites': False,
-                            'auto_system': False,
-                            'distribution_system': False,
-                            'reporting_analytics': False,
-                            'customer_management': False
-                        }
-                        
-                        # Enable selected features
-                        for feature in features:
-                            if feature in feature_mapping:
-                                feature_key = feature_mapping[feature]
-                                updated_features[feature_key] = True
-                    else:
-                        # Default features if none specified
-                        updated_features = {
-                            'inventory_management': True,
-                            'advanced_reporting': True,
-                            'api_access': True,
-                            'multi_location': True,
-                            'pos_systems': True,
-                            'restaurant_management': False,
-                            'document_management': False,
-                            'ecommerce_websites': False,
-                            'auto_system': False,
-                            'distribution_system': False,
-                            'reporting_analytics': False,
-                            'customer_management': False
-                        }
-                    
-                    # Create new license
-                    license = LicenseActivation(
-                        serial_number=license_serial,
-                        company_id=company.id,
-                        license_type=license_type,
-                        max_users=max_users,
-                        service_level='standard',  # Default service level
-                        features=json.dumps(updated_features),
-                        activation_date=activation_date,
-                        expiration_date=expiration_date,
-                        is_active=False  # Created but not activated
-                    )
-                    
-                    db.session.add(license)
-                    db.session.commit()
-                    db.session.refresh(license)
-                    
-                    return {
-                        'success': True,
-                        'license_id': license.id,
-                        'action': 'created',
-                        'created_licenses': 1,
-                        'updated_licenses': 0,
-                        'deleted_licenses': 0
-                    }
-                else:
-                    # Update existing license
-                    license.license_type = license_type
-                    license.max_users = max_users
-                    
-                    # Update expiration date
-                    if duration == 9999:  # No time limit
-                        license.expiration_date = None
-                    else:
+                                company = self._create_stub_company(str(msp_client_id))
+                        except Exception:
+                            db.session.rollback()
+                            company = self._create_stub_company(str(msp_client_id))
+
+                    selected_features = features or []
+                    try:
+                        license_type = validate_license_type(license_type)
+                        duration_days, no_expiry = resolve_duration_for_update(license_type, duration)
+                    except ValueError as exc:
+                        return {'success': False, 'error': str(exc)}
+
+                    if license_id:
+                        license_row = LicenseActivation.query.filter_by(id=license_id, company_id=company.id).first()
+                        if not license_row:
+                            return {'success': False, 'error': f'License with ID {license_id} not found for this company'}
+
+                        license_row.license_type = license_type
+                        license_row.max_users = max_users
                         now = datetime.now(timezone.utc)
-                        license.expiration_date = now + timedelta(days=duration)
-                    
-                    # Update features if provided
-                    if features is not None:
-                        feature_mapping = {
-                            'Point of Sale Systems': 'pos_systems',
-                            'Restaurant Management': 'restaurant_management',
-                            'Document Management': 'document_management',
-                            'E-commerce Websites': 'ecommerce_websites',
-                            'Auto System': 'auto_system',
-                            'Distribution System': 'distribution_system',
-                            'Inventory Management': 'inventory_management',
-                            'Reporting & Analytics': 'reporting_analytics',
-                            'Customer Management': 'customer_management',
-                            'Multi-Location Support': 'multi_location'
+                        license_row.expiration_date = (
+                            None
+                            if no_expiry
+                            else expiration_from_activation(now, license_type, duration_days)
+                        )
+
+                        if selected_features:
+                            updated_features = {
+                                'inventory_management': True,
+                                'advanced_reporting': True,
+                                'api_access': True,
+                                'multi_location': True,
+                                'pos_systems': False,
+                                'restaurant_management': False,
+                                'document_management': False,
+                                'ecommerce_websites': False,
+                                'auto_system': False,
+                                'distribution_system': False,
+                                'reporting_analytics': False,
+                                'customer_management': False,
+                            }
+                            for feature in selected_features:
+                                feature_key = self.GUI_LABEL_TO_LICENSE_KEY.get(feature)
+                                if feature_key:
+                                    updated_features[feature_key] = True
+                            license_row.features = json.dumps(updated_features)
+
+                        db.session.commit()
+                        db.session.refresh(license_row)
+                        return {
+                            'success': True,
+                            'license_id': license_row.id,
+                            'action': 'updated',
+                            'created_licenses': 0,
+                            'updated_licenses': 1,
+                            'deleted_licenses': 0,
                         }
-                        
-                        updated_features = {
-                            'inventory_management': True,  # Technical feature - always enabled
-                            'advanced_reporting': True,   # Technical feature - always enabled
-                            'api_access': True,           # Technical feature - always enabled
-                            'multi_location': True,       # Technical feature - always enabled
-                            'pos_systems': False,
-                            'restaurant_management': False,
-                            'document_management': False,
-                            'ecommerce_websites': False,
-                            'auto_system': False,
-                            'distribution_system': False,
-                            'reporting_analytics': False,
-                            'customer_management': False
-                        }
-                        
-                        # Enable selected features
-                        for feature in features:
-                            if feature in feature_mapping:
-                                feature_key = feature_mapping[feature]
-                                updated_features[feature_key] = True
-                        
-                        license.features = json.dumps(updated_features)
-                    
-                    db.session.commit()
-                    db.session.refresh(license)
-                    
+
+                    if not selected_features:
+                        return {'success': False, 'error': 'Select at least one product'}
+
+                    client_stub = {'id': msp_client_id, 'serviceLevel': 'standard'}
+                    sync_result = self._sync_licenses_for_msp_client(
+                        company,
+                        client_stub,
+                        license_type=license_type,
+                        duration=duration_days,
+                        max_users=max_users,
+                        feature_labels=selected_features,
+                    )
+
                     return {
                         'success': True,
-                        'license_id': license.id,
-                        'action': 'updated',
-                        'created_licenses': 0,
-                        'updated_licenses': 1,
-                        'deleted_licenses': 0
+                        'license_ids': sync_result['license_ids'],
+                        'action': 'created' if sync_result['created'] else 'updated',
+                        'created_licenses': sync_result['created'],
+                        'updated_licenses': sync_result['updated'],
+                        'deleted_licenses': 0,
                     }
+                except Exception as e:
+                    db.session.rollback()
+                    return {'success': False, 'error': str(e)}
                 
         except Exception as e:
             return {'success': False, 'error': str(e)}
@@ -665,10 +899,8 @@ class MSPClientIntegration:
                     result = self.sync_msp_client_to_license_system(client)
                     if result.get('success'):
                         synced_clients += 1
-                        if result.get('action') == 'created_license':
-                            new_licenses += 1
-                        elif result.get('action') == 'updated':
-                            updated_licenses += 1
+                        new_licenses += result.get('licenses_created', 0)
+                        updated_licenses += result.get('licenses_updated', 0)
                     else:
                         errors.append(f"Failed to sync client {client.get('name', 'Unknown')}: {result.get('error', 'Unknown error')}")
                 except Exception as e:
@@ -679,8 +911,9 @@ class MSPClientIntegration:
                 'total_clients': clients_response.get('total_clients', 0),
                 'filtered_clients': len(filtered_clients),
                 'synced_count': synced_clients,
-                'companies_created': new_licenses,  # Assuming new licenses means new companies
+                'companies_created': synced_clients if new_licenses else 0,
                 'licenses_created': new_licenses,
+                'licenses_updated': updated_licenses,
                 'errors': errors
             }
             

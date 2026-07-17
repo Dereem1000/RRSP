@@ -4,7 +4,10 @@ import { verifyToken, type TokenPayload } from './jwt';
 
 export function getTokenFromRequest(req: NextRequest): string | null {
   const header = req.headers.get('authorization');
-  if (header?.startsWith('Bearer ')) return header.slice(7);
+  if (header?.startsWith('Bearer ')) {
+    const bearer = header.slice(7).trim();
+    if (bearer && verifyToken(bearer)) return bearer;
+  }
   return req.cookies.get('cd_access_token')?.value ?? null;
 }
 

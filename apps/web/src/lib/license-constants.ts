@@ -5,6 +5,7 @@ export const ACTIVATION_FEATURES = [
   'ecommerce',
   'auto',
   'distribution',
+  'crm',
 ] as const;
 
 export type ActivationFeature = (typeof ACTIVATION_FEATURES)[number];
@@ -34,6 +35,10 @@ export const ACTIVATION_FEATURE_LABELS: Record<ActivationFeature, { title: strin
     title: 'Distribution System',
     description: 'Inventory, orders, and supply chain optimization.',
   },
+  crm: {
+    title: 'Event Sponsor CRM',
+    description: 'Sponsor management, communications, and event CRM workflows.',
+  },
 };
 
 /** MSP client feature key → license DB JSON key */
@@ -44,6 +49,7 @@ export const FEATURE_TO_LICENSE_KEY: Record<ActivationFeature, string> = {
   ecommerce: 'ecommerce_websites',
   auto: 'auto_system',
   distribution: 'distribution_system',
+  crm: 'customer_management',
 };
 
 export const MSP_SERVICE_LEVELS = ['basic', 'standard', 'premium', 'enterprise', 'per-job'] as const;
@@ -148,3 +154,8 @@ export function mapServiceLevelToLicense(serviceLevel: string | null | undefined
   };
   return mapping[serviceLevel ?? 'basic'] ?? mapping.basic;
 }
+
+/** Shared between portal client unlock UI and MSP API routes. */
+export const LICENSE_SERIAL_REVEAL_COOKIE = 'cd_license_serial_reveal';
+export const LICENSE_SERIAL_REVEAL_HEADER = 'x-cd-license-serial-reveal';
+export const LICENSE_SERIAL_REVEAL_STORAGE_KEY = 'cd_license_serial_reveal_token';

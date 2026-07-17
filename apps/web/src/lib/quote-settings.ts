@@ -1,4 +1,10 @@
 import { SystemConfig } from '@cd-v2/database';
+import {
+  DEFAULT_CLOSING_MESSAGE,
+  DEFAULT_PAYMENT_TERMS,
+  DEFAULT_QUOTE_TAX_RATE,
+  DEFAULT_WARRANTY_TERMS,
+} from '@/lib/quote-defaults';
 
 export type QuoteSettings = {
   companyName: string;
@@ -34,17 +40,11 @@ export async function getQuoteSettings(): Promise<QuoteSettings> {
     SystemConfig.getConfig<string>('quote_company_phone', ''),
     SystemConfig.getConfig<string>('quote_company_website', ''),
     SystemConfig.getConfig<string>('quote_company_logo', '/logo.svg'),
-    SystemConfig.getConfig<number>('quote_tax_rate', 12.5),
+    SystemConfig.getConfig<number>('quote_tax_rate', DEFAULT_QUOTE_TAX_RATE),
     SystemConfig.getConfig<string>('quote_currency', 'TTD'),
-    SystemConfig.getConfig<string>(
-      'quote_payment_terms',
-      'Payment is due within 30 days of invoice date.'
-    ),
-    SystemConfig.getConfig<string>(
-      'quote_warranty_terms',
-      'All products come with a 1-year warranty.'
-    ),
-    SystemConfig.getConfig<string>('quote_closing_message', 'Thank you for your business!'),
+    SystemConfig.getConfig<string>('quote_payment_terms', DEFAULT_PAYMENT_TERMS),
+    SystemConfig.getConfig<string>('quote_warranty_terms', DEFAULT_WARRANTY_TERMS),
+    SystemConfig.getConfig<string>('quote_closing_message', DEFAULT_CLOSING_MESSAGE),
   ]);
 
   return {
@@ -53,7 +53,7 @@ export async function getQuoteSettings(): Promise<QuoteSettings> {
     companyPhone: companyPhone ?? '',
     companyWebsite: companyWebsite ?? '',
     companyLogo: companyLogo ?? '/logo.svg',
-    taxRate: Number(taxRate) || 12.5,
+    taxRate: Number.isFinite(Number(taxRate)) ? Number(taxRate) : DEFAULT_QUOTE_TAX_RATE,
     currency: currency ?? 'TTD',
     paymentTerms: paymentTerms ?? '',
     warrantyTerms: warrantyTerms ?? '',

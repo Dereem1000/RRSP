@@ -61,6 +61,9 @@
                     <label for="confirmPassword">Confirm Password</label>
                     <input type="password" id="confirmPassword" name="confirmPassword" disabled style="background-color: #e9ecef; cursor: not-allowed;">
                 </div>
+
+                <div id="captcha-container" style="margin: 16px 0; display: none;"></div>
+                <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" aria-hidden="true">
                 
                 <button type="submit" class="btn btn-primary btn-block">
                     <i class="fas fa-user-plus"></i> Create Account
@@ -77,17 +80,30 @@
     <!-- Notification Container -->
     <div id="notificationContainer" class="notification-container"></div>
 
+    <script src="/js/public-captcha.js"></script>
+    <script src="/js/public-phone-input.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            CDPublicCaptcha.render(document.getElementById('captcha-container'));
+        });
+
         document.getElementById('registrationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
             
-            // Password fields are disabled - temporary password will be sent via email
-            // No need to validate passwords
-            
             try {
+                let captchaToken = '';
+                try {
+                    captchaToken = CDPublicCaptcha.requireToken();
+                } catch (err) {
+                    if (String(err.message || err).includes('CAPTCHA')) {
+                        showNotification('Please complete the CAPTCHA verification.', 'error');
+                        return;
+                    }
+                }
+
                 const response = await fetch('/api/public/client-signup', {
                     method: 'POST',
                     headers: {
@@ -96,12 +112,13 @@
                     body: JSON.stringify({
                         username: data.username,
                         email: data.email,
-                        // Password not sent - temporary password will be generated server-side
                         firstName: data.firstName,
                         lastName: data.lastName,
                         companyName: data.companyName || null,
                         phone: data.phone || null,
-                        address: null // Address field not in form, but can be added later
+                        address: null,
+                        website: data.website || '',
+                        captchaToken: captchaToken || undefined
                     })
                 });
                 
@@ -114,10 +131,12 @@
                     }, 5000); // Increased timeout to give user time to read the message
                 } else {
                     showNotification(result.message || 'Registration failed', 'error');
+                    CDPublicCaptcha.reset();
                 }
             } catch (error) {
                 console.error('Registration error:', error);
                 showNotification('Registration failed. Please try again or contact support.', 'error');
+                CDPublicCaptcha.reset();
             }
         });
         

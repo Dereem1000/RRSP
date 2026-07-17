@@ -7,10 +7,6 @@ import {
   getActivationFeatures,
   type ActivationFeature,
 } from '@/lib/license-constants';
-import {
-  getClientLicenseSnapshot,
-  isLicenseDbAvailable,
-} from '@/lib/license-service';
 
 export function serializeClient(client: Client) {
   const json = client.toJSON() as unknown as Record<string, unknown>;
@@ -19,17 +15,9 @@ export function serializeClient(client: Client) {
   return json;
 }
 
-/** License DB is the only source of truth for which systems a client uses */
+/** Portal client features define which systems require licenses */
 export async function resolveClientActivationFeatures(client: Client): Promise<ActivationFeature[]> {
-  if (!isLicenseDbAvailable()) return getActivationFeatures(client.features);
-
-  try {
-    const snapshot = await getClientLicenseSnapshot(client.id);
-    if (snapshot.activationFeatures.length > 0) return snapshot.activationFeatures;
-    return getActivationFeatures(client.features);
-  } catch {
-    return getActivationFeatures(client.features);
-  }
+  return getActivationFeatures(client.features);
 }
 
 export async function getClientById(id: string) {
@@ -43,6 +31,75 @@ export async function getClientById(id: string) {
       },
     ],
   });
+}
+
+/** Orders FK still references legacy `clients_backup`; mirror live clients before insert. */
+export async function ensureClientMirroredForOrders(clientId: string) {
+  const sequelize = getSequelize();
+  const existing = await sequelize.query<{ id: string }>(
+    `SELECT id FROM clients_backup WHERE id = :id LIMIT 1`,
+    { type: QueryTypes.SELECT, replacements: { id: clientId } }
+  );
+  if (existing[0]) return;
+
+  const client = await Client.findByPk(clientId);
+  if (!client) throw new Error('Client not found');
+
+  const row = client.toJSON() as unknown as Record<string, unknown>;
+  const now = new Date().toISOString();
+  await sequelize.query(
+    `INSERT OR REPLACE INTO clients_backup (
+      id, name, company_name, email, phone, address, contact_person, billing_info,
+      contract_details, service_level, support_tier, status, start_date, end_date,
+      monthly_rate, notes, communication_history, is_active, usage_tracking,
+      service_plan_data, assigned_technician_id, priority_level, contract_start_date,
+      contract_end_date, renewal_date, sla_agreement, created_at, updated_at, userId,
+      contact_number, emergency_contact, emergency_phone
+    ) VALUES (
+      :id, :name, :company_name, :email, :phone, :address, :contact_person, :billing_info,
+      :contract_details, :service_level, :support_tier, :status, :start_date, :end_date,
+      :monthly_rate, :notes, :communication_history, :is_active, :usage_tracking,
+      :service_plan_data, :assigned_technician_id, :priority_level, :contract_start_date,
+      :contract_end_date, :renewal_date, :sla_agreement, :created_at, :updated_at, :userId,
+      :contact_number, :emergency_contact, :emergency_phone
+    )`,
+    {
+      replacements: {
+        id: row.id,
+        name: row.name,
+        company_name: row.companyName ?? null,
+        email: row.email,
+        phone: row.phone ?? null,
+        address: row.address ?? null,
+        contact_person: row.contactPerson ?? null,
+        billing_info: JSON.stringify(row.billingInfo ?? {}),
+        contract_details: JSON.stringify(row.contractDetails ?? {}),
+        service_level: row.serviceLevel ?? 'standard',
+        support_tier: row.supportTier ?? 'silver',
+        status: row.status ?? 'active',
+        start_date: row.startDate ? String(row.startDate).slice(0, 10) : null,
+        end_date: row.endDate ? String(row.endDate).slice(0, 10) : null,
+        monthly_rate: row.monthlyRate ?? 0,
+        notes: row.notes ?? null,
+        communication_history: JSON.stringify(row.communicationHistory ?? []),
+        is_active: row.isActive ? 1 : 0,
+        usage_tracking: row.usageTracking ? JSON.stringify(row.usageTracking) : null,
+        service_plan_data: JSON.stringify(row.servicePlanData ?? {}),
+        assigned_technician_id: row.assignedTechnicianId ?? null,
+        priority_level: row.priorityLevel ?? 'medium',
+        contract_start_date: row.contractStartDate ? String(row.contractStartDate).slice(0, 10) : null,
+        contract_end_date: row.contractEndDate ? String(row.contractEndDate).slice(0, 10) : null,
+        renewal_date: row.renewalDate ? String(row.renewalDate).slice(0, 10) : null,
+        sla_agreement: JSON.stringify(row.slaAgreement ?? {}),
+        created_at: row.created_at ?? now,
+        updated_at: row.updated_at ?? now,
+        userId: row.userId ?? null,
+        contact_number: (row as { contactNumber?: string }).contactNumber ?? null,
+        emergency_contact: (row as { emergencyContact?: string }).emergencyContact ?? null,
+        emergency_phone: (row as { emergencyPhone?: string }).emergencyPhone ?? null,
+      },
+    }
+  );
 }
 
 export function buildDefaultUsageTracking(serviceLevel: string | null | undefined) {

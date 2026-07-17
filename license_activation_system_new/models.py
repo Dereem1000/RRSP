@@ -19,7 +19,7 @@ class CompanyRegistration(db.Model):
     phone = db.Column(db.String(20))
     address = db.Column(db.Text)
     business_type = db.Column(db.String(50))  # restaurant, cafe, bar, etc.
-    serial_number = db.Column(db.String(50), unique=True, nullable=False)
+    serial_number = db.Column(db.String(128), unique=True, nullable=False)
     msp_client_id = db.Column(db.String(50), unique=True)  # Link to MSP system client ID
     registration_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_verified = db.Column(db.Boolean, default=False)
@@ -29,7 +29,7 @@ class LicenseActivation(db.Model):
     __tablename__ = 'license_activation'
     
     id = db.Column(db.Integer, primary_key=True)
-    serial_number = db.Column(db.String(50), unique=True, nullable=False)
+    serial_number = db.Column(db.String(128), unique=True, nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey('company_registration.id'), nullable=False)
     license_type = db.Column(db.String(50), nullable=False)  # basic, premium, enterprise
     service_level = db.Column(db.String(50), nullable=True)  # MSP service level (optional for backward compatibility)

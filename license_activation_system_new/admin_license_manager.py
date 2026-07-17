@@ -21,7 +21,12 @@ from flask import Flask
 def create_app():
     """Create Flask app for database operations"""
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///license_system.db'
+    # Use the same instance DB location as the license API server
+    _dir = os.path.dirname(os.path.abspath(__file__))
+    instance_dir = os.path.join(_dir, 'instance')
+    os.makedirs(instance_dir, exist_ok=True)
+    db_path = os.path.join(instance_dir, 'license_system.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path.replace('\\', '/')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     return app
@@ -169,17 +174,31 @@ class AdminLicenseManager:
             
             app = create_app()
             with app.app_context():
-                # Generate unique serial number
-                serial_number = f"REST-{uuid.uuid4().hex[:8].upper()}"
-                
-                # Create company registration
+                from license_serial import ensure_unique_company_serial, ensure_unique_license_serial
+
+                company_serial = ensure_unique_company_serial(db.session, CompanyRegistration)
+                license_serial = ensure_unique_license_serial(
+                    db.session,
+                    LicenseActivation,
+                    msp_feature='restaurant',
+                )
+                # Safety guard: ensure we don't accidentally create legacy LIC-MSP- serials
+                if str(license_serial).upper().startswith('LIC-MSP-'):
+                    # Regenerate using the canonical generator until we get a modern serial
+                    for _ in range(5):
+                        license_serial = ensure_unique_license_serial(db.session, LicenseActivation, msp_feature='restaurant')
+                        if not str(license_serial).upper().startswith('LIC-MSP-'):
+                            break
+                    else:
+                        raise RuntimeError('Generated legacy LIC-MSP serial unexpectedly; aborting')
+
                 company = CompanyRegistration(
                     company_name=company_name,
                     contact_person=contact_person,
                     email=email,
                     phone=phone,
                     business_type='restaurant',
-                    serial_number=serial_number,
+                    serial_number=company_serial,
                     is_verified=True
                 )
                 
@@ -213,7 +232,7 @@ class AdminLicenseManager:
                 }
                 
                 license = LicenseActivation(
-                    serial_number=serial_number,
+                    serial_number=license_serial,
                     company_id=company.id,
                     license_type=license_type,
                     activation_date=activation_date,
@@ -236,7 +255,7 @@ Company Information:
 • Phone: {phone}
 
 License Details:
-• Serial Number: {serial_number}
+• Serial Number: {license_serial}
 • License Type: {license_type.upper()}
 • Duration: {duration} days
 • Expiration: {expiration_date.strftime('%Y-%m-%d')}
@@ -247,11 +266,11 @@ Features Included:
 
 Instructions for Client:
 1. Go to Admin Panel → System Settings → License Management
-2. Enter Serial Number: {serial_number}
+2. Enter Serial Number: {license_serial}
 3. Click "Activate License"
 4. The system will automatically configure the license
 
-Send this serial number to your client: {serial_number}
+Send this serial number to your client: {license_serial}
 """
                 
                 self.result_text.delete(1.0, tk.END)
@@ -266,7 +285,7 @@ Send this serial number to your client: {serial_number}
                 # Refresh licenses list
                 self.refresh_licenses()
                 
-                messagebox.showinfo("Success", f"License created successfully!\nSerial Number: {serial_number}")
+                messagebox.showinfo("Success", f"License created successfully!\nSerial Number: {license_serial}")
                 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create license: {str(e)}")

@@ -4,9 +4,21 @@ import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X } from 'lucide-react';
+import { mapClientToPickerOption, type ClientPickerOption } from '@/lib/client-picker';
 import { ClientFormFields, formDataToClientPayload } from './ClientFormFields';
 
-export function CreateClientModal({ onClose }: { onClose: () => void }) {
+export function CreateClientModal({
+  onClose,
+  defaults,
+  onCreated,
+  nested = false,
+}: {
+  onClose: () => void;
+  defaults?: Record<string, string>;
+  onCreated?: (client: ClientPickerOption) => void;
+  /** Raise z-index when opened above another modal. */
+  nested?: boolean;
+}) {
   const router = useRouter();
   const { askToEmailClient } = useClientEmailPolicy();
   const [loading, setLoading] = useState(false);
@@ -31,7 +43,6 @@ export function CreateClientModal({ onClose }: { onClose: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to create client');
-      onClose();
       if (data.portalCredentials) {
         if (data.portalCredentials.emailSent) {
           alert('Client created and welcome email sent.');
@@ -41,8 +52,14 @@ export function CreateClientModal({ onClose }: { onClose: () => void }) {
           );
         }
       }
-      router.push(`/clients/${data.client.id}`);
-      router.refresh();
+      if (onCreated) {
+        onCreated(mapClientToPickerOption(data.client));
+        onClose();
+      } else {
+        onClose();
+        router.push(`/clients/${data.client.id}`);
+        router.refresh();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create client');
     } finally {
@@ -51,7 +68,11 @@ export function CreateClientModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+    <div
+      className={`fixed inset-0 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm ${
+        nested ? 'z-[60]' : 'z-50'
+      }`}
+    >
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl lg:max-h-none">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-3">
           <h2 className="text-lg font-semibold text-slate-900">Add client</h2>
@@ -61,7 +82,14 @@ export function CreateClientModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 lg:overflow-visible">
-          <ClientFormFields layout="wide" showContract showUsage showPortalOption />
+          <ClientFormFields
+            key={defaults ? JSON.stringify(defaults) : 'new'}
+            layout="wide"
+            showContract
+            showUsage
+            showPortalOption
+            defaults={defaults}
+          />
 
           {error && <p className="mt-3 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
 

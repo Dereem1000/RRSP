@@ -11,6 +11,7 @@ import {
   Shield,
   TrendingUp,
   Users,
+  Boxes,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { SERVICE_PLANS } from '@/lib/client-constants';
@@ -77,15 +78,24 @@ export function MspDashboardClient() {
             Revenue, service plans, usage alerts, and license activation overview
           </p>
         </div>
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/msp/systems"
+            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100"
+          >
+            <Boxes className="h-4 w-4" />
+            Management systems
+          </Link>
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -181,7 +191,7 @@ export function MspDashboardClient() {
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                           item.status === 'Active'
                             ? 'bg-emerald-50 text-emerald-700'
-                            : item.status === 'Pending'
+                            : item.status === 'Partial' || item.status === 'Pending'
                               ? 'bg-amber-50 text-amber-800'
                               : 'bg-slate-100 text-slate-600'
                         }`}
@@ -254,6 +264,12 @@ export function MspDashboardClient() {
           <h2 className="font-semibold text-slate-900">Quick links</h2>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href="/msp/systems"
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Management systems
+          </Link>
           <Link
             href="/clients"
             className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

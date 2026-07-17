@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bot, Loader2, MessageSquare, X } from 'lucide-react';
 import {
   companionBubbleClass,
@@ -9,6 +10,10 @@ import {
   type MiniChatEntry,
   type MiniGrowthPayload,
 } from '@/lib/mini-companion-ui';
+import { type MiniPortalAction } from '@/lib/mini-portal-actions';
+import { emitMiniCdPageView } from '@/lib/mini-cd-events';
+import { useAdaptiveMiniPoll } from '@/lib/use-adaptive-mini-poll';
+import { apiErrorMessage, parseFetchJsonResponse } from '@/lib/parse-fetch-json';
 
 type FeedPayload = {
   chat_history?: MiniChatEntry[];
@@ -92,27 +97,50 @@ export function MiniAssistantDock({
   sidebarWidth = 72,
   page = '/dashboard',
   pageLabel,
+  userId,
+  userRole = 'admin',
+  userName,
 }: {
   enabled: boolean;
   sidebarWidth?: number;
   page?: string;
   pageLabel?: string;
+  userId?: number;
+  userRole?: string;
+  userName?: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [feed, setFeed] = useState<FeedPayload | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pendingUserMessages, setPendingUserMessages] = useState<MiniChatEntry[]>([]);
 
-  const loadFeed = useCallback(async () => {
-    if (!enabled) return;
+  useEffect(() => {
+    if (!enabled || !userId) return;
+    const href = page || '/dashboard';
+    const label = pageLabel || 'Portal';
+    const timer = window.setTimeout(() => {
+      emitMiniCdPageView(
+        { id: userId, role: userRole, username: userName, clearance: 'standard' },
+        { href, label, actorName: userName }
+      );
+    }, 2500);
+    return () => window.clearTimeout(timer);
+  }, [enabled, page, pageLabel, userId, userRole, userName]);
+
+  const loadFeed = useCallback(async (): Promise<boolean> => {
+    if (!enabled) return true;
     try {
-      const res = await fetch('/api/mini/chat-feed', { cache: 'no-store' });
-      if (res.status === 503) return;
-      const data = await res.json();
-      if (res.ok) setFeed(data);
+      const res = await fetch('/api/mini/chat-feed', { cache: 'no-store', credentials: 'include' });
+      if (res.status === 503 || res.status === 502 || res.status === 504 || res.status === 524) return false;
+      if (!res.ok) return false;
+      const data = await parseFetchJsonResponse<FeedPayload>(res);
+      setFeed(data);
+      return true;
     } catch {
-      /* keep last feed */
+      return false;
     }
   }, [enabled]);
 
@@ -122,12 +150,13 @@ export function MiniAssistantDock({
       const res = await fetch('/api/mini/chat-notifications/ack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({}),
       });
       if (res.status === 503) return;
-      const data = await res.json();
+      const data = await parseFetchJsonResponse<{ chat_feed?: FeedPayload }>(res);
       if (res.ok && data.chat_feed) {
-        setFeed(data.chat_feed as FeedPayload);
+        setFeed(data.chat_feed);
         return;
       }
       await loadFeed();
@@ -136,46 +165,68 @@ export function MiniAssistantDock({
     }
   }, [enabled, loadFeed]);
 
-  useEffect(() => {
-    if (!enabled) return;
-    loadFeed();
-    const id = window.setInterval(loadFeed, 8000);
-    return () => window.clearInterval(id);
-  }, [enabled, loadFeed]);
+  useAdaptiveMiniPoll(enabled && open, loadFeed, { baseMs: 45_000, maxMs: 120_000 });
 
   useEffect(() => {
     if (!open || !enabled) return;
     void ackNotifications();
   }, [open, enabled, ackNotifications]);
 
+  const applyPortalAction = useCallback(
+    (action: MiniPortalAction | null | undefined) => {
+      if (!action || action.type !== 'navigate' || !action.href) return;
+      router.push(action.href);
+    },
+    [router]
+  );
+
   async function sendMessage() {
     const text = message.trim();
     if (!text || busy) return;
+    const optimisticEntry: MiniChatEntry = {
+      role: 'user',
+      content: text,
+      created_at: new Date().toISOString(),
+    };
+    setPendingUserMessages((prev) => [...prev, optimisticEntry]);
+    setMessage('');
     setBusy(true);
     setError('');
     try {
       const res = await fetch('/api/mini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           message: text,
           page,
           pageLabel,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Chat failed');
-      setMessage('');
+      const data = await parseFetchJsonResponse<{
+        error?: string;
+        message?: string;
+        portal_action?: MiniPortalAction | null;
+      }>(res);
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Chat failed'));
+      applyPortalAction(data.portal_action as MiniPortalAction | null | undefined);
       await loadFeed();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chat failed');
     } finally {
+      setPendingUserMessages([]);
       setBusy(false);
     }
   }
 
   const alertCount = feed?.unread_notification_count ?? 0;
-  const feedItems = useMemo(() => buildFeedItems(feed), [feed]);
+  const feedItems = useMemo(() => {
+    if (!pendingUserMessages.length) return buildFeedItems(feed);
+    return buildFeedItems({
+      ...feed,
+      chat_history: [...(feed?.chat_history || []), ...pendingUserMessages],
+    });
+  }, [feed, pendingUserMessages]);
   const growth = feed?.growth;
 
   if (!enabled) return null;

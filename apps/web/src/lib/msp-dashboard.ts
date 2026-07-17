@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import { Client } from '@cd-v2/database';
 import { SERVICE_LEVELS, SERVICE_PLANS } from '@/lib/client-constants';
 import { buildUsageInfo } from '@/lib/clients';
+import { activationFeaturesWhereOptions } from '@/lib/activation-features-query';
 import {
   getClientLicenseSnapshot,
   isLicenseDbAvailable,
@@ -161,7 +162,7 @@ export async function getMspDashboardData(): Promise<MspDashboardData> {
   const revenueLeader =
     planStats.reduce((a, b) => (b.revenue > a.revenue ? b : a), planStats[0])?.level ?? 'premium';
 
-  const license = await buildLicenseSummary(clients);
+  const license = await buildLicenseSummary();
 
   return {
     mrr: Math.round(mrr * 100) / 100,
@@ -181,9 +182,7 @@ export async function getMspDashboardData(): Promise<MspDashboardData> {
   };
 }
 
-async function buildLicenseSummary(
-  clients: Client[]
-): Promise<MspLicenseSummary> {
+async function buildLicenseSummary(): Promise<MspLicenseSummary> {
   const dbAvailable = isLicenseDbAvailable();
   if (!dbAvailable) {
     return {
@@ -195,6 +194,11 @@ async function buildLicenseSummary(
     };
   }
 
+  const clients = await Client.findAll({
+    where: activationFeaturesWhereOptions(),
+    attributes: ['id', 'name', 'companyName', 'features'],
+  });
+
   let withLicenses = 0;
   let withoutLicenses = 0;
   let pendingActivation = 0;
@@ -203,7 +207,6 @@ async function buildLicenseSummary(
   for (const client of clients) {
     try {
       const snapshot = await getClientLicenseSnapshot(client.id);
-      if (snapshot.activationFeatures.length === 0) continue;
 
       if (snapshot.overallStatus === 'Active') withLicenses++;
       else if (snapshot.overallStatus === 'Partial' || snapshot.overallStatus === 'Pending') pendingActivation++;
@@ -219,7 +222,7 @@ async function buildLicenseSummary(
               ? 'Partial'
               : snapshot.overallStatus === 'Pending'
                 ? 'Pending'
-                : 'Not Found',
+                : 'Not synced',
         activationFeatures: snapshot.activationFeatures,
       });
     } catch {

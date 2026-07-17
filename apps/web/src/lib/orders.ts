@@ -1,7 +1,11 @@
 import { randomUUID } from 'crypto';
 import { QueryTypes } from 'sequelize';
-import { Client, getSequelize } from '@cd-v2/database';
-import { ORDER_STATUSES, SHIPPING_STAGES } from '@/lib/order-constants';
+import { getSequelize } from '@cd-v2/database';
+import { DEFAULT_OFFICE_LOCATION, ORDER_STATUSES, SHIPPING_STAGES } from '@/lib/order-constants';
+import { ensureClientMirroredForOrders } from '@/lib/clients';
+import { ensureOrderSerialColumn } from '@/lib/order-schema';
+
+export type LocationUpdateSource = 'manual' | 'email' | 'system';
 export type OrderRow = {
   id: string;
   orderNumber: string;
@@ -32,6 +36,7 @@ export type OrderRow = {
   is_logged_in_pre_alerts?: number | boolean;
   preAlertNotes?: string | null;
   pre_alert_notes?: string | null;
+  serialNumber?: string | null;
   assignedTechnicianId?: number | null;
   createdBy: number;
   tags?: string | null;
@@ -73,6 +78,8 @@ function pickLocationHistory(row: OrderRow): LocationHistoryEntry[] {
   return parseJsonArray<LocationHistoryEntry>(raw);
 }
 
+export type SerializedOrder = ReturnType<typeof serializeOrder>;
+
 export function serializeOrder(row: OrderRow, options?: { includeCost?: boolean }) {
   const order = {
     id: row.id,
@@ -85,6 +92,7 @@ export function serializeOrder(row: OrderRow, options?: { includeCost?: boolean 
     vendor: row.vendor,
     vendorOrderNumber: row.vendorOrderNumber,
     trackingNumber: row.trackingNumber,
+    serialNumber: row.serialNumber ?? null,
     orderDate: row.orderDate,
     estimatedArrival: row.estimatedArrival,
     actualArrival: row.actualArrival,
@@ -124,6 +132,7 @@ const ORDER_SELECT = `
 `;
 
 export async function getOrderById(id: string, options?: { includeCost?: boolean }) {
+  await ensureOrderSerialColumn();
   const sequelize = getSequelize();
   const rows = await sequelize.query<OrderRow>(`${ORDER_SELECT} WHERE o.id = :id`, {
     type: QueryTypes.SELECT,
@@ -144,6 +153,7 @@ export async function listOrders(options: {
   includeCost?: boolean;
   activeOnly?: boolean;
 }) {
+  await ensureOrderSerialColumn();
   const page = Math.max(1, options.page ?? 1);
   const limit = Math.min(100, Math.max(1, options.limit ?? 20));
   const offset = (page - 1) * limit;
@@ -216,6 +226,23 @@ export async function getOrdersSummary() {
   };
 }
 
+export async function listOrdersForTicket(ticketId: string, options?: { includeCost?: boolean }) {
+  await ensureOrderSerialColumn();
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<OrderRow>(
+    `${ORDER_SELECT}
+     INNER JOIN order_links ol ON ol.orderId = o.id
+       AND ol.linkedType = 'ticket'
+       AND ol.linkedId = :ticketId
+       AND ol.isActive = 1
+     WHERE o.isActive = 1
+     ORDER BY ol.linkDate DESC, o.orderDate DESC`,
+    { type: QueryTypes.SELECT, replacements: { ticketId } }
+  );
+
+  return rows.map((row) => serializeOrder(row, { includeCost: options?.includeCost }));
+}
+
 export async function getClientPortalOrder(clientId: string, orderId: string) {
   const order = await getOrderById(orderId, { includeCost: false });
   if (!order || order.clientId !== clientId) return null;
@@ -271,12 +298,13 @@ export async function createOrder(input: {
   currentLocation?: string | null;
   isLoggedInPreAlerts?: boolean;
   preAlertNotes?: string | null;
+  serialNumber?: string | null;
   assignedTechnicianId?: number | null;
   tags?: string[];
   notes?: string | null;
 }) {
-  const client = await Client.findByPk(input.clientId, { attributes: ['id'] });
-  if (!client) throw new Error('Client not found');
+  await ensureOrderSerialColumn();
+  await ensureClientMirroredForOrders(input.clientId);
 
   const sequelize = getSequelize();
   const id = randomUUID();
@@ -304,13 +332,13 @@ export async function createOrder(input: {
     `INSERT INTO orders (
       id, orderNumber, clientId, title, description, itemName, itemUrl, vendor,
       vendorOrderNumber, trackingNumber, orderDate, estimatedArrival, actualArrival,
-      costPrice, clientPrice, quantity, status, isLoggedInPreAlerts, preAlertNotes,
+      costPrice, clientPrice, quantity, status, isLoggedInPreAlerts, preAlertNotes, serialNumber,
       assignedTechnicianId, createdBy, tags, notes, isActive, createdAt, updatedAt,
       shippingStage, currentLocation, locationHistory, lastLocationUpdate
     ) VALUES (
       :id, :orderNumber, :clientId, :title, :description, :itemName, :itemUrl, :vendor,
       :vendorOrderNumber, :trackingNumber, :orderDate, :estimatedArrival, NULL,
-      :costPrice, :clientPrice, :quantity, :status, :isLoggedInPreAlerts, :preAlertNotes,
+      :costPrice, :clientPrice, :quantity, :status, :isLoggedInPreAlerts, :preAlertNotes, :serialNumber,
       :assignedTechnicianId, :createdBy, :tags, :notes, 1, :now, :now,
       :shippingStage, :currentLocation, :locationHistory, :lastLocationUpdate
     )`,
@@ -334,6 +362,7 @@ export async function createOrder(input: {
         status,
         isLoggedInPreAlerts: input.isLoggedInPreAlerts ? 1 : 0,
         preAlertNotes: input.preAlertNotes ?? null,
+        serialNumber: input.serialNumber?.trim() || null,
         assignedTechnicianId: input.assignedTechnicianId ?? input.createdBy,
         createdBy: input.createdBy,
         tags: stringifyJson(input.tags ?? []),
@@ -372,11 +401,15 @@ export async function updateOrder(
     currentLocation: string | null;
     isLoggedInPreAlerts: boolean;
     preAlertNotes: string | null;
+    serialNumber: string | null;
     assignedTechnicianId: number | null;
     tags: string[];
     notes: string | null;
   }>
+  ,
+  options?: { source?: LocationUpdateSource }
 ) {
+  await ensureOrderSerialColumn();
   const existing = await getOrderById(id, { includeCost: true });
   if (!existing) return null;
 
@@ -401,9 +434,12 @@ export async function updateOrder(
       location: nextLocation ?? updates.currentLocation ?? existing.currentLocation ?? 'Updated',
       stage: nextStage,
       timestamp: now,
-      source: 'manual',
+      source: options?.source ?? 'manual',
     });
   }
+
+  const nextSerial =
+    updates.serialNumber !== undefined ? updates.serialNumber?.trim() || null : existing.serialNumber ?? null;
 
   const sequelize = getSequelize();
   await sequelize.query(
@@ -416,6 +452,7 @@ export async function updateOrder(
       vendor = :vendor,
       vendorOrderNumber = :vendorOrderNumber,
       trackingNumber = :trackingNumber,
+      serialNumber = :serialNumber,
       orderDate = :orderDate,
       estimatedArrival = :estimatedArrival,
       actualArrival = :actualArrival,
@@ -446,6 +483,7 @@ export async function updateOrder(
         vendorOrderNumber:
           updates.vendorOrderNumber !== undefined ? updates.vendorOrderNumber : existing.vendorOrderNumber ?? null,
         trackingNumber: updates.trackingNumber !== undefined ? updates.trackingNumber : existing.trackingNumber ?? null,
+        serialNumber: nextSerial,
         orderDate: updates.orderDate ?? existing.orderDate,
         estimatedArrival:
           updates.estimatedArrival !== undefined ? updates.estimatedArrival : existing.estimatedArrival ?? null,
@@ -498,7 +536,7 @@ export async function deleteOrder(id: string) {
 
 export async function searchLinkableEntities(options: {
   query: string;
-  type?: 'ticket' | 'invoice';
+  type?: 'ticket' | 'invoice' | 'order';
   clientId?: string;
 }) {
   if (options.query.trim().length < 2) return [];
@@ -565,6 +603,37 @@ export async function searchLinkableEntities(options: {
         title: i.description ?? 'Invoice',
         status: i.status,
         clientName: i.clientName,
+      }))
+    );
+  }
+
+  if (!options.type || options.type === 'order') {
+    const clientFilter = options.clientId ? 'AND o.clientId = :clientId' : '';
+    const orders = await sequelize.query<{
+      id: string;
+      orderNumber: string;
+      title: string;
+      itemName: string;
+      status: string;
+      clientName: string;
+    }>(
+      `SELECT o.id, o.orderNumber, o.title, o.itemName, o.status, COALESCE(c.company_name, c.name) AS clientName
+       FROM orders o
+       LEFT JOIN clients c ON c.id = o.clientId
+       WHERE o.isActive = 1
+         AND (o.orderNumber LIKE :search OR o.title LIKE :search OR o.itemName LIKE :search)
+         ${clientFilter}
+       ORDER BY o.orderDate DESC, o.createdAt DESC LIMIT 10`,
+      { type: QueryTypes.SELECT, replacements: { search, clientId: options.clientId } }
+    );
+    results.push(
+      ...orders.map((o) => ({
+        id: o.id,
+        type: 'order',
+        number: o.orderNumber,
+        title: o.title || o.itemName,
+        status: o.status,
+        clientName: o.clientName,
       }))
     );
   }
@@ -682,6 +751,32 @@ export async function checkNonPreAlertedOrders(hoursThreshold = 24) {
   return rows.length;
 }
 
+export async function findOrderForEmailMonitoring(orderInfo: {
+  trackingNumber?: string;
+  vendorOrderNumber?: string;
+  orderNumber?: string;
+}) {
+  const sequelize = getSequelize();
+  const find = async (sql: string, replacements: Record<string, unknown>) => {
+    const rows = await sequelize.query<OrderRow>(`${ORDER_SELECT} WHERE o.isActive = 1 AND ${sql}`, {
+      type: QueryTypes.SELECT,
+      replacements,
+    });
+    return rows[0];
+  };
+
+  const tracking = orderInfo.trackingNumber?.trim();
+  const vendorOrder = orderInfo.vendorOrderNumber?.trim();
+  const portalOrder = orderInfo.orderNumber?.trim();
+
+  let row: OrderRow | undefined;
+  if (portalOrder) row = await find('o.orderNumber = :value', { value: portalOrder });
+  if (!row && tracking) row = await find('o.trackingNumber = :value', { value: tracking });
+  if (!row && vendorOrder) row = await find('o.vendorOrderNumber = :value', { value: vendorOrder });
+  if (!row) return null;
+  return serializeOrder(row, { includeCost: true });
+}
+
 export async function applyEmailMonitoringUpdate(
   orderInfo: {
     trackingNumber?: string;
@@ -706,38 +801,138 @@ export async function applyEmailMonitoringUpdate(
     return rows[0];
   };
 
-  if (orderInfo.trackingNumber) {
-    row = await find('(o.trackingNumber = :value OR o.trackingNumber LIKE :like)', {
-      value: orderInfo.trackingNumber.trim(),
-      like: `%${orderInfo.trackingNumber.trim()}%`,
-    });
+  const tracking = orderInfo.trackingNumber?.trim();
+  const vendorOrder = orderInfo.vendorOrderNumber?.trim();
+  const portalOrder = orderInfo.orderNumber?.trim();
+
+  if (portalOrder) {
+    row = await find('o.orderNumber = :value', { value: portalOrder });
   }
-  if (!row && orderInfo.vendorOrderNumber) {
-    row = await find('(o.vendorOrderNumber = :value OR o.vendorOrderNumber LIKE :like)', {
-      value: orderInfo.vendorOrderNumber.trim(),
-      like: `%${orderInfo.vendorOrderNumber.trim()}%`,
-    });
+  if (!row && tracking) {
+    row = await find('o.trackingNumber = :value', { value: tracking });
   }
-  if (!row && orderInfo.orderNumber) {
-    row = await find('o.orderNumber = :value', { value: orderInfo.orderNumber.trim() });
+  if (!row && vendorOrder) {
+    row = await find('o.vendorOrderNumber = :value', { value: vendorOrder });
   }
 
   if (!row) return null;
 
   const existing = serializeOrder(row, { includeCost: true });
+
+  const createdAt = new Date(existing.createdAt);
+  const hoursSinceCreated = Number.isNaN(createdAt.getTime())
+    ? 999
+    : (Date.now() - createdAt.getTime()) / 3_600_000;
+  const hasPortalOrderRef = Boolean(portalOrder && portalOrder === existing.orderNumber);
+  const hasExactTrackingRef = Boolean(tracking && tracking === (existing.trackingNumber ?? '').trim());
+  const hasExactVendorRef = Boolean(vendorOrder && vendorOrder === (existing.vendorOrderNumber ?? '').trim());
+  const hasStrongRef = hasPortalOrderRef || hasExactTrackingRef || hasExactVendorRef;
+
+  if (orderInfo.status === 'delivered' && hoursSinceCreated < 24 && !hasStrongRef) {
+    return null;
+  }
+  if (
+    orderInfo.status &&
+    orderInfo.status !== existing.status &&
+    hoursSinceCreated < 1 &&
+    !hasStrongRef
+  ) {
+    return null;
+  }
+
   const updates: Parameters<typeof updateOrder>[1] = {};
 
   if (orderInfo.status) updates.status = orderInfo.status;
   if (orderInfo.shippingStage) updates.shippingStage = orderInfo.shippingStage;
   if (orderInfo.currentLocation) updates.currentLocation = orderInfo.currentLocation;
   if (orderInfo.vendor && !existing.vendor) updates.vendor = orderInfo.vendor;
-  if (orderInfo.trackingNumber && !existing.trackingNumber) updates.trackingNumber = orderInfo.trackingNumber;
+  if (vendorOrder && !existing.vendorOrderNumber) updates.vendorOrderNumber = vendorOrder;
+  if (tracking && !existing.trackingNumber) updates.trackingNumber = tracking;
   if (orderInfo.estimatedArrival) updates.estimatedArrival = orderInfo.estimatedArrival;
   if (orderInfo.notes) {
     updates.notes = existing.notes ? `${existing.notes}\n\n${orderInfo.notes}` : orderInfo.notes;
   }
 
-  if (!Object.keys(updates).length) return existing;
-  const result = await updateOrder(row.id, updates);
-  return result?.order ?? null;
+  if (!Object.keys(updates).length) return null;
+  const result = await updateOrder(row.id, updates, { source: 'email' });
+  if (!result?.order) return null;
+  return { previous: existing, order: result.order };
+}
+
+export async function findOrdersForReceiveLookup(serial: string) {
+  await ensureOrderSerialColumn();
+  const trimmed = serial.trim();
+  if (!trimmed) return [];
+
+  const sequelize = getSequelize();
+  const like = `%${trimmed}%`;
+  const rows = await sequelize.query<OrderRow>(
+    `${ORDER_SELECT}
+     WHERE o.isActive = 1
+       AND (
+         o.serialNumber = :exact OR o.serialNumber LIKE :like
+         OR o.trackingNumber = :exact OR o.trackingNumber LIKE :like
+         OR o.vendorOrderNumber = :exact OR o.vendorOrderNumber LIKE :like
+         OR o.orderNumber = :exact
+         OR o.id IN (
+           SELECT ol.orderId FROM order_links ol
+           INNER JOIN tickets t ON t.id = ol.linkedId AND ol.linkedType = 'ticket' AND ol.isActive = 1
+           WHERE t.serialNumber = :exact OR t.serialNumber LIKE :like
+         )
+       )
+     ORDER BY
+       CASE
+         WHEN COALESCE(o.shippingStage, o.shipping_stage) IN ('customs','in_transit','out_for_delivery','miami_warehouse','manufacturer_shipped') THEN 0
+         WHEN COALESCE(o.shippingStage, o.shipping_stage) = 'local_office' THEN 2
+         ELSE 1
+       END,
+       o.orderDate DESC
+     LIMIT 10`,
+    { type: QueryTypes.SELECT, replacements: { exact: trimmed, like } }
+  );
+
+  return rows.map((row) => serializeOrder(row, { includeCost: true }));
+}
+
+async function syncOrderSerialToLinkedTickets(orderId: string, serialNumber: string) {
+  const sequelize = getSequelize();
+  const links = await listOrderLinks(orderId);
+  const ticketLinks = links.filter((l) => l.linkedType === 'ticket');
+  for (const link of ticketLinks) {
+    await sequelize.query(
+      `UPDATE tickets SET serialNumber = :serialNumber, lastUpdated = :now WHERE id = :id`,
+      { replacements: { serialNumber, id: link.linkedId, now: new Date().toISOString() } }
+    );
+  }
+}
+
+export async function markOrderReceivedAtOffice(
+  id: string,
+  input?: { serialNumber?: string; sendEmail?: boolean; origin?: string }
+) {
+  const existing = await getOrderById(id, { includeCost: true });
+  if (!existing) return null;
+
+  const serial = input?.serialNumber?.trim() || existing.serialNumber || null;
+  const now = new Date().toISOString();
+
+  const result = await updateOrder(
+    id,
+    {
+      shippingStage: 'local_office',
+      status: existing.status === 'delivered' ? 'delivered' : 'shipped',
+      currentLocation: DEFAULT_OFFICE_LOCATION,
+      actualArrival: existing.actualArrival ?? now,
+      serialNumber: serial,
+    },
+    { source: 'system' }
+  );
+
+  if (!result?.order) return null;
+
+  if (serial) {
+    await syncOrderSerialToLinkedTickets(id, serial);
+  }
+
+  return { ...result, sendEmail: input?.sendEmail, origin: input?.origin };
 }

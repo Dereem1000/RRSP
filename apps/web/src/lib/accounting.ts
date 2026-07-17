@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { Op, QueryTypes } from 'sequelize';
 import { Client, getSequelize } from '@cd-v2/database';
 import { SERVICE_LEVELS } from '@/lib/client-constants';
+import { ensureInvoiceLinksTable } from '@/lib/accounting-schema';
 
 export type InvoiceRow = {
   id: string;
@@ -970,7 +971,12 @@ export async function expireQuote(id: string) {
   return updateQuote(id, { status: 'expired' });
 }
 
-export async function sendQuoteEmail(id: string, clientEmail?: string, origin?: string) {
+export async function sendQuoteEmail(
+  id: string,
+  clientEmail?: string,
+  origin?: string,
+  sentBy?: number
+) {
   const quote = await getQuoteById(id);
   if (!quote) return null;
 
@@ -981,7 +987,7 @@ export async function sendQuoteEmail(id: string, clientEmail?: string, origin?: 
   const sent = await sendQuoteToClient(
     { ...quote, items: normalizeQuoteItems(quote.items ?? []) },
     email,
-    { origin }
+    { origin, sentBy }
   );
   if (!sent) throw new Error('Failed to send quote email');
 
@@ -998,6 +1004,7 @@ export async function sendInvoiceEmail(
     origin?: string;
     type?: 'created' | 'reminder' | 'overdue' | 'paid' | 'partial' | 'updated';
     paymentAmount?: number;
+    sentBy?: number;
   }
 ) {
   const invoice = await getInvoiceById(id);
@@ -1011,6 +1018,7 @@ export async function sendInvoiceEmail(
     origin: options?.origin,
     type: options?.type ?? 'created',
     paymentAmount: options?.paymentAmount,
+    sentBy: options?.sentBy,
   });
   if (!sent) throw new Error('Failed to send invoice email');
   return invoice;
@@ -1063,6 +1071,204 @@ export async function convertQuoteToInvoice(
   );
 
   return { quote: await getQuoteById(id), invoice: serializeInvoice(rows[0]) };
+}
+
+export async function listInvoicesForTicket(options: {
+  ticketId: string;
+  ticketNumber: string;
+  clientId?: string | null;
+}) {
+  const sequelize = getSequelize();
+  const ticketRef = `%Ticket ${options.ticketNumber}%`;
+  const replacements: Record<string, unknown> = {
+    ticketId: options.ticketId,
+    ticketRef,
+  };
+
+  let clientFilter = '';
+  if (options.clientId) {
+    clientFilter = 'AND i.client_id = :clientId';
+    replacements.clientId = options.clientId;
+  }
+
+  const rows = await sequelize.query<InvoiceRow>(
+    `SELECT DISTINCT i.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail, c.service_level AS serviceLevel
+     FROM invoices i
+     LEFT JOIN clients c ON c.id = i.client_id
+     WHERE (
+       i.description LIKE :ticketRef
+       OR EXISTS (
+         SELECT 1 FROM invoice_links il
+         WHERE il.invoiceId = i.id
+           AND il.linkedType = 'ticket'
+           AND il.linkedId = :ticketId
+           AND il.isActive = 1
+       )
+       OR i.id IN (
+         SELECT ol_inv.linkedId
+         FROM order_links ol_inv
+         INNER JOIN order_links ol_tkt
+           ON ol_tkt.orderId = ol_inv.orderId
+          AND ol_tkt.linkedType = 'ticket'
+          AND ol_tkt.linkedId = :ticketId
+          AND ol_tkt.isActive = 1
+         WHERE ol_inv.linkedType = 'invoice'
+           AND ol_inv.isActive = 1
+       )
+     )
+     ${clientFilter}
+     ORDER BY i.created_at DESC
+     LIMIT 20`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+
+  return rows.map((row) => serializeInvoice(row));
+}
+
+export async function syncInvoiceLineItemNameFromOrder(input: {
+  invoiceId: string;
+  itemIndex: number;
+  itemName: string;
+}) {
+  const invoice = await getInvoiceById(input.invoiceId);
+  if (!invoice) return null;
+
+  const itemName = input.itemName.trim();
+  if (!itemName) return invoice;
+
+  const items = Array.isArray(invoice.items) ? [...invoice.items] : [];
+  const current = items[input.itemIndex] as { name?: string; description?: string; quantity?: number; price?: number; total?: number } | undefined;
+  if (!current) return invoice;
+
+  const currentName = String(current.name ?? '').trim();
+  const shouldSync =
+    /^imported\s*item$/i.test(currentName) &&
+    !/^imported\s*item$/i.test(itemName) &&
+    currentName.toLowerCase() !== itemName.toLowerCase();
+
+  if (!shouldSync) return invoice;
+
+  const quantity = Number(current.quantity) || 1;
+  const price = Number(current.price) || 0;
+  items[input.itemIndex] = {
+    ...current,
+    name: itemName,
+    quantity,
+    price,
+    total: quantity * price,
+  };
+
+  const amount = items.reduce<number>((sum, item) => {
+    const row = item as { quantity?: number; price?: number; total?: number };
+    const lineTotal =
+      row.total != null
+        ? Number(row.total)
+        : (Number(row.quantity) || 1) * (Number(row.price) || 0);
+    return sum + lineTotal;
+  }, 0);
+
+  return updateInvoice(input.invoiceId, { items, amount: Math.round(amount * 100) / 100 });
+}
+
+export type InvoiceLinkRow = {
+  id: string;
+  invoiceId: string;
+  linkedType: string;
+  linkedId: string;
+  linkedNumber: string;
+  linkDate: string;
+  linkedBy: string | number;
+  notes: string | null;
+  isActive: number | boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function listInvoiceLinks(invoiceId: string) {
+  await ensureInvoiceLinksTable();
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<InvoiceLinkRow>(
+    `SELECT * FROM invoice_links WHERE invoiceId = :invoiceId AND isActive = 1 ORDER BY linkDate DESC`,
+    { type: QueryTypes.SELECT, replacements: { invoiceId } }
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    invoiceId: row.invoiceId,
+    linkedType: row.linkedType,
+    linkedId: row.linkedId,
+    linkedNumber: row.linkedNumber,
+    linkDate: row.linkDate,
+    linkedBy: row.linkedBy,
+    notes: row.notes,
+    createdAt: row.createdAt,
+  }));
+}
+
+export async function addInvoiceLink(
+  invoiceId: string,
+  input: { linkedType: 'ticket' | 'order'; linkedId: string; linkedNumber: string; notes?: string | null },
+  linkedBy: number
+) {
+  await ensureInvoiceLinksTable();
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) return null;
+
+  const sequelize = getSequelize();
+  if (input.linkedType === 'ticket') {
+    const rows = await sequelize.query<{ id: string }>(`SELECT id FROM tickets WHERE id = :id`, {
+      type: QueryTypes.SELECT,
+      replacements: { id: input.linkedId },
+    });
+    if (!rows[0]) throw new Error('Ticket not found');
+  } else {
+    const rows = await sequelize.query<{ id: string }>(`SELECT id FROM orders WHERE id = :id AND isActive = 1`, {
+      type: QueryTypes.SELECT,
+      replacements: { id: input.linkedId },
+    });
+    if (!rows[0]) throw new Error('Order not found');
+  }
+
+  const existing = await sequelize.query<{ id: string }>(
+    `SELECT id FROM invoice_links WHERE invoiceId = :invoiceId AND linkedType = :linkedType AND linkedId = :linkedId AND isActive = 1`,
+    {
+      type: QueryTypes.SELECT,
+      replacements: { invoiceId, linkedType: input.linkedType, linkedId: input.linkedId },
+    }
+  );
+  if (existing[0]) throw new Error('Link already exists');
+
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await sequelize.query(
+    `INSERT INTO invoice_links (id, invoiceId, linkedType, linkedId, linkedNumber, linkDate, linkedBy, notes, isActive, createdAt, updatedAt)
+     VALUES (:id, :invoiceId, :linkedType, :linkedId, :linkedNumber, :linkDate, :linkedBy, :notes, 1, :now, :now)`,
+    {
+      replacements: {
+        id,
+        invoiceId,
+        linkedType: input.linkedType,
+        linkedId: input.linkedId,
+        linkedNumber: input.linkedNumber,
+        linkDate: now,
+        linkedBy: String(linkedBy),
+        notes: input.notes ?? null,
+        now,
+      },
+    }
+  );
+
+  const links = await listInvoiceLinks(invoiceId);
+  return links.find((l) => l.id === id) ?? null;
+}
+
+export async function removeInvoiceLink(invoiceId: string, linkId: string) {
+  await ensureInvoiceLinksTable();
+  const sequelize = getSequelize();
+  await sequelize.query(
+    `UPDATE invoice_links SET isActive = 0, updatedAt = :now WHERE id = :linkId AND invoiceId = :invoiceId`,
+    { replacements: { linkId, invoiceId, now: new Date().toISOString() } }
+  );
+  return true;
 }
 
 export { serializeInvoice, serializeQuote, parseItems };

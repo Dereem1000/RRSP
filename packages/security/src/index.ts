@@ -2,6 +2,7 @@ export * from './config-keys';
 export { isMasterAuthCodeConfigured } from './auth';
 export * from './auth';
 export * from './http-guard';
+export * from './recaptcha';
 export * from './file-repair';
 export * from './threat-metrics';
 export * from './license-paths';

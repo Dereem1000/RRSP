@@ -111,7 +111,82 @@
       return Boolean(this.getUrl(slug));
     },
 
-    open(slug) {
+    async verifyLiveDemoAccess(slug) {
+      if (!global.CDPublicCaptcha) return true;
+      const cfg = await global.CDPublicCaptcha.loadConfig();
+      if (!cfg.enabled) return true;
+
+      return new Promise(function (resolve) {
+        let overlay = document.getElementById('cd-live-demo-captcha-modal');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'cd-live-demo-captcha-modal';
+          overlay.style.cssText =
+            'display:none;position:fixed;inset:0;z-index:10060;background:rgba(15,23,42,0.65);align-items:center;justify-content:center;padding:20px;';
+          overlay.innerHTML =
+            '<div style="background:#fff;border-radius:14px;padding:24px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.25)">' +
+            '<p style="margin:0 0 16px;font-weight:600;color:#0f172a">Verify you are human to open the live demo</p>' +
+            '<div id="cd-live-demo-captcha-mount" style="display:flex;justify-content:center;margin-bottom:16px"></div>' +
+            '<div style="display:flex;gap:10px;justify-content:center">' +
+            '<button type="button" id="cd-live-demo-captcha-cancel" style="padding:10px 16px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer">Cancel</button>' +
+            '<button type="button" id="cd-live-demo-captcha-confirm" style="padding:10px 16px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-weight:600;cursor:pointer">Open Demo</button>' +
+            '</div></div>';
+          document.body.appendChild(overlay);
+        }
+
+        const mount = document.getElementById('cd-live-demo-captcha-mount');
+        const cancelBtn = document.getElementById('cd-live-demo-captcha-cancel');
+        const confirmBtn = document.getElementById('cd-live-demo-captcha-confirm');
+
+        function cleanup() {
+          overlay.style.display = 'none';
+          if (global.CDPublicCaptcha) global.CDPublicCaptcha.reset();
+        }
+
+        cancelBtn.onclick = function () {
+          cleanup();
+          resolve(false);
+        };
+
+        confirmBtn.onclick = async function () {
+          confirmBtn.disabled = true;
+          try {
+            let captchaToken = '';
+            try {
+              captchaToken = global.CDPublicCaptcha.requireToken();
+            } catch (err) {
+              if (String(err.message || err).includes('CAPTCHA')) {
+                alert('Please complete the CAPTCHA verification.');
+                return;
+              }
+            }
+            const res = await fetch('/api/public/live-demo-access', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ slug: slug, captchaToken: captchaToken || undefined }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+              alert(data.message || 'Verification failed. Please try again.');
+              global.CDPublicCaptcha.reset();
+              return;
+            }
+            cleanup();
+            resolve(true);
+          } catch (e) {
+            alert('Verification failed. Please try again.');
+            global.CDPublicCaptcha.reset();
+          } finally {
+            confirmBtn.disabled = false;
+          }
+        };
+
+        overlay.style.display = 'flex';
+        global.CDPublicCaptcha.render(mount);
+      });
+    },
+
+    async open(slug) {
       const url = this.getUrl(slug);
       if (!url) {
         const demos = (this.manifest && this.manifest.demos) || [];
@@ -141,6 +216,9 @@
         );
         return;
       }
+
+      const allowed = await this.verifyLiveDemoAccess(slug);
+      if (!allowed) return;
 
       window.open(url, "_blank", "noopener,noreferrer");
     },

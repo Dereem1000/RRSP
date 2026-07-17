@@ -36,21 +36,32 @@ export function SettingsMiniSection({
   const [publicUrl, setPublicUrl] = useState('');
   const [docked, setDocked] = useState(false);
   const [startWithCd, setStartWithCd] = useState(true);
+  const [miniOnline, setMiniOnline] = useState(false);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     onError('');
     try {
-      const res = await fetch('/api/settings/mini');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to load Mini settings');
+      const [settingsRes, statusRes] = await Promise.all([
+        fetch('/api/settings/mini'),
+        fetch('/api/mini/status', { cache: 'no-store' }),
+      ]);
+      const data = await settingsRes.json();
+      if (!settingsRes.ok) throw new Error(data.message || 'Failed to load Mini settings');
       setSettings(data.settings);
       setInstallPath(data.settings?.installPath || '');
       setLocalUrl(data.settings?.localUrl || '');
       setPublicUrl(data.settings?.publicUrl || '');
       setDocked(Boolean(data.settings?.docked));
       setStartWithCd(data.settings?.startWithCd !== false);
+
+      if (statusRes.ok) {
+        const status = await statusRes.json();
+        setMiniOnline(Boolean(status.online));
+      } else {
+        setMiniOnline(false);
+      }
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to load Mini settings');
     } finally {
@@ -84,6 +95,7 @@ export function SettingsMiniSection({
       const data = await res.json();
       if (!data.success) throw new Error(data.probe?.message || data.message || 'Mini test failed');
       onMessage(data.probe?.message || 'Mini is reachable');
+      setMiniOnline(Boolean(data.probe?.ok));
       await load();
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Mini test failed');
@@ -169,9 +181,9 @@ export function SettingsMiniSection({
           <div>
             <h4 className="text-sm font-semibold text-slate-900">Mini assistant dock</h4>
             <p className="mt-1 text-xs text-slate-600">
-              Point Computer Dynamics at Mini&apos;s install folder. When docked, CD starts Mini with{' '}
-              <code className="rounded bg-white px-1">start_mini_headless.bat</code>, secures her API token, and exposes
-              the assistant dashboard inside the portal.
+              Point Computer Dynamics at Mini&apos;s install folder. When docked, CD can start Mini with{' '}
+              <code className="rounded bg-white px-1">start_mini_headless.bat</code> and expose her dashboard in the
+              portal only while she is actually running.
             </p>
           </div>
         </div>
@@ -188,20 +200,25 @@ export function SettingsMiniSection({
 
       <div className="mt-4 grid gap-2 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
         <p>
-          Docked: <strong>{settings?.docked ? 'Yes' : 'No'}</strong>
+          Integration: <strong>{settings?.docked ? 'Enabled' : 'Off'}</strong>
+        </p>
+        <p>
+          Mini running:{' '}
+          <strong className={miniOnline ? 'text-emerald-700' : 'text-amber-700'}>
+            {settings?.docked ? (miniOnline ? 'Yes' : 'No — start Mini') : '—'}
+          </strong>
         </p>
         <p>
           API token: <strong>{settings?.apiTokenConfigured ? 'Configured' : 'Not set'}</strong>
-        </p>
-        <p>
-          Preview: <code className="rounded bg-white px-1.5 py-0.5 text-xs">{settings?.tokenPreview ?? '—'}</code>
         </p>
         <p className="text-xs text-slate-500">
           {settings?.lastError
             ? `Error: ${settings.lastError}`
             : settings?.lastSeenAt
               ? `Last seen ${new Date(settings.lastSeenAt).toLocaleString()}`
-              : 'Not probed yet'}
+              : settings?.docked
+                ? 'Not reachable yet'
+                : 'Not probed yet'}
         </p>
       </div>
 

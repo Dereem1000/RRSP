@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, FolderOpen, Loader2, Package, RefreshCw, Search } from 'lucide-react';
+import { apiErrorMessage, parseFetchJsonResponse } from '@/lib/parse-fetch-json';
+import { useAdaptiveMiniPoll } from '@/lib/use-adaptive-mini-poll';
 
 type LibraryModule = 'knowledge' | 'updates';
 type KnowledgePane = 'project' | 'general';
@@ -101,16 +103,16 @@ function filterProjectEntriesBySource(
 }
 
 async function libraryGet(): Promise<LibraryPayload> {
-  const res = await fetch('/api/mini/library', { cache: 'no-store' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to load library');
+  const res = await fetch('/api/mini/library', { cache: 'no-store', credentials: 'include' });
+  const data = await parseFetchJsonResponse<LibraryPayload & { error?: string }>(res);
+  if (!res.ok) throw new Error(apiErrorMessage(data, 'Failed to load library'));
   return data;
 }
 
 async function libraryFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`/api/mini/library/${path}`, { cache: 'no-store' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  const res = await fetch(`/api/mini/library/${path}`, { cache: 'no-store', credentials: 'include' });
+  const data = await parseFetchJsonResponse<T & { error?: string }>(res);
+  if (!res.ok) throw new Error(apiErrorMessage(data, `Request failed (${res.status})`));
   return data as T;
 }
 
@@ -118,10 +120,11 @@ async function libraryPost<T>(path: string, body: Record<string, unknown> = {}):
   const res = await fetch(`/api/mini/library/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  const data = await parseFetchJsonResponse<T & { error?: string }>(res);
+  if (!res.ok) throw new Error(apiErrorMessage(data, `Request failed (${res.status})`));
   return data as T;
 }
 
@@ -296,23 +299,26 @@ export function MiniLibraryTab() {
   const general = payload?.general_library;
   const updates = payload?.update_library;
 
-  const load = useCallback(async () => {
+  const loadInFlightRef = useRef(false);
+
+  const load = useCallback(async (): Promise<boolean> => {
+    if (loadInFlightRef.current) return false;
+    loadInFlightRef.current = true;
     setError('');
     try {
       const data = await libraryGet();
       setPayload(data);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load library');
+      return false;
     } finally {
+      loadInFlightRef.current = false;
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    load();
-    const id = window.setInterval(load, 20000);
-    return () => window.clearInterval(id);
-  }, [load]);
+  useAdaptiveMiniPoll(true, load, { baseMs: 45_000, maxMs: 180_000 });
 
   const projectSources = useMemo(
     () => (project?.sources || []).map((row) => sourcePath(row)).filter(Boolean),
@@ -888,19 +894,24 @@ export function MiniLibraryTab() {
                       path = deployPath.trim();
                     }
                     if (!path) return;
-                    const result = await libraryPost<{ sync?: { imported?: number; updated?: number } }>(
-                      'updates/sources/add',
-                      {
-                        project: deployProject.trim(),
-                        deploy_path: path,
-                        changelog_path: changelogPath.trim(),
-                      }
-                    );
+                    const result = await libraryPost<{
+                      already_configured?: boolean;
+                      source?: { project?: string; deploy_path?: string };
+                      sync?: { imported?: number; updated?: number };
+                    }>('updates/sources/add', {
+                      project: deployProject.trim(),
+                      deploy_path: path,
+                      changelog_path: changelogPath.trim(),
+                    });
                     const sync = result.sync || {};
+                    const resolvedPath = result.source?.deploy_path || path;
+                    const resolvedProject = result.source?.project || deployProject.trim() || 'project';
                     setDeployPath('');
                     setChangelogPath('');
                     setStatus(
-                      `Deploy source added — ${sync.imported ?? 0} new / ${sync.updated ?? 0} updated package(s).`
+                      result.already_configured
+                        ? `Deploy source already configured (${resolvedProject} → ${resolvedPath}) — refreshed ${sync.imported ?? 0} new / ${sync.updated ?? 0} updated package(s).`
+                        : `Deploy source added (${resolvedProject} → ${resolvedPath}) — ${sync.imported ?? 0} new / ${sync.updated ?? 0} updated package(s).`
                     );
                   })
                 }

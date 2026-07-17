@@ -2,13 +2,17 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@web/lib/*": ["apps/web/src/lib/*"],
+      "@/lib/*": ["apps/web/src/lib/*"]
+    }
   },
   "include": ["src/**/*"]
 }

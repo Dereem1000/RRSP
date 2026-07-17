@@ -8,14 +8,12 @@ import {
   DollarSign,
   CreditCard,
 } from 'lucide-react';
-import { testConnection } from '@/lib/db';
 import { getDashboardOverview, formatCurrency } from '@/lib/dashboard';
 import { requirePortalUser } from '@/lib/session';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentTicketsTable } from '@/components/dashboard/RecentTicketsTable';
 import { TicketBreakdown } from '@/components/dashboard/TicketBreakdown';
 import { SystemHealthCard } from '@/components/dashboard/SystemHealthCard';
-import { RecentActivityFeed } from '@/components/dashboard/RecentActivityFeed';
 import { RecentNoticesCard } from '@/components/dashboard/RecentNoticesCard';
 import { SecurityStatusCard } from '@/components/dashboard/SecurityStatusCard';
 import { ClientServiceCard } from '@/components/dashboard/ClientServiceCard';
@@ -23,7 +21,6 @@ import { ClientLicenseStatusCard } from '@/components/dashboard/ClientLicenseSta
 import { DashboardRefreshButton } from '@/components/dashboard/DashboardRefreshButton';
 
 export default async function DashboardPage() {
-  await testConnection();
   const { user } = await requirePortalUser();
   const data = await getDashboardOverview(user.role, user.id);
   const { stats } = data;
@@ -41,7 +38,7 @@ export default async function DashboardPage() {
     user.role === 'client'
       ? 'Your support tickets and service overview'
       : user.role === 'technician'
-        ? 'Assigned tickets and activity summary'
+        ? 'Assigned tickets and workload overview'
         : 'System overview for Computer Dynamics MSP';
 
   return (
@@ -130,15 +127,6 @@ export default async function DashboardPage() {
           accent="bg-emerald-50 text-emerald-600"
         />
 
-        {isStaff && user.role !== 'technician' && (
-          <StatCard
-            label="Active activities"
-            value={stats.activeActivities}
-            icon={Clock}
-            accent="bg-cyan-50 text-cyan-600"
-          />
-        )}
-
         {isAdmin && (
           <>
             <StatCard
@@ -188,9 +176,6 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <RecentNoticesCard />
-        {isStaff && data.recentActivity.length > 0 && (
-          <RecentActivityFeed activities={data.recentActivity} />
-        )}
         {isStaff && data.security && <SecurityStatusCard security={data.security} />}
         {user.role === 'client' && data.clientProfile && (
           <>

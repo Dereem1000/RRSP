@@ -220,7 +220,7 @@ function mergeAttachments(
     if (!list) continue;
 
     for (const attachment of list) {
-      const key = attachment.cid ?? attachment.filename ?? String(out.length);
+      const key = String(attachment.cid ?? attachment.filename ?? out.length);
 
       if (seen.has(key)) continue;
 
@@ -435,6 +435,8 @@ async function sendBundledGroupEmail(
     html: rendered.html,
 
     attachments,
+    skipFailureNotice: true,
+    log: { category: 'test' },
   });
 }
 

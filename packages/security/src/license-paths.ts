@@ -2,24 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getMonorepoRoot } from '@cd-v2/database';
 
-/** Relative paths for file-integrity / backup catalogs. */
-export function getLicenseProtectedFilePaths(): string[] {
-  return [
-    'license_activation_system_new/license_api_server.py',
-    'license_activation_system_new/license_validator.py',
-    'license_activation_system_new/license_response_signature.py',
-    'license_activation_system_new/models.py',
-    'apps/web/src/lib/license-api-proxy.ts',
-    'apps/web/src/lib/license-service.ts',
-    'apps/web/src/lib/license-constants.ts',
-    'apps/web/src/app/api/license/validate/route.ts',
-    'apps/web/src/app/api/license/status/route.ts',
-    'apps/web/src/app/api/license/info/route.ts',
-    'packages/security/src/license-monitor.ts',
-    'packages/security/src/license-health.ts',
-    'packages/security/src/license-db.ts',
-  ];
-}
+export { getLicenseProtectedFilePaths } from '@cd-v2/database';
 
 export function getLicenseDbPath(): string {
   const root = getMonorepoRoot();

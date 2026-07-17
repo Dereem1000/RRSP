@@ -5,6 +5,12 @@
 
 const path = require('path');
 
+const vaultEnv = {
+  MASTER_PASSWORD: process.env.LAWFIRM_MASTER_PASSWORD || 'Opseccdynamics12$',
+  JWT_SECRET: process.env.LAWFIRM_JWT_SECRET || '5c2d9dd64ffdc88e969cbce54e98d3e5',
+  JWT_EXPIRATION: process.env.LAWFIRM_JWT_EXPIRATION || '2h',
+};
+
 module.exports = {
   apps: [{
     name: 'ms-cabb6ce6-master-vault',
@@ -19,9 +25,7 @@ module.exports = {
       HTTPS_ENABLED: 'true',
       SSL_KEY_PATH: '../server/certs/server.key',
       SSL_CERT_PATH: '../server/certs/server.crt',
-      MASTER_PASSWORD: 'Opseccdynamics12$',
-      JWT_SECRET: '5c2d9dd64ffdc88e969cbce54e98d3e5',
-      JWT_EXPIRATION: '2h'
+      ...vaultEnv,
     },
     env_production: {
       NODE_ENV: 'production',
@@ -30,9 +34,7 @@ module.exports = {
       HTTPS_ENABLED: 'true',
       SSL_KEY_PATH: '../server/certs/server.key',
       SSL_CERT_PATH: '../server/certs/server.crt',
-      MASTER_PASSWORD: 'Opseccdynamics12$',
-      JWT_SECRET: '5c2d9dd64ffdc88e969cbce54e98d3e5',
-      JWT_EXPIRATION: '2h'
+      ...vaultEnv,
     },
     error_file: './logs/vault-error.log',
     out_file: './logs/vault-out.log',

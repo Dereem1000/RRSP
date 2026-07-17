@@ -47,7 +47,13 @@ async function sendTicketBrandedEmail({
   const brand = await getEmailBrand();
   const prefix = test ? '[TEST] ' : '';
   const rendered = await renderEmailLayout({ brand, origin, eyebrow, title, preheader, bodyHtml });
-  await sendEmail({ to, subject: `${prefix}${subject}`, html: rendered.html, attachments: rendered.attachments });
+  return sendEmail({
+    to,
+    subject: `${prefix}${subject}`,
+    html: rendered.html,
+    attachments: rendered.attachments,
+    log: { category: 'ticket' },
+  });
 }
 
 export type TicketEmailData = {
@@ -356,6 +362,42 @@ export async function notifyTicketComment(
     preheader: `Comment from ${comment.authorName}`,
     bodyHtml,
   });
+}
+
+export async function resendTicketUpdateToClient(
+  ticket: Ticket,
+  sentByName: string
+): Promise<{ ok: true; email: string; ticketNumber: string } | { ok: false; error: string }> {
+  const client = ticket.clientId ? await Client.findByPk(ticket.clientId) : null;
+  if (!client?.email?.trim()) {
+    return { ok: false, error: 'This client does not have an email address on file.' };
+  }
+
+  const status = String(ticket.status ?? 'unknown');
+  const bodyHtml = [
+    paragraph(`Here is the latest update on your support ticket <strong>#${escapeHtml(ticket.ticketNumber)}</strong>.`),
+    highlightBox(`Current status: <strong>${escapeHtml(status)}</strong>`),
+    ticketInfoRows(ticket, infoRow('Sent by', escapeHtml(sentByName))),
+  ].join('');
+
+  const sent = await sendTicketBrandedEmail({
+    to: client.email,
+    subject: `Ticket Update — ${ticket.ticketNumber}`,
+    eyebrow: 'Support ticket',
+    title: 'Ticket update',
+    preheader: `${ticket.ticketNumber} is ${status}`,
+    bodyHtml,
+  });
+
+  if (!sent) {
+    return {
+      ok: false,
+      error:
+        'The ticket update email did not send. Check Settings → Email (SMTP enabled and configured), then try again.',
+    };
+  }
+
+  return { ok: true, email: client.email, ticketNumber: ticket.ticketNumber };
 }
 
 export async function notifyTicketEscalated(ticket: Ticket, reason: string, escalatedBy: string) {

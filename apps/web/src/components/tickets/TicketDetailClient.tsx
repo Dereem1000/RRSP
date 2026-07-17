@@ -3,12 +3,16 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Save, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, Package, Save, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { ClientSearchSelect } from '@/components/clients/ClientSearchSelect';
 import { TicketStatusBadge } from './TicketStatusBadge';
 import { TicketFormFields, formDataToTicketPayload } from './TicketFormFields';
 import { COMMENT_TYPES } from '@/lib/ticket-constants';
-import { ClientLink, TicketLink } from '@/components/links/DocumentLinks';
+import { ClientLink, OrderLink, TicketLink } from '@/components/links/DocumentLinks';
+import { OrderFormModal, StageBadge, StatusBadge, emptyOrderForm, type OrderFormValues } from '@/components/orders/order-ui';
+import { buildTicketOrderPrefill } from '@/lib/ticket-order-prefill';
+import { isImportedItemPlaceholder, type SelectedInvoiceOrderSource, type TicketInvoiceLineItem } from '@/lib/ticket-invoice-order';
+import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 import type { ClientPickerOption } from '@/lib/client-picker';
 
 type TicketData = {
@@ -40,7 +44,7 @@ type TicketData = {
   actualHours?: number | null;
   estimatedCost?: number | null;
   actualCost?: number | null;
-  Client?: { email?: string; phone?: string };
+  client?: { email?: string; phone?: string };
 };
 
 type Comment = {
@@ -50,6 +54,19 @@ type Comment = {
   authorName: string;
   timestamp: string;
   isInternal?: number;
+  linkedOrderId?: string | null;
+};
+
+type LinkedOrder = {
+  id: string;
+  orderNumber: string;
+  title: string;
+  itemName: string;
+  status: string;
+  shippingStage: string;
+  clientPrice: number;
+  trackingNumber?: string | null;
+  vendor?: string | null;
 };
 
 type Technician = { id: number; firstName: string; lastName: string; username: string };
@@ -60,18 +77,25 @@ export function TicketDetailClient({
   technicians,
   clients = [],
   userRole,
+  linkedOrders: initialLinkedOrders = [],
+  invoiceOrderItems = [],
 }: {
   ticket: TicketData;
   comments: Comment[];
   technicians: Technician[];
   clients?: ClientPickerOption[];
   userRole: string;
+  linkedOrders?: LinkedOrder[];
+  invoiceOrderItems?: TicketInvoiceLineItem[];
 }) {
   const router = useRouter();
+  const { askToEmailClient } = useClientEmailPolicy();
   const isStaff = userRole === 'admin' || userRole === 'technician';
+  const isAdmin = userRole === 'admin';
 
   const [ticket, setTicket] = useState(initial);
   const [comments, setComments] = useState(initialComments);
+  const [linkedOrders, setLinkedOrders] = useState(initialLinkedOrders);
   const [clientId, setClientId] = useState(initial.clientId ?? '');
   const [commentText, setCommentText] = useState('');
   const [commentType, setCommentType] = useState('update');
@@ -83,6 +107,11 @@ export function TicketDetailClient({
   const [loading, setLoading] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderForm, setOrderForm] = useState<OrderFormValues>(() => emptyOrderForm(initial.clientId ?? ''));
+  const [orderCommentId, setOrderCommentId] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState('');
+  const [selectedInvoiceSource, setSelectedInvoiceSource] = useState<SelectedInvoiceOrderSource | null>(null);
 
   const formDefaults = {
     issue: ticket.issue,
@@ -200,6 +229,7 @@ export function TicketDetailClient({
   async function addComment(e: FormEvent) {
     e.preventDefault();
     if (!commentText.trim()) return;
+    const postedCommentType = isStaff ? commentType : 'general';
     setLoading('comment');
     setError('');
     try {
@@ -208,7 +238,7 @@ export function TicketDetailClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           comment: commentText,
-          commentType: isStaff ? commentType : 'general',
+          commentType: postedCommentType,
           isInternal: isStaff ? isInternal : false,
         }),
       });
@@ -220,8 +250,168 @@ export function TicketDetailClient({
       const ticketData = await ticketRes.json();
       if (ticketRes.ok) setTicket(ticketData.ticket);
       router.refresh();
+
+      if (postedCommentType === 'order_part' && isAdmin) {
+        if (!ticket.clientId && !clientId) {
+          setError('Comment posted. Select a client on the ticket before creating the order.');
+        } else {
+          openOrderModalForComment(data.comment);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Comment failed');
+    } finally {
+      setLoading('');
+    }
+  }
+
+  function openOrderModalForComment(comment: Comment) {
+    const activeClientId = ticket.clientId ?? clientId;
+    if (!activeClientId) {
+      setError('Select a client on this ticket before creating an order.');
+      return;
+    }
+    setOrderCommentId(comment.id);
+    setSelectedInvoiceSource(null);
+    setOrderForm(
+      buildTicketOrderPrefill(
+        {
+          id: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          clientId: activeClientId,
+          issue: ticket.issue,
+          title: ticket.title,
+          notes: ticket.notes,
+          deviceType: ticket.deviceType,
+          deviceModel: ticket.deviceModel,
+        },
+        { comment: comment.comment }
+      )
+    );
+    setOrderError('');
+    setShowOrderModal(true);
+  }
+
+  async function createOrderFromComment() {
+    const activeClientId = ticket.clientId ?? clientId;
+    if (!activeClientId) {
+      setOrderError('A client is required before creating an order.');
+      return;
+    }
+    if (!orderForm.title.trim() || !orderForm.itemName.trim()) {
+      setOrderError('Title and item name are required.');
+      return;
+    }
+    const clientPrice = Number(orderForm.clientPrice);
+    if (!Number.isFinite(clientPrice) || clientPrice < 0) {
+      setOrderError('Enter a valid client price, or select an invoice line to apply pricing.');
+      return;
+    }
+    if (
+      !selectedInvoiceSource &&
+      (orderForm.costPrice === '' || Number.isNaN(Number(orderForm.costPrice)))
+    ) {
+      setOrderError('US cost is required unless you apply pricing from an invoice line.');
+      return;
+    }
+
+    setLoading('order');
+    setOrderError('');
+    try {
+      const sendEmail = askToEmailClient('Email the client about this new order?');
+      const res = await fetch('/api/msp/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: activeClientId,
+          title: orderForm.title,
+          itemName: orderForm.itemName,
+          costPrice:
+            orderForm.costPrice === '' || Number.isNaN(Number(orderForm.costPrice))
+              ? undefined
+              : Number(orderForm.costPrice),
+          clientPrice: Number(orderForm.clientPrice),
+          quantity: Number(orderForm.quantity) || 1,
+          description: orderForm.description || null,
+          itemUrl: orderForm.itemUrl || null,
+          vendor: orderForm.vendor || null,
+          vendorOrderNumber: orderForm.vendorOrderNumber || null,
+          trackingNumber: orderForm.trackingNumber || null,
+          orderDate: orderForm.orderDate,
+          estimatedArrival: orderForm.estimatedArrival || null,
+          status: orderForm.status,
+          shippingStage: orderForm.shippingStage,
+          currentLocation: orderForm.currentLocation || null,
+          isLoggedInPreAlerts: orderForm.isLoggedInPreAlerts,
+          preAlertNotes: orderForm.preAlertNotes || null,
+          serialNumber: orderForm.serialNumber || null,
+          notes: orderForm.notes || null,
+          sendEmail,
+          autoCreateTicket: false,
+          linkToTicketId: ticket.id,
+          sourceCommentId: orderCommentId,
+          skipUsCost: Boolean(selectedInvoiceSource),
+          syncInvoiceLineItem:
+            selectedInvoiceSource &&
+            selectedInvoiceSource.wasImportedPlaceholder &&
+            orderForm.itemName.trim() &&
+            !isImportedItemPlaceholder(orderForm.itemName)
+              ? {
+                  invoiceId: selectedInvoiceSource.invoiceId,
+                  itemIndex: selectedInvoiceSource.itemIndex,
+                  itemName: orderForm.itemName.trim(),
+                }
+              : undefined,
+          linkInvoice: selectedInvoiceSource
+            ? {
+                invoiceId: selectedInvoiceSource.invoiceId,
+                invoiceNumber: selectedInvoiceSource.invoiceNumber,
+              }
+            : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create order');
+
+      if (orderCommentId) {
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === orderCommentId
+              ? { ...comment, linkedOrderId: data.order?.id ?? comment.linkedOrderId }
+              : comment
+          )
+        );
+      }
+
+      if (data.order?.id) {
+        const created = data.order;
+        setLinkedOrders((prev) => {
+          if (prev.some((order) => order.id === created.id)) return prev;
+          return [
+            {
+              id: created.id,
+              orderNumber: created.orderNumber,
+              title: created.title,
+              itemName: created.itemName,
+              status: created.status,
+              shippingStage: created.shippingStage,
+              clientPrice: Number(created.clientPrice ?? 0),
+              trackingNumber: created.trackingNumber ?? null,
+              vendor: created.vendor ?? null,
+            },
+            ...prev,
+          ];
+        });
+      }
+
+      setShowOrderModal(false);
+      setOrderCommentId(null);
+      setSelectedInvoiceSource(null);
+      setOrderForm(emptyOrderForm(activeClientId));
+      setMessage(data.message ?? 'Order created and linked to this ticket.');
+      router.refresh();
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : 'Failed to create order');
     } finally {
       setLoading('');
     }
@@ -248,11 +438,45 @@ export function TicketDetailClient({
           <p className="mt-2 text-sm text-slate-500">
             <ClientLink id={ticket.clientId} label={ticket.clientName} className="text-sm text-slate-500 hover:text-indigo-700" />
             {ticket.clientContactNumber ? ` · ${ticket.clientContactNumber}` : ''}
-            {ticket.Client?.phone && !ticket.clientContactNumber ? ` · ${ticket.Client.phone}` : ''}
+            {ticket.client?.phone && !ticket.clientContactNumber ? ` · ${ticket.client.phone}` : ''}
           </p>
         </div>
         <TicketStatusBadge status={ticket.status} />
       </div>
+
+      {linkedOrders.length > 0 && (
+        <section className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-indigo-600" />
+            <h2 className="font-semibold text-slate-900">Linked orders</h2>
+          </div>
+          <div className="mt-4 space-y-3">
+            {linkedOrders.map((order) => (
+              <div
+                key={order.id}
+                className="rounded-xl border border-white/80 bg-white px-4 py-3 shadow-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <OrderLink id={order.id} label={order.orderNumber} />
+                    <p className="mt-1 text-sm font-medium text-slate-900">{order.title}</p>
+                    <p className="text-sm text-slate-600">{order.itemName}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {order.vendor ? `${order.vendor}` : 'No vendor'}
+                      {order.trackingNumber ? ` · Tracking ${order.trackingNumber}` : ''}
+                      {isStaff ? ` · TTD ${order.clientPrice}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={order.status} />
+                    <StageBadge stage={order.shippingStage} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {(error || message) && (
         <div
@@ -517,12 +741,53 @@ export function TicketDetailClient({
                       <span>{c.timestamp}</span>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">{c.comment}</p>
+                    {c.commentType === 'order_part' && c.linkedOrderId ? (
+                      <p className="mt-3 text-sm text-slate-600">
+                        Linked order:{' '}
+                        <OrderLink id={c.linkedOrderId} label="View order" className="font-medium text-indigo-700" />
+                      </p>
+                    ) : null}
+                    {isAdmin && c.commentType === 'order_part' && !c.linkedOrderId ? (
+                      <button
+                        type="button"
+                        onClick={() => openOrderModalForComment(c)}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                      >
+                        <Package className="h-3.5 w-3.5" />
+                        New order
+                      </button>
+                    ) : null}
                   </div>
                 ))
               )}
             </div>
           </section>
       </div>
+
+      {showOrderModal && isAdmin && (
+        <OrderFormModal
+          title="New order"
+          isNewOrder
+          form={orderForm}
+          onChange={(patch) => setOrderForm((form) => ({ ...form, ...patch }))}
+          clients={clients}
+          showCost={isAdmin}
+          loading={loading === 'order'}
+          error={orderError}
+          linkToTicket={{ ticketNumber: ticket.ticketNumber }}
+          invoiceOrderItems={invoiceOrderItems}
+          selectedInvoiceSource={selectedInvoiceSource}
+          onInvoiceSourceChange={setSelectedInvoiceSource}
+          allowSkipUsCost={Boolean(selectedInvoiceSource)}
+          onClose={() => {
+            setShowOrderModal(false);
+            setOrderCommentId(null);
+            setSelectedInvoiceSource(null);
+            setOrderError('');
+          }}
+          onSubmit={createOrderFromComment}
+        />
+      )}
     </div>
   );
 }

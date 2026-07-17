@@ -7,6 +7,8 @@ import {
   getActivationFeatures,
   type ActivationFeature,
 } from '@/lib/license-constants';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { normalizeStoredPhone } from '@/lib/phone-utils';
 import {
   BILLING_CYCLES,
   CLIENT_STATUSES,
@@ -48,6 +50,7 @@ export function ClientFormFields({
   showUsage = false,
   showContract = false,
   showPortalOption = false,
+  showActivationFeatures = true,
   technicians = [],
 }: {
   defaults?: Record<string, string | number | boolean | string[] | null | undefined | Record<string, unknown>>;
@@ -55,6 +58,7 @@ export function ClientFormFields({
   showUsage?: boolean;
   showContract?: boolean;
   showPortalOption?: boolean;
+  showActivationFeatures?: boolean;
   technicians?: Array<{ id: number; firstName: string; lastName: string }>;
 }) {
   const wide = layout === 'wide';
@@ -115,7 +119,7 @@ export function ClientFormFields({
           />
         </Field>
         <Field label="Phone">
-          <input name="phone" defaultValue={defaultValue(defaults.phone)} className={inputClass} />
+          <PhoneInput name="phone" defaultValue={String(defaults.phone ?? '')} />
         </Field>
         <Field label="Contact person">
           <input name="contactPerson" defaultValue={defaultValue(defaults.contactPerson)} className={inputClass} />
@@ -320,7 +324,7 @@ export function ClientFormFields({
         </div>
       )}
 
-      {hasPlan && (
+      {showActivationFeatures && (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Activation features (license systems)
@@ -425,7 +429,7 @@ export function formDataToClientPayload(form: FormData, extra: Record<string, un
     name: form.get('name') as string,
     companyName: (form.get('companyName') as string) || undefined,
     email: form.get('email') as string,
-    phone: (form.get('phone') as string) || undefined,
+    phone: normalizeStoredPhone((form.get('phone') as string) || undefined),
     address: (form.get('address') as string) || undefined,
     contactPerson: (form.get('contactPerson') as string) || undefined,
     serviceLevel,

@@ -1,7 +1,9 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { getConfiguredSiteUrl, isUsablePublicOrigin, normalizeSiteBaseUrl } from '@/lib/site-url';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+import { resolveJwtSecret } from '@/lib/env-secrets';
+
+const JWT_SECRET = resolveJwtSecret();
 const VIEW_TOKEN_EXPIRES = (process.env.INVOICE_VIEW_TOKEN_EXPIRES || '60d') as SignOptions['expiresIn'];
 
 export type InvoiceViewPayload = {

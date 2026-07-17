@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 import { Client } from '@cd-v2/database';
-import { SERVICE_LEVELS } from '@/lib/client-constants';
+import { getActivationFeatures } from '@/lib/license-constants';
 import {
   getClientLicenseSnapshot,
   isLicenseDbAvailable,
@@ -17,10 +17,10 @@ export async function getClientLicenseBadgeMap(
   const where =
     clientIds && clientIds.length > 0
       ? { id: { [Op.in]: clientIds } }
-      : { serviceLevel: { [Op.in]: [...SERVICE_LEVELS] } };
+      : undefined;
 
   const clients = await Client.findAll({
-    where,
+    ...(where ? { where } : {}),
     attributes: ['id', 'serviceLevel', 'features'],
   });
 
@@ -28,11 +28,7 @@ export async function getClientLicenseBadgeMap(
   const dbAvailable = isLicenseDbAvailable();
 
   for (const client of clients) {
-    const hasMspPlan = Boolean(
-      client.serviceLevel && SERVICE_LEVELS.includes(client.serviceLevel as (typeof SERVICE_LEVELS)[number])
-    );
-
-    if (!hasMspPlan) {
+    if (getActivationFeatures(client.features).length === 0) {
       map[client.id] = { status: 'N/A', label: '—' };
       continue;
     }
@@ -44,10 +40,6 @@ export async function getClientLicenseBadgeMap(
 
     try {
       const snapshot = await getClientLicenseSnapshot(client.id);
-      if (snapshot.activationFeatures.length === 0) {
-        map[client.id] = { status: 'N/A', label: 'No licenses' };
-        continue;
-      }
 
       if (snapshot.overallStatus === 'Active') {
         map[client.id] = { status: 'Active', label: 'Active' };

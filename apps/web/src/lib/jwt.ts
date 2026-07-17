@@ -1,8 +1,12 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
+import { resolveJwtSecret } from '@/lib/env-secrets';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '24h') as SignOptions['expiresIn'];
 const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as SignOptions['expiresIn'];
+
+function jwtSecret(): string {
+  return resolveJwtSecret();
+}
 
 export interface TokenPayload {
   id: number;
@@ -12,16 +16,25 @@ export interface TokenPayload {
 }
 
 export function signToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, jwtSecret(), { expiresIn: JWT_EXPIRES_IN });
 }
 
 export function signRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
+  return jwt.sign(payload, jwtSecret(), { expiresIn: JWT_REFRESH_EXPIRES_IN });
 }
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const payload = jwt.verify(token, jwtSecret()) as Record<string, unknown>;
+    if (typeof payload.id !== 'number' || typeof payload.role !== 'string') {
+      return null;
+    }
+    return {
+      id: payload.id,
+      role: payload.role,
+      clearance: typeof payload.clearance === 'string' ? payload.clearance : undefined,
+      username: typeof payload.username === 'string' ? payload.username : undefined,
+    };
   } catch {
     return null;
   }

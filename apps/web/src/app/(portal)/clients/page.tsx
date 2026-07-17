@@ -2,6 +2,7 @@ import { Client } from '@/lib/db';
 import { requirePortalUser } from '@/lib/session';
 import { serializeClient } from '@/lib/clients';
 import { getClientLicenseBadgeMap } from '@/lib/client-license-map';
+import { isSalesStagingClient } from '@/lib/sales';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ClientsPageClient } from '@/components/clients/ClientsPageClient';
 import { Building2, CheckCircle2, PauseCircle, Clock } from 'lucide-react';
@@ -13,7 +14,8 @@ export default async function ClientsPage() {
     redirect('/tickets');
   }
 
-  const clients = await Client.findAll({ order: [['created_at', 'DESC']] });
+  const allClients = await Client.findAll({ order: [['created_at', 'DESC']] });
+  const clients = allClients.filter((c) => !isSalesStagingClient(c.contractDetails));
   const licenseMap = await getClientLicenseBadgeMap(clients.map((c) => c.id));
   const active = clients.filter((c) => c.status === 'active').length;
   const pending = clients.filter((c) => c.status === 'pending').length;

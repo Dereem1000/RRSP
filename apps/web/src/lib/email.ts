@@ -10,6 +10,8 @@ import {
   primaryButton,
   renderEmailLayout,
 } from '@/lib/email-templates';
+import { notifyEmailSendFailure } from '@/lib/email-failure-notice';
+import { logEmailEntry, type EmailLogMeta } from '@/lib/email-log';
 
 export { buildPortalUrl } from '@/lib/site-url';
 
@@ -29,6 +31,7 @@ export type EmailConfig = {
 
 let transporter: nodemailer.Transporter | null = null;
 let isConfigured = false;
+let lastInitError: unknown = null;
 
 export async function getEmailConfig(): Promise<EmailConfig> {
   const [enabled, host, port, secure, user, password, fromName, fromEmail, companyName, companyPhone, companyWebsite] =
@@ -67,6 +70,7 @@ export async function initializeEmail(): Promise<boolean> {
     if (!config.enabled || !config.host || !config.user || !config.password) {
       isConfigured = false;
       transporter = null;
+      lastInitError = 'Email service is disabled or missing required SMTP settings';
       return false;
     }
 
@@ -80,13 +84,36 @@ export async function initializeEmail(): Promise<boolean> {
 
     await transporter.verify();
     isConfigured = true;
+    lastInitError = null;
     return true;
   } catch (error) {
     console.error('[EMAIL] Failed to initialize:', error);
     isConfigured = false;
     transporter = null;
+    lastInitError = error;
     return false;
   }
+}
+
+async function reportEmailFailure({
+  to,
+  subject,
+  error,
+  reason,
+  skipFailureNotice,
+}: {
+  to: string;
+  subject: string;
+  error?: unknown;
+  reason: 'send' | 'init';
+  skipFailureNotice?: boolean;
+}) {
+  if (skipFailureNotice || subject.startsWith('[TEST]')) return;
+
+  const config = await getEmailConfig();
+  if (!config.enabled) return;
+
+  await notifyEmailSendFailure({ to, subject, error, reason });
 }
 
 export async function sendEmail({
@@ -94,15 +121,35 @@ export async function sendEmail({
   subject,
   html,
   attachments = [],
+  skipFailureNotice = false,
+  log,
 }: {
   to: string;
   subject: string;
   html: string;
   attachments?: Attachment[];
+  skipFailureNotice?: boolean;
+  log?: EmailLogMeta;
 }): Promise<boolean> {
   if (!isConfigured) {
     const ready = await initializeEmail();
-    if (!ready) return false;
+    if (!ready) {
+      await reportEmailFailure({
+        to,
+        subject,
+        error: lastInitError,
+        reason: 'init',
+        skipFailureNotice,
+      });
+      await logEmailEntry({
+        to,
+        subject,
+        status: 'failed',
+        errorMessage: lastInitError instanceof Error ? lastInitError.message : String(lastInitError ?? 'Email not configured'),
+        meta: log,
+      }).catch((err) => console.error('[EMAIL LOG]', err));
+      return false;
+    }
   }
 
   try {
@@ -115,9 +162,26 @@ export async function sendEmail({
       attachments,
     });
     console.log(`[EMAIL] Sent to ${to}: ${result.messageId}`);
+    await logEmailEntry({ to, subject, status: 'sent', meta: log }).catch((err) =>
+      console.error('[EMAIL LOG]', err)
+    );
     return true;
   } catch (error) {
     console.error('[EMAIL] Send failed:', error);
+    await reportEmailFailure({
+      to,
+      subject,
+      error,
+      reason: 'send',
+      skipFailureNotice,
+    });
+    await logEmailEntry({
+      to,
+      subject,
+      status: 'failed',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      meta: log,
+    }).catch((err) => console.error('[EMAIL LOG]', err));
     return false;
   }
 }
@@ -199,7 +263,7 @@ export async function sendClientWelcomeEmail({
     origin,
   });
 
-  return sendEmail({ to, subject, html, attachments });
+  return sendEmail({ to, subject, html, attachments, log: { category: 'welcome' } });
 }
 
 export async function testEmailConnection() {

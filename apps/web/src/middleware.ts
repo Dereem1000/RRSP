@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isIpBlockedSync } from '@/lib/blocked-ips-mirror';
+import { isSafeReturnPath, resolveReturnPath } from '@/lib/safe-return-url';
 
 const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/health', '/api/public'];
 
@@ -34,21 +35,29 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const token = request.cookies.get('cd_access_token')?.value;
+
   if (pathname === '/' || isPublicPath(pathname)) {
+    if (pathname === '/login' && token) {
+      const returnUrl = request.nextUrl.searchParams.get('returnUrl');
+      const dest = resolveReturnPath(returnUrl);
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
     return NextResponse.next();
   }
 
-  const token = request.cookies.get('cd_access_token')?.value;
-
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const returnPath = `${pathname}${request.nextUrl.search}`;
+    const loginUrl = new URL('/login', request.url);
+    if (isSafeReturnPath(returnPath)) {
+      loginUrl.searchParams.set('returnUrl', returnPath);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('x-cd-return-path', `${pathname}${request.nextUrl.search}`);
+  return response;
 }
 
 export const config = {

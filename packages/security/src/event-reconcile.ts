@@ -42,7 +42,7 @@ function extractProtectedPath(event: SecurityEvent): string | null {
   const patterns = [
     /Protected file changed: (.+?) \(/,
     /File repair attempted: (.+?) \(/,
-    /File repair failed: (.+?) \(/,
+    /File repair failed: (.+?)(?:\s*\(|$)/,
     /File restored from backup: (.+)$/,
   ];
   for (const pattern of patterns) {

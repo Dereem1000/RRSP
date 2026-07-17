@@ -6,6 +6,8 @@ import {
   User,
 } from '@cd-v2/database';
 import type { TokenPayload } from '@/lib/jwt';
+import { normalizeStoredPhone } from '@/lib/phone-utils';
+import { ensureCommentLinkedOrderColumn } from '@/lib/ticket-schema';
 
 export type SessionUser = TokenPayload & {
   firstName?: string;
@@ -38,7 +40,7 @@ export async function canAccessTicket(ticket: Ticket, session: SessionUser): Pro
 export async function getTicketById(id: string) {
   return Ticket.findByPk(id, {
     include: [
-      { model: Client, attributes: ['id', 'name', 'companyName', 'email', 'phone'] },
+      { model: Client, as: 'client', attributes: ['id', 'name', 'companyName', 'email', 'phone'] },
       { model: User, as: 'assignee', attributes: ['id', 'username', 'firstName', 'lastName'] },
       { model: User, as: 'creator', attributes: ['id', 'username', 'firstName', 'lastName'] },
     ],
@@ -50,7 +52,7 @@ export function serializeTicket(ticket: Ticket) {
     assignedTo?: number | null;
     technician?: string;
     assignee?: { firstName?: string; lastName?: string; username?: string };
-    Client?: { name?: string; companyName?: string };
+    client?: { name?: string; companyName?: string };
     clientName?: string;
   };
 
@@ -59,8 +61,8 @@ export function serializeTicket(ticket: Ticket) {
       `${json.assignee.firstName ?? ''} ${json.assignee.lastName ?? ''}`.trim() || json.assignee.username;
   }
 
-  if (json.Client) {
-    const linkedName = json.Client.name || json.Client.companyName;
+  if (json.client) {
+    const linkedName = json.client.name || json.client.companyName;
     if (linkedName) json.clientName = linkedName;
   }
 
@@ -88,7 +90,7 @@ export async function resolveClientForTicket(body: {
 }): Promise<{ clientId: string | null; clientName: string; clientContactNumber: string | null }> {
   let clientId = body.clientId ?? null;
   let clientName = body.clientName?.trim() || 'Unknown Client';
-  let clientContactNumber = body.clientContactNumber?.trim() || null;
+  let clientContactNumber = normalizeStoredPhone(body.clientContactNumber?.trim() || null);
 
   if (clientId) {
     const client = await Client.findByPk(clientId);
@@ -142,6 +144,7 @@ export async function resolveTechnicianName(assignedTo?: number | null, fallback
 }
 
 export async function getTicketComments(ticketId: string, includeInternal: boolean) {
+  await ensureCommentLinkedOrderColumn();
   const comments = await TicketComment.findAll({
     where: {
       ticketId,

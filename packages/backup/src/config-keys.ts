@@ -27,7 +27,15 @@ export type AutoBackupConfig = {
 
 export const DEFAULT_BACKUP_FEATURES: BackupFeaturesConfig = {
   enabled: true,
-  auto_backup: false,
+  auto_backup: true,
   backup_retention_days: 30,
   backup_verification: true,
+};
+
+export const DEFAULT_AUTO_BACKUP_CONFIG: Omit<AutoBackupConfig, 'nextRun' | 'lastRun' | 'createdAt'> = {
+  enabled: true,
+  frequency: 'daily',
+  time: '02:00',
+  type: 'full',
+  retention: 30,
 };

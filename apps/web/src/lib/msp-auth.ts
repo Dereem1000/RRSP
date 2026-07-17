@@ -1,14 +1,24 @@
 import { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
+import { getMspSyncToken } from '@/lib/msp-sync-token';
 
 /** Session cookie auth OR Bearer token for license activation GUI / Python sync */
-export function requireMspApiAuth(req: NextRequest): { type: 'session' | 'token'; id?: number; role?: string } {
-  const apiToken = process.env.MSP_API_TOKEN || process.env.LICENSE_API_KEY;
+export async function requireMspApiAuth(
+  req: NextRequest
+): Promise<{ type: 'session' | 'token'; id?: number; role?: string }> {
+  const apiToken = await getMspSyncToken();
   const authHeader = req.headers.get('authorization');
 
-  if (authHeader?.startsWith('Bearer ') && apiToken) {
+  if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    if (token === apiToken) return { type: 'token' };
+
+    if (apiToken && token === apiToken) return { type: 'token' };
+
+    // Legacy license GUI stores an admin JWT as the MSP API token.
+    const bearerSession = verifyToken(token);
+    if (bearerSession && (bearerSession.role === 'admin' || bearerSession.role === 'technician')) {
+      return { type: 'session', id: bearerSession.id, role: bearerSession.role };
+    }
   }
 
   const cookieToken = req.cookies.get('cd_access_token')?.value;

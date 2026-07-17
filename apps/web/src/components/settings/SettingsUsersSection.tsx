@@ -7,7 +7,7 @@ import type { PublicUser } from '@/lib/users';
 const inputClass =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20';
 
-const ROLES = ['admin', 'technician', 'client'] as const;
+const STAFF_ROLES = ['admin', 'technician'] as const;
 const CLEARANCES = [
   { value: 'S-CLS1', label: 'S-CLS1 (Full access)' },
   { value: 'S-CLS2', label: 'S-CLS2 (Limited)' },
@@ -19,7 +19,7 @@ type UserForm = {
   lastName: string;
   username: string;
   email: string;
-  role: (typeof ROLES)[number];
+  role: (typeof STAFF_ROLES)[number];
   securityClearance: 'S-CLS1' | 'S-CLS2' | 'S-CLS3';
   phone: string;
   bio: string;
@@ -64,7 +64,6 @@ function RoleBadge({ role }: { role: string }) {
   const colors: Record<string, string> = {
     admin: 'bg-violet-50 text-violet-700',
     technician: 'bg-blue-50 text-blue-700',
-    client: 'bg-slate-100 text-slate-600',
   };
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${colors[role] ?? 'bg-slate-100 text-slate-600'}`}>
@@ -94,7 +93,7 @@ export function SettingsUsersSection({
     setLoading('list');
     onError('');
     try {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ staffOnly: '1' });
       if (search.trim()) params.set('search', search.trim());
       if (roleFilter !== 'all') params.set('role', roleFilter);
       if (statusFilter !== 'all') params.set('active', statusFilter);
@@ -245,9 +244,14 @@ export function SettingsUsersSection({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-indigo-600" />
-          <h2 className="font-semibold text-slate-900">User management</h2>
+        <div>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-600" />
+            <h2 className="font-semibold text-slate-900">Staff accounts</h2>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            Admin and technician portal logins. Client portal accounts are managed on each client&apos;s profile page.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -256,7 +260,7 @@ export function SettingsUsersSection({
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             <Plus className="h-4 w-4" />
-            Add user
+            Add staff member
           </button>
           <button
             type="button"
@@ -293,8 +297,8 @@ export function SettingsUsersSection({
           className={inputClass}
         />
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={inputClass}>
-          <option value="all">All roles</option>
-          {ROLES.map((r) => (
+          <option value="all">All staff roles</option>
+          {STAFF_ROLES.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
@@ -322,7 +326,7 @@ export function SettingsUsersSection({
             {users.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                  {loading === 'list' ? 'Loading…' : 'No users found'}
+                  {loading === 'list' ? 'Loading…' : 'No staff accounts found'}
                 </td>
               </tr>
             ) : (
@@ -372,7 +376,7 @@ export function SettingsUsersSection({
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">
-                {modal === 'create' ? 'Add user' : 'Edit user'}
+                {modal === 'create' ? 'Add staff member' : 'Edit staff member'}
               </h3>
               <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                 <X className="h-5 w-5" />
@@ -414,7 +418,7 @@ export function SettingsUsersSection({
                   <label className="block">
                     <span className="mb-1 block text-xs font-medium text-slate-500">Role</span>
                     <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as UserForm['role'] })} className={inputClass}>
-                      {ROLES.map((r) => (
+                      {STAFF_ROLES.map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>

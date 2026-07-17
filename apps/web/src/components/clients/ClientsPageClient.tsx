@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Package, Plus, Receipt, Search, Ticket } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { CreateClientModal } from './CreateClientModal';
 import { CLIENT_STATUSES, SERVICE_LEVELS, SERVICE_LEVEL_COLORS, STATUS_COLORS } from '@/lib/client-constants';
 import type { ClientLicenseBadge } from '@/lib/client-license-map';
@@ -56,55 +56,6 @@ function ClientContactCell({ client }: { client: ClientRow }) {
   );
 }
 
-function ClientRowQuickActions({ clientId, userRole }: { clientId: string; userRole: string }) {
-  const isStaff = userRole === 'admin' || userRole === 'technician';
-  const isAdmin = userRole === 'admin';
-  if (!isStaff) return null;
-
-  const btnClass =
-    'inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700';
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      <Link
-        href={`/tickets?create=1&clientId=${clientId}`}
-        className={btnClass}
-        title="New ticket"
-        aria-label="New ticket for this client"
-      >
-        <Ticket className="h-3.5 w-3.5" />
-      </Link>
-      <Link
-        href={`/orders?create=1&clientId=${clientId}`}
-        className={btnClass}
-        title="New order"
-        aria-label="New order for this client"
-      >
-        <Package className="h-3.5 w-3.5" />
-      </Link>
-      {isAdmin && (
-        <>
-          <Link
-            href={`/accounting?create=invoice&clientId=${clientId}`}
-            className={btnClass}
-            title="New invoice"
-            aria-label="New invoice for this client"
-          >
-            <Receipt className="h-3.5 w-3.5" />
-          </Link>
-          <Link
-            href={`/accounting?create=quote&clientId=${clientId}`}
-            className={btnClass}
-            title="New quote"
-            aria-label="New quote for this client"
-          >
-            <FileText className="h-3.5 w-3.5" />
-          </Link>
-        </>
-      )}
-    </div>
-  );
-}
 
 export function ClientsPageClient({
   clients,
@@ -224,9 +175,6 @@ export function ClientsPageClient({
                     {c.companyName && !sameContactLabel(c.companyName, c.name) && (
                       <p className="text-xs text-slate-500">{c.companyName}</p>
                     )}
-                    <div className="mt-2">
-                      <ClientRowQuickActions clientId={c.id} userRole={userRole} />
-                    </div>
                   </td>
                   <td className="px-4 py-4">
                     <ClientContactCell client={c} />

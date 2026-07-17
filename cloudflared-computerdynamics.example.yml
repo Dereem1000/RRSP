@@ -4,8 +4,15 @@ credentials-file: C:\Users\User\.cloudflared\YOUR_TUNNEL_UUID.json
 ingress:
   - hostname: api.computerdynamicstt.com
     service: http://127.0.0.1:5001
+  - hostname: mini.computerdynamicstt.com
+    service: http://127.0.0.1:8876
+  - hostname: demo.computerdynamicstt.com
+    service: http://127.0.0.1:3001
   - hostname: computerdynamicstt.com
     service: http://127.0.0.1:3000
   - hostname: www.computerdynamicstt.com
     service: http://127.0.0.1:3000
+  # --- Developer Toolbox (portal-managed) ---
+  # Assign dev1/dev2/dev3 in portal: Developer Toolbox
+  # --- end Developer Toolbox ---
   - service: http_status:404

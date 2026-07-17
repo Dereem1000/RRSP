@@ -12,7 +12,6 @@ export type DashboardStats = {
   totalTickets: number;
   openTickets: number;
   resolvedTickets: number;
-  activeActivities: number;
   totalRevenue: number;
   pendingPayments: number;
   totalInvoices: number;
@@ -41,13 +40,6 @@ export type RecentTicket = {
 export type TicketStatusBreakdown = {
   status: string;
   count: number;
-};
-
-export type RecentActivity = {
-  id: number;
-  description: string;
-  userName: string;
-  createdAt: string;
 };
 
 export type SecurityEventSummary = {
@@ -83,7 +75,6 @@ export type DashboardOverview = {
   systemHealth: SystemHealth;
   recentTickets: RecentTicket[];
   ticketBreakdown: TicketStatusBreakdown[];
-  recentActivity: RecentActivity[];
   security?: SecurityStatus;
   clientProfile?: ClientProfile;
   techMetrics?: TechnicianMetrics;
@@ -133,41 +124,6 @@ async function getFinancialStats(): Promise<{
     };
   } catch {
     return { totalRevenue: 0, pendingPayments: 0, totalInvoices: 0, overdueInvoices: 0 };
-  }
-}
-
-async function getActiveActivitiesCount(): Promise<number> {
-  return safeCount(`SELECT COUNT(*) AS count FROM activities WHERE status = 'active'`);
-}
-
-async function getRecentActivities(limit = 10, userId?: number): Promise<RecentActivity[]> {
-  try {
-    const sequelize = getSequelize();
-    const userFilter = userId != null ? 'WHERE a.user_id = :userId' : '';
-    const rows = await sequelize.query<{
-      id: number;
-      description: string;
-      userName: string;
-      createdAt: string;
-    }>(
-      `SELECT a.id, COALESCE(a.description, a.project_name, 'Activity') AS description,
-              COALESCE(u.first_name || ' ' || u.last_name, u.username, 'System') AS userName,
-              COALESCE(a.clock_in_time, a.created_at) AS createdAt
-       FROM activities a
-       LEFT JOIN users u ON u.id = a.user_id
-       ${userFilter}
-       ORDER BY COALESCE(a.clock_in_time, a.created_at) DESC
-       LIMIT :limit`,
-      { replacements: { limit, userId }, type: QueryTypes.SELECT }
-    );
-    return rows.map((r) => ({
-      id: r.id,
-      description: r.description,
-      userName: r.userName,
-      createdAt: r.createdAt,
-    }));
-  } catch {
-    return [];
   }
 }
 
@@ -310,7 +266,7 @@ function mapRecentTickets(tickets: Ticket[]): RecentTicket[] {
 }
 
 export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
-  const [totalUsers, totalClients, totalTickets, openTickets, resolvedTickets, financial, activeActivities] =
+  const [totalUsers, totalClients, totalTickets, openTickets, resolvedTickets, financial] =
     await Promise.all([
       User.count({ where: { isActive: true } }),
       Client.count({ where: { isActive: true } }),
@@ -318,13 +274,11 @@ export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
       Ticket.count({ where: { isActive: 1, status: { [Op.in]: OPEN_STATUSES } } }),
       Ticket.count({ where: { isActive: 1, status: { [Op.in]: RESOLVED_STATUSES } } }),
       getFinancialStats(),
-      getActiveActivitiesCount(),
     ]);
 
-  const [recentTickets, ticketBreakdown, recentActivity, security] = await Promise.all([
+  const [recentTickets, ticketBreakdown, security] = await Promise.all([
     Ticket.findAll({ where: { isActive: 1 }, order: [['lastUpdated', 'DESC']], limit: 8 }),
     getTicketBreakdown(),
-    getRecentActivities(8),
     getSecurityStatus(),
   ]);
 
@@ -335,13 +289,11 @@ export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
       totalTickets,
       openTickets,
       resolvedTickets,
-      activeActivities,
       ...financial,
     },
     systemHealth: getSystemHealth(),
     recentTickets: mapRecentTickets(recentTickets),
     ticketBreakdown,
-    recentActivity,
     security,
   };
 }
@@ -349,19 +301,15 @@ export async function getAdminDashboardOverview(): Promise<DashboardOverview> {
 export async function getTechnicianDashboardOverview(userId: number): Promise<DashboardOverview> {
   const assignedWhere = { isActive: 1, assignedTo: userId };
 
-  const [totalTickets, openTickets, resolvedTickets, activeActivities] = await Promise.all([
+  const [totalTickets, openTickets, resolvedTickets] = await Promise.all([
     Ticket.count({ where: assignedWhere }),
     Ticket.count({ where: { ...assignedWhere, status: { [Op.in]: OPEN_STATUSES } } }),
     Ticket.count({ where: { ...assignedWhere, status: { [Op.in]: RESOLVED_STATUSES } } }),
-    safeCount(`SELECT COUNT(*) AS count FROM activities WHERE user_id = :userId AND status = 'active'`, {
-      userId,
-    }),
   ]);
 
-  const [recentTickets, ticketBreakdown, recentActivity, techMetrics, security] = await Promise.all([
+  const [recentTickets, ticketBreakdown, techMetrics, security] = await Promise.all([
     Ticket.findAll({ where: assignedWhere, order: [['lastUpdated', 'DESC']], limit: 8 }),
     getTicketBreakdown({ assignedTo: userId }),
-    getRecentActivities(5, userId),
     getTechnicianMetrics(userId),
     getSecurityStatus(),
   ]);
@@ -373,7 +321,6 @@ export async function getTechnicianDashboardOverview(userId: number): Promise<Da
       totalTickets,
       openTickets,
       resolvedTickets,
-      activeActivities,
       totalRevenue: 0,
       pendingPayments: 0,
       totalInvoices: 0,
@@ -382,7 +329,6 @@ export async function getTechnicianDashboardOverview(userId: number): Promise<Da
     systemHealth: getSystemHealth(),
     recentTickets: mapRecentTickets(recentTickets),
     ticketBreakdown,
-    recentActivity,
     techMetrics,
     security,
   };
@@ -399,7 +345,6 @@ export async function getClientDashboardOverview(userId: number): Promise<Dashbo
         totalTickets: 0,
         openTickets: 0,
         resolvedTickets: 0,
-        activeActivities: 0,
         totalRevenue: 0,
         pendingPayments: 0,
         totalInvoices: 0,
@@ -408,7 +353,6 @@ export async function getClientDashboardOverview(userId: number): Promise<Dashbo
       systemHealth: { cpuUsage: 0, memoryUsage: 0, uptimeHours: 0, status: 'operational' },
       recentTickets: [],
       ticketBreakdown: [],
-      recentActivity: [],
     };
   }
 
@@ -433,7 +377,6 @@ export async function getClientDashboardOverview(userId: number): Promise<Dashbo
       totalTickets,
       openTickets,
       resolvedTickets,
-      activeActivities: 0,
       totalRevenue: 0,
       pendingPayments: 0,
       totalInvoices: clientProfile.invoiceCount,
@@ -442,7 +385,6 @@ export async function getClientDashboardOverview(userId: number): Promise<Dashbo
     systemHealth: { cpuUsage: 0, memoryUsage: 0, uptimeHours: 0, status: 'operational' },
     recentTickets: mapRecentTickets(recentTickets),
     ticketBreakdown,
-    recentActivity: [],
     clientProfile,
   };
 }

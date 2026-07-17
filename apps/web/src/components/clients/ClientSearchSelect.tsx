@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import type { ClientPickerOption } from '@/lib/client-picker';
 
 export type ClientOption = ClientPickerOption;
@@ -32,6 +32,10 @@ type ClientSearchSelectProps = {
   allLabel?: string;
   id?: string;
   'aria-label'?: string;
+  /** When set, show an option to add a client when the typed name is not in the list. */
+  allowCreate?: boolean;
+  onCreateRequest?: (query: string) => void;
+  createLabel?: string;
 };
 
 export function ClientSearchSelect({
@@ -48,6 +52,9 @@ export function ClientSearchSelect({
   allLabel = 'All clients',
   id: idProp,
   'aria-label': ariaLabel,
+  allowCreate = false,
+  onCreateRequest,
+  createLabel = 'Add client',
 }: ClientSearchSelectProps) {
   const autoId = useId();
   const inputId = idProp ?? autoId;
@@ -92,6 +99,27 @@ export function ClientSearchSelect({
       })
       .slice(0, 80);
   }, [clients, query, allowAll, allLabel]);
+
+  const trimmedQuery = query.trim();
+  const exactMatch = useMemo(() => {
+    if (!trimmedQuery) return false;
+    const q = trimmedQuery.toLowerCase();
+    return clients.some((c) => {
+      const label = formatClientLabel(c).toLowerCase();
+      return (
+        label === q ||
+        c.name.toLowerCase() === q ||
+        (c.companyName?.toLowerCase() === q)
+      );
+    });
+  }, [clients, trimmedQuery]);
+
+  const showCreateOption =
+    allowCreate &&
+    Boolean(onCreateRequest) &&
+    trimmedQuery.length > 0 &&
+    !value &&
+    !exactMatch;
 
   function pick(clientId: string) {
     onChange(clientId);
@@ -158,26 +186,46 @@ export function ClientSearchSelect({
           role="listbox"
           className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         >
-          {options.length === 0 ? (
+          {options.length === 0 && !showCreateOption ? (
             <li className="px-3 py-2 text-sm text-slate-500">No clients match</li>
           ) : (
-            options.map((c) => (
-              <li key={c.id} role="option" aria-selected={c.id === value}>
-                <button
-                  type="button"
-                  className={`flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-indigo-50 ${
-                    c.id === value ? 'bg-indigo-50 font-medium text-indigo-900' : 'text-slate-800'
-                  }`}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pick(c.id)}
-                >
-                  <span>{c.id === 'all' ? allLabel : formatClientLabel(c)}</span>
-                  {c.id !== 'all' && c.companyName && c.name && c.companyName !== c.name && (
-                    <span className="text-xs text-slate-500">{c.name}</span>
-                  )}
-                </button>
-              </li>
-            ))
+            <>
+              {options.map((c) => (
+                <li key={c.id} role="option" aria-selected={c.id === value}>
+                  <button
+                    type="button"
+                    className={`flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-indigo-50 ${
+                      c.id === value ? 'bg-indigo-50 font-medium text-indigo-900' : 'text-slate-800'
+                    }`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => pick(c.id)}
+                  >
+                    <span>{c.id === 'all' ? allLabel : formatClientLabel(c)}</span>
+                    {c.id !== 'all' && c.companyName && c.name && c.companyName !== c.name && (
+                      <span className="text-xs text-slate-500">{c.name}</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+              {showCreateOption && (
+                <li role="option" aria-selected={false}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onCreateRequest?.(trimmedQuery);
+                      setOpen(false);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span>
+                      {createLabel}: <span className="font-semibold">&ldquo;{trimmedQuery}&rdquo;</span>
+                    </span>
+                  </button>
+                </li>
+              )}
+            </>
           )}
         </ul>
       )}

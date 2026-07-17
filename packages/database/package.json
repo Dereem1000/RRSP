@@ -6,12 +6,13 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "verify": "tsx src/verify-connection.ts"
+    "verify": "tsx src/verify-connection.ts",
+    "seed-showcase": "tsx src/seed-showcase.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.5.0",
-    "sequelize": "^6.37.7",
+    "sequelize": "^6.37.8",
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {

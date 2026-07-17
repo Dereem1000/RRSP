@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Shield, ShieldAlert } from 'lucide-react';
 
@@ -21,12 +22,19 @@ export function SecurityStatusBadge() {
   const router = useRouter();
   const [summary, setSummary] = useState<BadgeSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/security/badge-summary');
-      const data = await res.json();
-      if (res.ok && data.summary) {
+      const res = await fetch('/api/security/badge-summary', {
+        credentials: 'include',
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) return;
+      const text = await res.text();
+      if (!text.trim() || text.trimStart().startsWith('<')) return;
+      const data = JSON.parse(text) as { summary?: BadgeSummary };
+      if (data.summary) {
         setSummary(data.summary);
       }
     } catch {
@@ -42,7 +50,11 @@ export function SecurityStatusBadge() {
     return () => clearInterval(id);
   }, [load]);
 
-  if (loading && !summary) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || (loading && !summary)) return null;
 
   const issueCount = summary?.issueCount ?? 0;
   const hasIssues = issueCount > 0;
@@ -60,7 +72,7 @@ export function SecurityStatusBadge() {
       ? 'Security: emergency bypass active. Open security settings.'
       : 'Security status OK. Open security settings.';
 
-  return (
+  return createPortal(
     <button
       type="button"
       onClick={() => router.push('/settings?tab=security')}
@@ -72,14 +84,14 @@ export function SecurityStatusBadge() {
             ? 'Emergency bypass is active'
             : `Security score ${summary?.securityScore ?? '—'}`
       }
-      className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold shadow-lg transition ${tone}`}
+      className={`fixed right-4 z-50 flex items-center gap-2 rounded-full border px-3 py-2.5 text-sm font-semibold shadow-lg transition max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 lg:right-6 ${tone}`}
     >
       {hasIssues ? (
         <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden />
       ) : (
         <Shield className="h-5 w-5 shrink-0" aria-hidden />
       )}
-      <span className="hidden sm:inline">
+      <span className="hidden lg:inline">
         {hasIssues ? 'Security' : bypassActive ? 'Bypass on' : 'Security'}
       </span>
       {hasIssues && (
@@ -93,6 +105,7 @@ export function SecurityStatusBadge() {
       {!hasIssues && !bypassActive && summary != null && (
         <span className="text-xs font-medium opacity-80">{summary.securityScore}</span>
       )}
-    </button>
+    </button>,
+    document.body,
   );
 }

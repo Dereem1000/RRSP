@@ -1,0 +1,382 @@
+import { dispatch as dispatch_accounting_analytics } from './handlers/accounting/analytics';
+import { dispatch as dispatch_accounting_summary } from './handlers/accounting/summary';
+import { dispatch as dispatch_auth_login } from './handlers/auth/login';
+import { dispatch as dispatch_auth_logout } from './handlers/auth/logout';
+import { dispatch as dispatch_auth_me } from './handlers/auth/me';
+import { dispatch as dispatch_backup_id } from './handlers/backup/id';
+import { dispatch as dispatch_backup_id__download } from './handlers/backup/id__download';
+import { dispatch as dispatch_backup_id__restore } from './handlers/backup/id__restore';
+import { dispatch as dispatch_backup_id__verify } from './handlers/backup/id__verify';
+import { dispatch as dispatch_backup_auto_settings } from './handlers/backup/auto-settings';
+import { dispatch as dispatch_backup_create } from './handlers/backup/create';
+import { dispatch as dispatch_backup_list } from './handlers/backup/list';
+import { dispatch as dispatch_backup_progress__id } from './handlers/backup/progress__id';
+import { dispatch as dispatch_backup_status } from './handlers/backup/status';
+import { dispatch as dispatch_backup_upload_restore } from './handlers/backup/upload-restore';
+import { dispatch as dispatch_calendar_calendar } from './handlers/calendar/calendar';
+import { dispatch as dispatch_calendar_id } from './handlers/calendar/id';
+import { dispatch as dispatch_client_portal_invoices } from './handlers/client-portal/invoices';
+import { dispatch as dispatch_client_portal_invoices__id } from './handlers/client-portal/invoices__id';
+import { dispatch as dispatch_client_portal_invoices__id__pay } from './handlers/client-portal/invoices__id__pay';
+import { dispatch as dispatch_client_portal_invoices__id__payments } from './handlers/client-portal/invoices__id__payments';
+import { dispatch as dispatch_client_portal_invoices__id__print } from './handlers/client-portal/invoices__id__print';
+import { dispatch as dispatch_client_portal_license_status } from './handlers/client-portal/license-status';
+import { dispatch as dispatch_client_portal_orders } from './handlers/client-portal/orders';
+import { dispatch as dispatch_client_portal_orders__id } from './handlers/client-portal/orders__id';
+import { dispatch as dispatch_client_portal_quotes } from './handlers/client-portal/quotes';
+import { dispatch as dispatch_client_portal_quotes__id } from './handlers/client-portal/quotes__id';
+import { dispatch as dispatch_client_portal_quotes__id__accept } from './handlers/client-portal/quotes__id__accept';
+import { dispatch as dispatch_client_portal_quotes__id__decline } from './handlers/client-portal/quotes__id__decline';
+import { dispatch as dispatch_client_portal_quotes__id__print } from './handlers/client-portal/quotes__id__print';
+import { dispatch as dispatch_clients_clients } from './handlers/clients/clients';
+import { dispatch as dispatch_clients_id } from './handlers/clients/id';
+import { dispatch as dispatch_clients_id__billing } from './handlers/clients/id__billing';
+import { dispatch as dispatch_clients_id__contract } from './handlers/clients/id__contract';
+import { dispatch as dispatch_clients_id__related } from './handlers/clients/id__related';
+import { dispatch as dispatch_clients_id__resend_welcome } from './handlers/clients/id__resend-welcome';
+import { dispatch as dispatch_clients_id__tickets } from './handlers/clients/id__tickets';
+import { dispatch as dispatch_clients_id__usage } from './handlers/clients/id__usage';
+import { dispatch as dispatch_clients_id__usage__increment } from './handlers/clients/id__usage__increment';
+import { dispatch as dispatch_clients_id__usage__reset } from './handlers/clients/id__usage__reset';
+import { dispatch as dispatch_clients_by_email__email } from './handlers/clients/by-email__email';
+import { dispatch as dispatch_clients_usage__overview } from './handlers/clients/usage__overview';
+import { dispatch as dispatch_dashboard_dashboard } from './handlers/dashboard/dashboard';
+import { dispatch as dispatch_dashboard_overview } from './handlers/dashboard/overview';
+import { dispatch as dispatch_developer_toolbox_developer_toolbox } from './handlers/developer-toolbox/developer-toolbox';
+import { dispatch as dispatch_developer_toolbox_apply } from './handlers/developer-toolbox/apply';
+import { dispatch as dispatch_developer_toolbox_health } from './handlers/developer-toolbox/health';
+import { dispatch as dispatch_developer_toolbox_provisioning } from './handlers/developer-toolbox/provisioning';
+import { dispatch as dispatch_developer_toolbox_slots__id } from './handlers/developer-toolbox/slots__id';
+import { dispatch as dispatch_emergency_overrides } from './handlers/emergency/overrides';
+import { dispatch as dispatch_emergency_overrides__id } from './handlers/emergency/overrides__id';
+import { dispatch as dispatch_emergency_overrides__id__deactivate } from './handlers/emergency/overrides__id__deactivate';
+import { dispatch as dispatch_health_health } from './handlers/health/health';
+import { dispatch as dispatch_health_live } from './handlers/health/live';
+import { dispatch as dispatch_license_info } from './handlers/license/info';
+import { dispatch as dispatch_license_status } from './handlers/license/status';
+import { dispatch as dispatch_license_validate } from './handlers/license/validate';
+import { dispatch as dispatch_mini_chat } from './handlers/mini/chat';
+import { dispatch as dispatch_mini_chat_feed } from './handlers/mini/chat-feed';
+import { dispatch as dispatch_mini_chat_notifications__ack } from './handlers/mini/chat-notifications__ack';
+import { dispatch as dispatch_mini_context } from './handlers/mini/context';
+import { dispatch as dispatch_mini_dashboard } from './handlers/mini/dashboard';
+import { dispatch as dispatch_mini_dashboard__summary } from './handlers/mini/dashboard__summary';
+import { dispatch as dispatch_mini_events } from './handlers/mini/events';
+import { dispatch as dispatch_mini_external_systems } from './handlers/mini/external-systems';
+import { dispatch as dispatch_mini_external_systems__system_logs__connectionId__logs } from './handlers/mini/external-systems__system-logs__connectionId__logs';
+import { dispatch as dispatch_mini_external_systems__system_logs__forget } from './handlers/mini/external-systems__system-logs__forget';
+import { dispatch as dispatch_mini_external_systems__system_logs__connection_settings } from './handlers/mini/external-systems__system-logs__connection-settings';
+import { dispatch as dispatch_mini_external_systems__system_logs__push_kit_update } from './handlers/mini/external-systems__system-logs__push-kit-update';
+import { dispatch as dispatch_mini_system_logs__path } from './handlers/mini/system_logs__path';
+import { dispatch as dispatch_mini_library } from './handlers/mini/library';
+import { dispatch as dispatch_mini_status } from './handlers/mini/status';
+import { dispatch as dispatch_msp_active_licenses } from './handlers/msp/active-licenses';
+import { dispatch as dispatch_msp_client_email_policy } from './handlers/msp/client-email-policy';
+import { dispatch as dispatch_msp_clients } from './handlers/msp/clients';
+import { dispatch as dispatch_msp_clients__clientId__licenses__send_email } from './handlers/msp/clients__clientId__licenses__send-email';
+import { dispatch as dispatch_msp_invoices } from './handlers/msp/invoices';
+import { dispatch as dispatch_msp_invoices__id } from './handlers/msp/invoices__id';
+import { dispatch as dispatch_msp_invoices__id__email_history } from './handlers/msp/invoices__id__email-history';
+import { dispatch as dispatch_msp_invoices__id__mark_paid } from './handlers/msp/invoices__id__mark-paid';
+import { dispatch as dispatch_msp_invoices__id__payments } from './handlers/msp/invoices__id__payments';
+import { dispatch as dispatch_msp_invoices__id__print } from './handlers/msp/invoices__id__print';
+import { dispatch as dispatch_msp_invoices__id__send_email } from './handlers/msp/invoices__id__send-email';
+import { dispatch as dispatch_msp_invoices__id__share_link } from './handlers/msp/invoices__id__share-link';
+import { dispatch as dispatch_msp_invoices__id__links } from './handlers/msp/invoices__id__links';
+import { dispatch as dispatch_msp_invoices__id__links__linkId } from './handlers/msp/invoices__id__links__linkId';
+import { dispatch as dispatch_msp_license_serials__lock } from './handlers/msp/license-serials__lock';
+import { dispatch as dispatch_msp_license_serials__unlock } from './handlers/msp/license-serials__unlock';
+import { dispatch as dispatch_msp_license_status } from './handlers/msp/license-status';
+import { dispatch as dispatch_msp_license_status__clientId } from './handlers/msp/license-status__clientId';
+import { dispatch as dispatch_msp_management_systems } from './handlers/msp/management-systems';
+import { dispatch as dispatch_msp_orders } from './handlers/msp/orders';
+import { dispatch as dispatch_msp_orders__id } from './handlers/msp/orders__id';
+import { dispatch as dispatch_msp_orders__id__links } from './handlers/msp/orders__id__links';
+import { dispatch as dispatch_msp_orders__id__links__linkId } from './handlers/msp/orders__id__links__linkId';
+import { dispatch as dispatch_msp_orders__id__receive_at_office } from './handlers/msp/orders__id__receive-at-office';
+import { dispatch as dispatch_msp_orders__check_non_pre_alerted } from './handlers/msp/orders__check-non-pre-alerted';
+import { dispatch as dispatch_msp_orders__email_monitoring__check } from './handlers/msp/orders__email-monitoring__check';
+import { dispatch as dispatch_msp_orders__email_monitoring__config } from './handlers/msp/orders__email-monitoring__config';
+import { dispatch as dispatch_msp_orders__receive_lookup } from './handlers/msp/orders__receive-lookup';
+import { dispatch as dispatch_msp_orders__search_linked_entities } from './handlers/msp/orders__search-linked-entities';
+import { dispatch as dispatch_msp_overview } from './handlers/msp/overview';
+import { dispatch as dispatch_msp_payments__id } from './handlers/msp/payments__id';
+import { dispatch as dispatch_msp_project_guard__license_action } from './handlers/msp/project-guard__license-action';
+import { dispatch as dispatch_msp_quote_settings } from './handlers/msp/quote-settings';
+import { dispatch as dispatch_msp_quotes } from './handlers/msp/quotes';
+import { dispatch as dispatch_msp_quotes__id } from './handlers/msp/quotes__id';
+import { dispatch as dispatch_msp_quotes__id__accept } from './handlers/msp/quotes__id__accept';
+import { dispatch as dispatch_msp_quotes__id__convert } from './handlers/msp/quotes__id__convert';
+import { dispatch as dispatch_msp_quotes__id__email_history } from './handlers/msp/quotes__id__email-history';
+import { dispatch as dispatch_msp_quotes__id__expire } from './handlers/msp/quotes__id__expire';
+import { dispatch as dispatch_msp_quotes__id__print } from './handlers/msp/quotes__id__print';
+import { dispatch as dispatch_msp_quotes__id__reject } from './handlers/msp/quotes__id__reject';
+import { dispatch as dispatch_msp_quotes__id__send_email } from './handlers/msp/quotes__id__send-email';
+import { dispatch as dispatch_msp_quotes__id__share_link } from './handlers/msp/quotes__id__share-link';
+import { dispatch as dispatch_msp_sync__clientId } from './handlers/msp/sync__clientId';
+import { dispatch as dispatch_notices_notices } from './handlers/notices/notices';
+import { dispatch as dispatch_payments_wipay__response } from './handlers/payments/wipay__response';
+import { dispatch as dispatch_public_captcha_config } from './handlers/public/captcha-config';
+import { dispatch as dispatch_public_client_signup } from './handlers/public/client-signup';
+import { dispatch as dispatch_public_demo_request } from './handlers/public/demo-request';
+import { dispatch as dispatch_public_demo_security_stats } from './handlers/public/demo-security-stats';
+import { dispatch as dispatch_public_invoice__token } from './handlers/public/invoice__token';
+import { dispatch as dispatch_public_invoice__token__print } from './handlers/public/invoice__token__print';
+import { dispatch as dispatch_public_live_demo_access } from './handlers/public/live-demo-access';
+import { dispatch as dispatch_public_quote__token } from './handlers/public/quote__token';
+import { dispatch as dispatch_public_quote__token__print } from './handlers/public/quote__token__print';
+import { dispatch as dispatch_public_request_technician } from './handlers/public/request-technician';
+import { dispatch as dispatch_public_showcase_portal } from './handlers/public/showcase-portal';
+import { dispatch as dispatch_public_ticket_status__identifier } from './handlers/public/ticket-status__identifier';
+import { dispatch as dispatch_sales_sales } from './handlers/sales/sales';
+import { dispatch as dispatch_sales_id } from './handlers/sales/id';
+import { dispatch as dispatch_sales_id__advance } from './handlers/sales/id__advance';
+import { dispatch as dispatch_sales_id__convert } from './handlers/sales/id__convert';
+import { dispatch as dispatch_sales_id__defer } from './handlers/sales/id__defer';
+import { dispatch as dispatch_sales_id__delete } from './handlers/sales/id__delete';
+import { dispatch as dispatch_sales_id__log } from './handlers/sales/id__log';
+import { dispatch as dispatch_sales_id__reopen } from './handlers/sales/id__reopen';
+import { dispatch as dispatch_sales_id__revert } from './handlers/sales/id__revert';
+import { dispatch as dispatch_settings_settings } from './handlers/settings/settings';
+import { dispatch as dispatch_settings_company } from './handlers/settings/company';
+import { dispatch as dispatch_settings_email__logs } from './handlers/settings/email__logs';
+import { dispatch as dispatch_settings_email__test } from './handlers/settings/email__test';
+import { dispatch as dispatch_settings_mini } from './handlers/settings/mini';
+import { dispatch as dispatch_settings_msp_sync_token } from './handlers/settings/msp-sync-token';
+import { dispatch as dispatch_settings_msp_sync_token__sync_mini } from './handlers/settings/msp-sync-token__sync-mini';
+import { dispatch as dispatch_settings_recaptcha } from './handlers/settings/recaptcha';
+import { dispatch as dispatch_system_demo_mode } from './handlers/system/demo-mode';
+import { dispatch as dispatch_tickets_tickets } from './handlers/tickets/tickets';
+import { dispatch as dispatch_tickets_id } from './handlers/tickets/id';
+import { dispatch as dispatch_tickets_id__assign } from './handlers/tickets/id__assign';
+import { dispatch as dispatch_tickets_id__comments } from './handlers/tickets/id__comments';
+import { dispatch as dispatch_tickets_id__escalate } from './handlers/tickets/id__escalate';
+import { dispatch as dispatch_tickets_id__resend_update } from './handlers/tickets/id__resend-update';
+import { dispatch as dispatch_tickets_id__resolve } from './handlers/tickets/id__resolve';
+import { dispatch as dispatch_tickets_import_csv } from './handlers/tickets/import-csv';
+import { dispatch as dispatch_tickets_stats } from './handlers/tickets/stats';
+import { dispatch as dispatch_users_users } from './handlers/users/users';
+import { dispatch as dispatch_users_id } from './handlers/users/id';
+import { dispatch as dispatch_users_id__reset_password } from './handlers/users/id__reset-password';
+import { dispatch as dispatch_users_technicians } from './handlers/users/technicians';
+import { createDispatcher, type RouteEntry } from '@cd-v2/api-handlers';
+import { dispatch as dispatch_mini_library__path } from './handlers/mini/library__path';
+import { dispatch as dispatch_mini_project_guard__path } from './handlers/mini/project_guard__path';
+
+export const portalRoutes: RouteEntry[] = [
+  { method: 'GET', pattern: '/accounting/analytics', handler: dispatch_accounting_analytics },
+  { method: 'GET', pattern: '/accounting/summary', handler: dispatch_accounting_summary },
+  { method: 'POST', pattern: '/auth/login', handler: dispatch_auth_login },
+  { method: 'POST', pattern: '/auth/logout', handler: dispatch_auth_logout },
+  { method: 'GET', pattern: '/auth/me', handler: dispatch_auth_me },
+  { method: 'GET', pattern: '/backup/:id', handler: dispatch_backup_id },
+  { method: 'DELETE', pattern: '/backup/:id', handler: dispatch_backup_id },
+  { method: 'GET', pattern: '/backup/:id/download', handler: dispatch_backup_id__download },
+  { method: 'POST', pattern: '/backup/:id/restore', handler: dispatch_backup_id__restore },
+  { method: 'POST', pattern: '/backup/:id/verify', handler: dispatch_backup_id__verify },
+  { method: 'GET', pattern: '/backup/auto-settings', handler: dispatch_backup_auto_settings },
+  { method: 'POST', pattern: '/backup/auto-settings', handler: dispatch_backup_auto_settings },
+  { method: 'POST', pattern: '/backup/create', handler: dispatch_backup_create },
+  { method: 'GET', pattern: '/backup/list', handler: dispatch_backup_list },
+  { method: 'GET', pattern: '/backup/progress/:id', handler: dispatch_backup_progress__id },
+  { method: 'GET', pattern: '/backup/status', handler: dispatch_backup_status },
+  { method: 'POST', pattern: '/backup/upload-restore', handler: dispatch_backup_upload_restore },
+  { method: 'GET', pattern: '/calendar', handler: dispatch_calendar_calendar },
+  { method: 'POST', pattern: '/calendar', handler: dispatch_calendar_calendar },
+  { method: 'PATCH', pattern: '/calendar/:id', handler: dispatch_calendar_id },
+  { method: 'DELETE', pattern: '/calendar/:id', handler: dispatch_calendar_id },
+  { method: 'GET', pattern: '/client-portal/invoices', handler: dispatch_client_portal_invoices },
+  { method: 'GET', pattern: '/client-portal/invoices/:id', handler: dispatch_client_portal_invoices__id },
+  { method: 'POST', pattern: '/client-portal/invoices/:id/pay', handler: dispatch_client_portal_invoices__id__pay },
+  { method: 'GET', pattern: '/client-portal/invoices/:id/payments', handler: dispatch_client_portal_invoices__id__payments },
+  { method: 'GET', pattern: '/client-portal/invoices/:id/print', handler: dispatch_client_portal_invoices__id__print },
+  { method: 'GET', pattern: '/client-portal/license-status', handler: dispatch_client_portal_license_status },
+  { method: 'POST', pattern: '/client-portal/license-status', handler: dispatch_client_portal_license_status },
+  { method: 'GET', pattern: '/client-portal/orders', handler: dispatch_client_portal_orders },
+  { method: 'GET', pattern: '/client-portal/orders/:id', handler: dispatch_client_portal_orders__id },
+  { method: 'GET', pattern: '/client-portal/quotes', handler: dispatch_client_portal_quotes },
+  { method: 'GET', pattern: '/client-portal/quotes/:id', handler: dispatch_client_portal_quotes__id },
+  { method: 'POST', pattern: '/client-portal/quotes/:id/accept', handler: dispatch_client_portal_quotes__id__accept },
+  { method: 'POST', pattern: '/client-portal/quotes/:id/decline', handler: dispatch_client_portal_quotes__id__decline },
+  { method: 'GET', pattern: '/client-portal/quotes/:id/print', handler: dispatch_client_portal_quotes__id__print },
+  { method: 'GET', pattern: '/clients', handler: dispatch_clients_clients },
+  { method: 'POST', pattern: '/clients', handler: dispatch_clients_clients },
+  { method: 'GET', pattern: '/clients/:id', handler: dispatch_clients_id },
+  { method: 'PUT', pattern: '/clients/:id', handler: dispatch_clients_id },
+  { method: 'DELETE', pattern: '/clients/:id', handler: dispatch_clients_id },
+  { method: 'GET', pattern: '/clients/:id/billing', handler: dispatch_clients_id__billing },
+  { method: 'POST', pattern: '/clients/:id/contract', handler: dispatch_clients_id__contract },
+  { method: 'GET', pattern: '/clients/:id/related', handler: dispatch_clients_id__related },
+  { method: 'POST', pattern: '/clients/:id/resend-welcome', handler: dispatch_clients_id__resend_welcome },
+  { method: 'GET', pattern: '/clients/:id/tickets', handler: dispatch_clients_id__tickets },
+  { method: 'GET', pattern: '/clients/:id/usage', handler: dispatch_clients_id__usage },
+  { method: 'POST', pattern: '/clients/:id/usage/increment', handler: dispatch_clients_id__usage__increment },
+  { method: 'POST', pattern: '/clients/:id/usage/reset', handler: dispatch_clients_id__usage__reset },
+  { method: 'GET', pattern: '/clients/by-email/:email', handler: dispatch_clients_by_email__email },
+  { method: 'GET', pattern: '/clients/usage/overview', handler: dispatch_clients_usage__overview },
+  { method: 'GET', pattern: '/dashboard', handler: dispatch_dashboard_dashboard },
+  { method: 'GET', pattern: '/dashboard/overview', handler: dispatch_dashboard_overview },
+  { method: 'GET', pattern: '/developer-toolbox', handler: dispatch_developer_toolbox_developer_toolbox },
+  { method: 'PUT', pattern: '/developer-toolbox', handler: dispatch_developer_toolbox_developer_toolbox },
+  { method: 'POST', pattern: '/developer-toolbox/apply', handler: dispatch_developer_toolbox_apply },
+  { method: 'GET', pattern: '/developer-toolbox/health', handler: dispatch_developer_toolbox_health },
+  { method: 'POST', pattern: '/developer-toolbox/health', handler: dispatch_developer_toolbox_health },
+  { method: 'GET', pattern: '/developer-toolbox/provisioning', handler: dispatch_developer_toolbox_provisioning },
+  { method: 'POST', pattern: '/developer-toolbox/provisioning', handler: dispatch_developer_toolbox_provisioning },
+  { method: 'POST', pattern: '/developer-toolbox/slots/:id', handler: dispatch_developer_toolbox_slots__id },
+  { method: 'GET', pattern: '/emergency/overrides', handler: dispatch_emergency_overrides },
+  { method: 'DELETE', pattern: '/emergency/overrides/:id', handler: dispatch_emergency_overrides__id },
+  { method: 'POST', pattern: '/emergency/overrides/:id/deactivate', handler: dispatch_emergency_overrides__id__deactivate },
+  { method: 'GET', pattern: '/health/live', handler: dispatch_health_live },
+  { method: 'GET', pattern: '/health', handler: dispatch_health_health },
+  { method: 'GET', pattern: '/license/info', handler: dispatch_license_info },
+  { method: 'GET', pattern: '/license/status', handler: dispatch_license_status },
+  { method: 'POST', pattern: '/license/validate', handler: dispatch_license_validate },
+  { method: 'POST', pattern: '/mini/chat', handler: dispatch_mini_chat },
+  { method: 'GET', pattern: '/mini/chat-feed', handler: dispatch_mini_chat_feed },
+  { method: 'POST', pattern: '/mini/chat-notifications/ack', handler: dispatch_mini_chat_notifications__ack },
+  { method: 'GET', pattern: '/mini/context', handler: dispatch_mini_context },
+  { method: 'GET', pattern: '/mini/dashboard', handler: dispatch_mini_dashboard },
+  { method: 'GET', pattern: '/mini/dashboard/summary', handler: dispatch_mini_dashboard__summary },
+  { method: 'GET', pattern: '/mini/events', handler: dispatch_mini_events },
+  { method: 'POST', pattern: '/mini/events', handler: dispatch_mini_events },
+  { method: 'GET', pattern: '/mini/external-systems', handler: dispatch_mini_external_systems },
+  { method: 'GET', pattern: '/mini/external-systems/system-logs/:connectionId/logs', handler: dispatch_mini_external_systems__system_logs__connectionId__logs },
+  { method: 'POST', pattern: '/mini/external-systems/system-logs/forget', handler: dispatch_mini_external_systems__system_logs__forget },
+  { method: 'POST', pattern: '/mini/external-systems/system-logs/connection-settings', handler: dispatch_mini_external_systems__system_logs__connection_settings },
+  { method: 'POST', pattern: '/mini/external-systems/system-logs/push-kit-update', handler: dispatch_mini_external_systems__system_logs__push_kit_update },
+  { method: 'GET', pattern: '/mini/library', handler: dispatch_mini_library },
+  { method: 'GET', pattern: '/mini/status', handler: dispatch_mini_status },
+  { method: 'GET', pattern: '/msp/active-licenses', handler: dispatch_msp_active_licenses },
+  { method: 'GET', pattern: '/msp/client-email-policy', handler: dispatch_msp_client_email_policy },
+  { method: 'GET', pattern: '/msp/clients', handler: dispatch_msp_clients },
+  { method: 'POST', pattern: '/msp/clients/:clientId/licenses/send-email', handler: dispatch_msp_clients__clientId__licenses__send_email },
+  { method: 'GET', pattern: '/msp/invoices', handler: dispatch_msp_invoices },
+  { method: 'POST', pattern: '/msp/invoices', handler: dispatch_msp_invoices },
+  { method: 'GET', pattern: '/msp/invoices/:id', handler: dispatch_msp_invoices__id },
+  { method: 'PUT', pattern: '/msp/invoices/:id', handler: dispatch_msp_invoices__id },
+  { method: 'DELETE', pattern: '/msp/invoices/:id', handler: dispatch_msp_invoices__id },
+  { method: 'GET', pattern: '/msp/invoices/:id/email-history', handler: dispatch_msp_invoices__id__email_history },
+  { method: 'PUT', pattern: '/msp/invoices/:id/mark-paid', handler: dispatch_msp_invoices__id__mark_paid },
+  { method: 'GET', pattern: '/msp/invoices/:id/payments', handler: dispatch_msp_invoices__id__payments },
+  { method: 'POST', pattern: '/msp/invoices/:id/payments', handler: dispatch_msp_invoices__id__payments },
+  { method: 'GET', pattern: '/msp/invoices/:id/print', handler: dispatch_msp_invoices__id__print },
+  { method: 'POST', pattern: '/msp/invoices/:id/send-email', handler: dispatch_msp_invoices__id__send_email },
+  { method: 'POST', pattern: '/msp/invoices/:id/share-link', handler: dispatch_msp_invoices__id__share_link },
+  { method: 'GET', pattern: '/msp/invoices/:id/links', handler: dispatch_msp_invoices__id__links },
+  { method: 'POST', pattern: '/msp/invoices/:id/links', handler: dispatch_msp_invoices__id__links },
+  { method: 'DELETE', pattern: '/msp/invoices/:id/links/:linkId', handler: dispatch_msp_invoices__id__links__linkId },
+  { method: 'POST', pattern: '/msp/license-serials/lock', handler: dispatch_msp_license_serials__lock },
+  { method: 'POST', pattern: '/msp/license-serials/unlock', handler: dispatch_msp_license_serials__unlock },
+  { method: 'GET', pattern: '/msp/license-status', handler: dispatch_msp_license_status },
+  { method: 'GET', pattern: '/msp/license-status/:clientId', handler: dispatch_msp_license_status__clientId },
+  { method: 'GET', pattern: '/msp/management-systems', handler: dispatch_msp_management_systems },
+  { method: 'GET', pattern: '/msp/orders', handler: dispatch_msp_orders },
+  { method: 'POST', pattern: '/msp/orders', handler: dispatch_msp_orders },
+  { method: 'POST', pattern: '/msp/orders/check-non-pre-alerted', handler: dispatch_msp_orders__check_non_pre_alerted },
+  { method: 'POST', pattern: '/msp/orders/email-monitoring/check', handler: dispatch_msp_orders__email_monitoring__check },
+  { method: 'GET', pattern: '/msp/orders/email-monitoring/config', handler: dispatch_msp_orders__email_monitoring__config },
+  { method: 'PUT', pattern: '/msp/orders/email-monitoring/config', handler: dispatch_msp_orders__email_monitoring__config },
+  { method: 'GET', pattern: '/msp/orders/receive-lookup', handler: dispatch_msp_orders__receive_lookup },
+  { method: 'GET', pattern: '/msp/orders/search-linked-entities', handler: dispatch_msp_orders__search_linked_entities },
+  { method: 'GET', pattern: '/msp/orders/:id', handler: dispatch_msp_orders__id },
+  { method: 'PUT', pattern: '/msp/orders/:id', handler: dispatch_msp_orders__id },
+  { method: 'DELETE', pattern: '/msp/orders/:id', handler: dispatch_msp_orders__id },
+  { method: 'GET', pattern: '/msp/orders/:id/links', handler: dispatch_msp_orders__id__links },
+  { method: 'POST', pattern: '/msp/orders/:id/links', handler: dispatch_msp_orders__id__links },
+  { method: 'DELETE', pattern: '/msp/orders/:id/links/:linkId', handler: dispatch_msp_orders__id__links__linkId },
+  { method: 'POST', pattern: '/msp/orders/:id/receive-at-office', handler: dispatch_msp_orders__id__receive_at_office },
+  { method: 'GET', pattern: '/msp/overview', handler: dispatch_msp_overview },
+  { method: 'DELETE', pattern: '/msp/payments/:id', handler: dispatch_msp_payments__id },
+  { method: 'POST', pattern: '/msp/project-guard/license-action', handler: dispatch_msp_project_guard__license_action },
+  { method: 'GET', pattern: '/msp/quote-settings', handler: dispatch_msp_quote_settings },
+  { method: 'PUT', pattern: '/msp/quote-settings', handler: dispatch_msp_quote_settings },
+  { method: 'GET', pattern: '/msp/quotes', handler: dispatch_msp_quotes },
+  { method: 'POST', pattern: '/msp/quotes', handler: dispatch_msp_quotes },
+  { method: 'GET', pattern: '/msp/quotes/:id', handler: dispatch_msp_quotes__id },
+  { method: 'PUT', pattern: '/msp/quotes/:id', handler: dispatch_msp_quotes__id },
+  { method: 'DELETE', pattern: '/msp/quotes/:id', handler: dispatch_msp_quotes__id },
+  { method: 'POST', pattern: '/msp/quotes/:id/accept', handler: dispatch_msp_quotes__id__accept },
+  { method: 'POST', pattern: '/msp/quotes/:id/convert', handler: dispatch_msp_quotes__id__convert },
+  { method: 'GET', pattern: '/msp/quotes/:id/email-history', handler: dispatch_msp_quotes__id__email_history },
+  { method: 'POST', pattern: '/msp/quotes/:id/expire', handler: dispatch_msp_quotes__id__expire },
+  { method: 'GET', pattern: '/msp/quotes/:id/print', handler: dispatch_msp_quotes__id__print },
+  { method: 'POST', pattern: '/msp/quotes/:id/reject', handler: dispatch_msp_quotes__id__reject },
+  { method: 'POST', pattern: '/msp/quotes/:id/send-email', handler: dispatch_msp_quotes__id__send_email },
+  { method: 'POST', pattern: '/msp/quotes/:id/share-link', handler: dispatch_msp_quotes__id__share_link },
+  { method: 'POST', pattern: '/msp/sync/:clientId', handler: dispatch_msp_sync__clientId },
+  { method: 'PUT', pattern: '/msp/sync/:clientId', handler: dispatch_msp_sync__clientId },
+  { method: 'GET', pattern: '/notices', handler: dispatch_notices_notices },
+  { method: 'GET', pattern: '/payments/wipay/response', handler: dispatch_payments_wipay__response },
+  { method: 'GET', pattern: '/public/captcha-config', handler: dispatch_public_captcha_config },
+  { method: 'POST', pattern: '/public/client-signup', handler: dispatch_public_client_signup },
+  { method: 'POST', pattern: '/public/demo-request', handler: dispatch_public_demo_request },
+  { method: 'GET', pattern: '/public/demo-security-stats', handler: dispatch_public_demo_security_stats },
+  { method: 'GET', pattern: '/public/invoice/:token', handler: dispatch_public_invoice__token },
+  { method: 'GET', pattern: '/public/invoice/:token/print', handler: dispatch_public_invoice__token__print },
+  { method: 'POST', pattern: '/public/live-demo-access', handler: dispatch_public_live_demo_access },
+  { method: 'GET', pattern: '/public/quote/:token', handler: dispatch_public_quote__token },
+  { method: 'GET', pattern: '/public/quote/:token/print', handler: dispatch_public_quote__token__print },
+  { method: 'POST', pattern: '/public/request-technician', handler: dispatch_public_request_technician },
+  { method: 'GET', pattern: '/public/showcase-portal', handler: dispatch_public_showcase_portal },
+  { method: 'GET', pattern: '/public/ticket-status/:identifier', handler: dispatch_public_ticket_status__identifier },
+  { method: 'GET', pattern: '/sales', handler: dispatch_sales_sales },
+  { method: 'POST', pattern: '/sales', handler: dispatch_sales_sales },
+  { method: 'GET', pattern: '/sales/:id', handler: dispatch_sales_id },
+  { method: 'PUT', pattern: '/sales/:id', handler: dispatch_sales_id },
+  { method: 'DELETE', pattern: '/sales/:id', handler: dispatch_sales_id },
+  { method: 'POST', pattern: '/sales/:id/advance', handler: dispatch_sales_id__advance },
+  { method: 'POST', pattern: '/sales/:id/convert', handler: dispatch_sales_id__convert },
+  { method: 'POST', pattern: '/sales/:id/defer', handler: dispatch_sales_id__defer },
+  { method: 'POST', pattern: '/sales/:id/delete', handler: dispatch_sales_id__delete },
+  { method: 'POST', pattern: '/sales/:id/log', handler: dispatch_sales_id__log },
+  { method: 'POST', pattern: '/sales/:id/reopen', handler: dispatch_sales_id__reopen },
+  { method: 'POST', pattern: '/sales/:id/revert', handler: dispatch_sales_id__revert },
+  { method: 'GET', pattern: '/settings', handler: dispatch_settings_settings },
+  { method: 'PUT', pattern: '/settings', handler: dispatch_settings_settings },
+  { method: 'GET', pattern: '/settings/company', handler: dispatch_settings_company },
+  { method: 'PUT', pattern: '/settings/company', handler: dispatch_settings_company },
+  { method: 'GET', pattern: '/settings/email/logs', handler: dispatch_settings_email__logs },
+  { method: 'POST', pattern: '/settings/email/test', handler: dispatch_settings_email__test },
+  { method: 'GET', pattern: '/settings/mini', handler: dispatch_settings_mini },
+  { method: 'POST', pattern: '/settings/mini', handler: dispatch_settings_mini },
+  { method: 'PUT', pattern: '/settings/mini', handler: dispatch_settings_mini },
+  { method: 'GET', pattern: '/settings/msp-sync-token', handler: dispatch_settings_msp_sync_token },
+  { method: 'POST', pattern: '/settings/msp-sync-token', handler: dispatch_settings_msp_sync_token },
+  { method: 'PUT', pattern: '/settings/msp-sync-token', handler: dispatch_settings_msp_sync_token },
+  { method: 'GET', pattern: '/settings/msp-sync-token/sync-mini', handler: dispatch_settings_msp_sync_token__sync_mini },
+  { method: 'POST', pattern: '/settings/msp-sync-token/sync-mini', handler: dispatch_settings_msp_sync_token__sync_mini },
+  { method: 'GET', pattern: '/settings/recaptcha', handler: dispatch_settings_recaptcha },
+  { method: 'PUT', pattern: '/settings/recaptcha', handler: dispatch_settings_recaptcha },
+  { method: 'GET', pattern: '/system/demo-mode', handler: dispatch_system_demo_mode },
+  { method: 'GET', pattern: '/tickets', handler: dispatch_tickets_tickets },
+  { method: 'POST', pattern: '/tickets', handler: dispatch_tickets_tickets },
+  { method: 'GET', pattern: '/tickets/:id', handler: dispatch_tickets_id },
+  { method: 'PUT', pattern: '/tickets/:id', handler: dispatch_tickets_id },
+  { method: 'DELETE', pattern: '/tickets/:id', handler: dispatch_tickets_id },
+  { method: 'POST', pattern: '/tickets/:id/assign', handler: dispatch_tickets_id__assign },
+  { method: 'GET', pattern: '/tickets/:id/comments', handler: dispatch_tickets_id__comments },
+  { method: 'POST', pattern: '/tickets/:id/comments', handler: dispatch_tickets_id__comments },
+  { method: 'POST', pattern: '/tickets/:id/escalate', handler: dispatch_tickets_id__escalate },
+  { method: 'POST', pattern: '/tickets/:id/resend-update', handler: dispatch_tickets_id__resend_update },
+  { method: 'POST', pattern: '/tickets/:id/resolve', handler: dispatch_tickets_id__resolve },
+  { method: 'POST', pattern: '/tickets/import-csv', handler: dispatch_tickets_import_csv },
+  { method: 'GET', pattern: '/tickets/stats', handler: dispatch_tickets_stats },
+  { method: 'GET', pattern: '/users', handler: dispatch_users_users },
+  { method: 'POST', pattern: '/users', handler: dispatch_users_users },
+  { method: 'GET', pattern: '/users/:id', handler: dispatch_users_id },
+  { method: 'PUT', pattern: '/users/:id', handler: dispatch_users_id },
+  { method: 'DELETE', pattern: '/users/:id', handler: dispatch_users_id },
+  { method: 'POST', pattern: '/users/:id/reset-password', handler: dispatch_users_id__reset_password },
+  { method: 'GET', pattern: '/users/technicians', handler: dispatch_users_technicians },
+  { method: 'GET', pattern: '/mini/library/:path*', handler: dispatch_mini_library__path },
+  { method: 'POST', pattern: '/mini/library/:path*', handler: dispatch_mini_library__path },
+  { method: 'GET', pattern: '/mini/external-systems/system-logs/:path*', handler: dispatch_mini_system_logs__path },
+  { method: 'POST', pattern: '/mini/external-systems/system-logs/:path*', handler: dispatch_mini_system_logs__path },
+  { method: 'GET', pattern: '/mini/external-systems/project-guard/:path*', handler: dispatch_mini_project_guard__path },
+  { method: 'POST', pattern: '/mini/external-systems/project-guard/:path*', handler: dispatch_mini_project_guard__path },
+];
+
+export const dispatchAll = createDispatcher(portalRoutes);
+
+export const domainNames = ["accounting","auth","backup","calendar","client-portal","clients","dashboard","developer-toolbox","emergency","health","license","mini","msp","notices","payments","public","sales","settings","system","tickets","users"] as const;

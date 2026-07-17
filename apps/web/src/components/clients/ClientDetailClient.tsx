@@ -3,11 +3,10 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
-import { ArrowLeft, Loader2, Mail, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
 import { ClientFormFields, formDataToClientPayload } from './ClientFormFields';
+import { ClientDetailNav } from './ClientDetailNav';
 import { ClientUsagePanel } from './ClientUsagePanel';
-import { ClientLicensePanel } from './ClientLicensePanel';
 import { ClientRelatedPanel } from './ClientRelatedPanel';
 import { SERVICE_LEVEL_COLORS, STATUS_COLORS, type UsageInfo } from '@/lib/client-constants';
 
@@ -75,14 +74,12 @@ export function ClientDetailClient({
 }) {
   const router = useRouter();
   const isAdmin = userRole === 'admin';
-  const { askToEmailClient } = useClientEmailPolicy();
 
   const [client, setClient] = useState(initial);
   const [billing, setBilling] = useState(initialBilling);
   const [loading, setLoading] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [credentials, setCredentials] = useState<{ username: string; tempPassword: string } | null>(null);
 
   const formDefaults = {
     name: client.name,
@@ -115,6 +112,7 @@ export function ClientDetailClient({
     setMessage('');
     try {
       const payload = formDataToClientPayload(new FormData(e.currentTarget));
+      delete (payload as { features?: unknown }).features;
       const res = await fetch(`/api/clients/${client.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -199,25 +197,6 @@ export function ClientDetailClient({
     }
   }
 
-  async function resendWelcome() {
-    if (!askToEmailClient('Send a welcome email to this client with portal login details?')) return;
-    setLoading('welcome');
-    setError('');
-    setCredentials(null);
-    try {
-      const res = await fetch(`/api/clients/${client.id}/resend-welcome`, { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to reset portal access');
-      setCredentials(data.emailSent ? null : { username: data.username, tempPassword: data.tempPassword });
-      setMessage(data.message);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset portal access');
-    } finally {
-      setLoading('');
-    }
-  }
-
   const assignedTech = technicians.find((t) => String(t.id) === String(client.assignedTechnicianId));
 
   return (
@@ -248,31 +227,11 @@ export function ClientDetailClient({
         </div>
       </div>
 
+      <ClientDetailNav clientId={client.id} />
+
       {(error || message) && (
         <div className={`rounded-xl px-4 py-3 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
           {error || message}
-        </div>
-      )}
-
-      {credentials && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-medium">Email failed — share portal credentials manually</p>
-          <p className="mt-1">Username: <strong>{credentials.username}</strong></p>
-          <p>Temp password: <strong>{credentials.tempPassword}</strong></p>
-        </div>
-      )}
-
-      {isAdmin && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={resendWelcome}
-            disabled={loading === 'welcome'}
-            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
-          >
-            {loading === 'welcome' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-            Reset portal access / resend welcome
-          </button>
         </div>
       )}
 
@@ -289,6 +248,7 @@ export function ClientDetailClient({
               defaults={formDefaults}
               showContract
               showUsage
+              showActivationFeatures={false}
               technicians={technicians}
             />
             <div className="flex flex-wrap justify-between gap-3 pt-1">
@@ -390,12 +350,6 @@ export function ClientDetailClient({
       <ClientUsagePanel
         clientId={client.id}
         initialUsage={initialUsage}
-        serviceLevel={client.serviceLevel}
-        isAdmin={isAdmin}
-      />
-
-      <ClientLicensePanel
-        clientId={client.id}
         serviceLevel={client.serviceLevel}
         isAdmin={isAdmin}
       />

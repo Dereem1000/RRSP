@@ -9,6 +9,10 @@ export function getClientIp(req: NextRequest): string {
   );
 }
 
+export function getRequestHost(req: NextRequest): string | null {
+  return req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() || req.headers.get('host');
+}
+
 export async function applyRequestGuard(req: NextRequest): Promise<NextResponse | null> {
   const url = new URL(req.url);
   const guard = await guardRequest({

@@ -10,90 +10,15 @@ import { getMiniDockSettings } from '@/lib/mini-dock';
 import { getMspDashboardData } from '@/lib/msp-dashboard';
 import { listOpportunities } from '@/lib/sales';
 import { getOrderById } from '@/lib/orders';
+import { SHIPPING_STAGE_LABELS, SHIPPING_STAGES } from '@/lib/order-constants';
+import { describeShipmentJourneyForContext, shippingStageLabel } from '@/lib/order-shipment-stages';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
 import { getTicketById, serializeTicket } from '@/lib/tickets';
+import { buildMiniCdIndex, summarizeMiniCdIndex, type MiniCdIndex } from '@/lib/mini-cd-index';
+import { CD_PORTAL_PAGES, CD_SETTINGS_SECTIONS, type CdPortalPage } from '@/lib/mini-cd-catalog';
 
-export type CdPortalPage = {
-  href: string;
-  label: string;
-  description: string;
-  roles: string[];
-};
-
-export const CD_PORTAL_PAGES: CdPortalPage[] = [
-  {
-    href: '/dashboard',
-    label: 'Dashboard',
-    description: 'Overview stats, recent tickets, system health, and security status.',
-    roles: ['admin', 'technician', 'client'],
-  },
-  {
-    href: '/tickets',
-    label: 'Tickets',
-    description: 'Support tickets — create, assign, comment, and resolve client issues.',
-    roles: ['admin', 'technician', 'client'],
-  },
-  {
-    href: '/billing',
-    label: 'Billing',
-    description: 'Client invoices, payments, and billing history.',
-    roles: ['client'],
-  },
-  {
-    href: '/orders',
-    label: 'Orders',
-    description: 'Hardware and supply orders with shipping stages and tracking.',
-    roles: ['admin', 'technician', 'client'],
-  },
-  {
-    href: '/sales',
-    label: 'Sales',
-    description: 'Sales pipeline, opportunities, demos, proposals, and follow-ups.',
-    roles: ['admin', 'technician'],
-  },
-  {
-    href: '/calendar',
-    label: 'Calendar',
-    description: 'Scheduled sales follow-ups and service events.',
-    roles: ['admin', 'technician'],
-  },
-  {
-    href: '/clients',
-    label: 'Clients',
-    description: 'Client accounts, service levels, licenses, usage, and contacts.',
-    roles: ['admin', 'technician'],
-  },
-  {
-    href: '/msp',
-    label: 'MSP',
-    description: 'Managed service subscriptions, MRR, plan stats, and license activity.',
-    roles: ['admin', 'technician'],
-  },
-  {
-    href: '/accounting',
-    label: 'Accounting',
-    description: 'Invoices, quotes, payments, and financial reporting.',
-    roles: ['admin', 'technician'],
-  },
-  {
-    href: '/developer-toolbox',
-    label: 'Developer Toolbox',
-    description: 'Cloudflare tunnel slots, health checks, and dev environment tooling.',
-    roles: ['admin'],
-  },
-  {
-    href: '/mini',
-    label: 'Mini',
-    description: 'Docked Mini assistant dashboard — chat feed, library, and system logs.',
-    roles: ['admin'],
-  },
-  {
-    href: '/settings',
-    label: 'Settings',
-    description: 'Company profile, email, integrations, security, backups, and users.',
-    roles: ['admin'],
-  },
-];
+export type { CdPortalPage };
+export { CD_PORTAL_PAGES, CD_SETTINGS_SECTIONS };
 
 export type MiniCdContext = {
   portal: {
@@ -109,6 +34,7 @@ export type MiniCdContext = {
     username: string | null;
   };
   pages: Array<{ href: string; label: string; description: string }>;
+  settingsSections?: Array<{ tab: string; label: string; href: string }>;
   currentPage: {
     href: string;
     label: string;
@@ -118,6 +44,7 @@ export type MiniCdContext = {
   overview: Awaited<ReturnType<typeof getDashboardOverview>>;
   modules: Record<string, unknown>;
   pageDetail: Record<string, unknown> | null;
+  index: MiniCdIndex;
   generatedAt: string;
 };
 
@@ -153,7 +80,7 @@ function resolvePageLabel(pathname: string, role: string): string {
   return 'Portal';
 }
 
-function parseEntityFromPath(pathname: string): { entityType?: string; entityId?: string } {
+export function parseEntityFromPath(pathname: string): { entityType?: string; entityId?: string } {
   const base = pathname.split('?')[0] || '';
   const patterns: Array<[RegExp, string]> = [
     [/^\/tickets\/([^/]+)$/, 'ticket'],
@@ -212,6 +139,12 @@ async function loadPageDetail(
   if (entityType === 'order') {
     const order = await getOrderById(entityId, { includeCost: role !== 'client' });
     if (!order) return null;
+    const history = (order.locationHistory ?? []).slice(-6).map((entry) => ({
+      stage: entry.stage ? shippingStageLabel(entry.stage) : undefined,
+      location: entry.location,
+      at: entry.timestamp,
+      source: entry.source,
+    }));
     return {
       type: 'order',
       id: order.id,
@@ -220,20 +153,55 @@ async function loadPageDetail(
       itemName: order.itemName,
       status: order.status,
       shippingStage: order.shippingStage,
+      shippingStageLabel: shippingStageLabel(order.shippingStage),
       clientName: order.client?.name ?? null,
       trackingNumber: order.trackingNumber,
+      vendor: order.vendor,
+      vendorOrderNumber: order.vendorOrderNumber,
+      currentLocation: order.currentLocation,
       estimatedArrival: order.estimatedArrival,
+      shipmentJourney: SHIPPING_STAGES.map((stage) => ({
+        stage,
+        label: SHIPPING_STAGE_LABELS[stage],
+        active: stage === order.shippingStage,
+      })),
+      locationHistory: history,
     };
   }
 
   return null;
 }
 
+async function loadActiveShipments() {
+  try {
+    const sequelize = getSequelize();
+    return await sequelize.query<{
+      orderNumber: string;
+      itemName: string;
+      shippingStage: string;
+      currentLocation: string | null;
+      clientName: string | null;
+    }>(
+      `SELECT o.orderNumber, o.itemName,
+        COALESCE(o.shippingStage, o.shipping_stage) AS shippingStage,
+        COALESCE(o.currentLocation, o.current_location) AS currentLocation,
+        COALESCE(c.company_name, c.name) AS clientName
+       FROM orders o
+       LEFT JOIN clients c ON c.id = o.clientId
+       WHERE o.isActive = 1 AND o.status = 'shipped'
+       ORDER BY o.updatedAt DESC LIMIT 6`,
+      { type: QueryTypes.SELECT }
+    );
+  } catch {
+    return [];
+  }
+}
+
 async function loadModuleSummaries(role: string, userId: number): Promise<Record<string, unknown>> {
   const modules: Record<string, unknown> = {};
 
   if (role === 'admin' || role === 'technician') {
-    const [accounting, salesOpportunities, calendarEvents, clientCount, orderCounts, miniDock] =
+    const [accounting, salesOpportunities, calendarEvents, clientCount, orderCounts, activeShipments, miniDock] =
       await Promise.all([
         getAccountingSummary().catch(() => null),
         listOpportunities({ stage: 'active' }).catch(() => []),
@@ -247,6 +215,7 @@ async function loadModuleSummaries(role: string, userId: number): Promise<Record
           safeCount(`SELECT COUNT(*) AS count FROM orders WHERE isActive = 1 AND status = 'pending'`),
           safeCount(`SELECT COUNT(*) AS count FROM orders WHERE isActive = 1 AND status = 'in_transit'`),
         ]),
+        loadActiveShipments(),
         getMiniDockSettings().catch(() => null),
       ]);
 
@@ -274,6 +243,14 @@ async function loadModuleSummaries(role: string, userId: number): Promise<Record
       total: orderCounts[0],
       pending: orderCounts[1],
       inTransit: orderCounts[2],
+      activeShipments: activeShipments.map((row) => ({
+        orderNumber: row.orderNumber,
+        itemName: row.itemName,
+        stage: row.shippingStage,
+        stageLabel: shippingStageLabel(row.shippingStage),
+        location: row.currentLocation,
+        clientName: row.clientName,
+      })),
     };
 
     if (role === 'admin' || role === 'technician') {
@@ -337,10 +314,11 @@ export async function buildMiniCdContext(
   });
   const company = await getCompanySettings().catch(() => ({ companyName: 'Computer Dynamics' }));
 
-  const [overview, modules, pageDetail] = await Promise.all([
+  const [overview, modules, pageDetail, index] = await Promise.all([
     getDashboardOverview(role, session.id),
     loadModuleSummaries(role, session.id),
     loadPageDetail(entityType, entityId, role),
+    buildMiniCdIndex(session),
   ]);
 
   const visiblePages = CD_PORTAL_PAGES.filter((item) => item.roles.includes(role)).map(
@@ -363,6 +341,11 @@ export async function buildMiniCdContext(
       username: userRecord?.username || session.username || null,
     },
     pages: visiblePages,
+    ...(role === 'admin'
+      ? {
+          settingsSections: CD_SETTINGS_SECTIONS.map(({ tab, label, href }) => ({ tab, label, href })),
+        }
+      : {}),
     currentPage: {
       href: page,
       label: pageLabel,
@@ -371,6 +354,7 @@ export async function buildMiniCdContext(
     overview,
     modules,
     pageDetail,
+    index,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -388,7 +372,7 @@ function formatRecentTickets(
     .join('; ');
 }
 
-export function summarizeMiniCdContextForChat(context: MiniCdContext, maxChars = 6000): string {
+export function summarizeMiniCdContextForChat(context: MiniCdContext, maxChars = 10000): string {
   const lines: string[] = [
     'Computer Dynamics portal context (live snapshot):',
     `Company: ${context.portal.companyName}`,
@@ -397,6 +381,17 @@ export function summarizeMiniCdContextForChat(context: MiniCdContext, maxChars =
     '',
     'Portal pages available to this user:',
     ...context.pages.map((page) => `- ${page.label} (${page.href}): ${page.description}`),
+    ...(context.settingsSections?.length
+      ? [
+          '',
+          'Settings sections (admin):',
+          ...context.settingsSections.map((section) => `- ${section.label} (${section.href})`),
+        ]
+      : []),
+    '',
+    'Navigation permission: Mini has full role-scoped CD index access, operational logs (email send/failures, recent CD/Mini events), and can execute portal actions. On errors she must use logs as ground truth and recover with Library, web, and code tools.',
+    '',
+    summarizeMiniCdIndex(context.index),
     '',
     'Dashboard snapshot:',
     `- Users/clients/tickets: ${context.overview.stats.totalUsers}/${context.overview.stats.totalClients}/${context.overview.stats.totalTickets}`,
@@ -445,12 +440,20 @@ export function summarizeMiniCdContextForChat(context: MiniCdContext, maxChars =
       .join('; ');
     moduleLines.push(`Calendar: ${calendar.upcomingCount ?? 0} upcoming event(s)${upcoming ? ` — ${upcoming}` : ''}`);
   }
-  const orders = context.modules.orders as Record<string, number> | undefined;
+  const orders = context.modules.orders as Record<string, unknown> | undefined;
   if (orders) {
+    const active = Array.isArray(orders.activeShipments)
+      ? (orders.activeShipments as Array<Record<string, unknown>>)
+          .slice(0, 4)
+          .map((row) => `${row.orderNumber} [${row.stageLabel || row.stage}] ${row.itemName}`)
+          .join('; ')
+      : '';
     moduleLines.push(
-      `Orders: ${orders.total ?? orders.activeCount ?? 0} total${orders.pending != null ? `, ${orders.pending} pending` : ''}${orders.inTransit != null ? `, ${orders.inTransit} in transit` : ''}`
+      `Orders: ${orders.total ?? orders.activeCount ?? 0} total${orders.pending != null ? `, ${orders.pending} pending` : ''}${orders.inTransit != null ? `, ${orders.inTransit} in transit` : ''}${active ? ` — active: ${active}` : ''}`
     );
   }
+
+  moduleLines.push('', 'Shipment journey stages (orders):', describeShipmentJourneyForContext());
   const clients = context.modules.clients as { activeCount?: number } | undefined;
   if (clients?.activeCount != null) {
     moduleLines.push(`Clients: ${clients.activeCount} active client account(s)`);
@@ -479,4 +482,11 @@ export function summarizeMiniCdContextForChat(context: MiniCdContext, maxChars =
   const block = lines.join('\n');
   if (block.length <= maxChars) return block;
   return `${block.slice(0, maxChars - 24)}\n… [context truncated]`;
+}
+
+export function appendOperationalLogsToSummary(baseSummary: string, operationalLogs: string, maxChars = 14000): string {
+  if (!operationalLogs.trim()) return baseSummary;
+  const combined = `${baseSummary}\n\n${operationalLogs}`.trim();
+  if (combined.length <= maxChars) return combined;
+  return `${combined.slice(0, maxChars - 24)}\n… [context truncated]`;
 }

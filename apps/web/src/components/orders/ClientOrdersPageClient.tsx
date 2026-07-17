@@ -13,6 +13,7 @@ import {
   formatMoney,
   type OrderView,
 } from '@/components/orders/order-ui';
+import { ShipmentJourney } from '@/components/orders/ShipmentJourney';
 import { ORDER_STATUSES, SHIPPING_STAGES, getTrackingUrl } from '@/lib/order-constants';
 import { ExternalLink, MapPin, Package, Truck } from 'lucide-react';
 import { OrderLink } from '@/components/links/DocumentLinks';
@@ -58,6 +59,7 @@ export function ClientOrdersPageClient() {
   }, [loadOrders]);
 
   useEffect(() => {
+    if (!searchParams) return;
     const orderId = searchParams.get('order');
     if (orderId) void openDetail(orderId);
   }, [searchParams]);
@@ -120,7 +122,9 @@ export function ClientOrdersPageClient() {
                 </div>
 
                 {(order.trackingNumber || order.currentLocation || order.shippingStage) && (
-                  <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm">
+                  <div className="mt-4 space-y-3">
+                    <ShipmentJourney shippingStage={order.shippingStage} compact />
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm">
                     <p className="mb-2 flex items-center gap-2 font-medium text-slate-700">
                       <Truck className="h-4 w-4" />
                       Shipment
@@ -145,6 +149,7 @@ export function ClientOrdersPageClient() {
                     )}
                     <div className="mt-2">
                       <StageBadge stage={order.shippingStage} />
+                    </div>
                     </div>
                   </div>
                 )}

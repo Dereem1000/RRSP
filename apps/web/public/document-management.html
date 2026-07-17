@@ -1203,7 +1203,7 @@
                                 Learn More
                             </button>
                             <div class="hero-cta-row">
-                                <button class="btn btn-secondary" id="viewDemoBtn">
+                                <button class="btn btn-secondary" id="viewDemoBtn" data-cd-demo-request type="button">
                                     <i class="fas fa-play"></i>
                                     Request a Demo
                                 </button>
@@ -1921,17 +1921,10 @@
             }
         });
 
-        // Demo modal functionality
+        // Demo modal functionality (WhatsApp / development info — Request Demo uses CDDemoRequest)
         const demoModal = document.getElementById('demoModal');
-        const viewDemoBtn = document.getElementById('viewDemoBtn');
         const demoClose = document.getElementById('demoClose');
         const developmentBtn = document.getElementById('developmentBtn');
-
-        if (viewDemoBtn && demoModal) {
-            viewDemoBtn.addEventListener('click', () => {
-                demoModal.classList.add('active');
-            });
-        }
 
         if (developmentBtn && demoModal) {
             developmentBtn.addEventListener('click', () => {
@@ -1971,6 +1964,14 @@
                     target.scrollIntoView({ behavior: 'smooth' });
                 }
             });
+        });
+    </script>
+    <script src="/js/public-captcha.js"></script>
+    <script src="/js/public-phone-input.js"></script>
+    <script src="/js/public-demo-request.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            CDDemoRequest.init({ product: 'Document Management System' });
         });
     </script>
     <script src="/js/multiserver-demos.js" defer></script>

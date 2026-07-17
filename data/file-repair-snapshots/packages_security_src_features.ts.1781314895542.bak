@@ -1,0 +1,135 @@
+import { Op } from 'sequelize';
+import { SecurityEvent, SystemConfig } from '@cd-v2/database';
+import { SecurityConfigKeys } from './config-keys';
+import type { ThreatLevel } from './types';
+import { whereCreatedSince } from './sequelize-time';
+
+const INTRUSION_EVENT_TYPES = [
+  'threat_detected',
+  'intrusion_detected',
+  'bot_detected',
+  'sql_injection',
+  'xss_attempt',
+];
+
+export type SecurityFeatureSnapshot = {
+  fileIntegrity: {
+    enabled: boolean;
+    lastIssues24h: number;
+  };
+  activityMonitor: {
+    enabled: boolean;
+    suspicious24h: number;
+    failedLogins24h: number;
+  };
+  intrusionDetection: {
+    enabled: boolean;
+    threats24h: number;
+  };
+  botDetection: {
+    enabled: boolean;
+    bots24h: number;
+  };
+  licenseMonitoring: {
+    enabled: boolean;
+    apiOffline24h: number;
+    suspicious24h: number;
+  };
+  lastCycleAt: string | null;
+};
+
+export async function getFeatureSnapshot(): Promise<SecurityFeatureSnapshot> {
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const where24h = { ...whereCreatedSince(since24h), isActive: true };
+
+  const [
+    fileIssues,
+    suspicious,
+    failedLogins,
+    intrusionEvents,
+    botEvents,
+    licenseIssueEvents,
+    licenseApiOffline,
+    intrusionEnabled,
+    botEnabled,
+    lastCycle,
+  ] = await Promise.all([
+    SecurityEvent.count({
+      where: { ...where24h, eventType: 'file_integrity' },
+    }),
+    SecurityEvent.count({
+      where: { ...where24h, eventType: 'suspicious_activity' },
+    }),
+    SecurityEvent.count({
+      where: { ...where24h, eventType: 'login_attempt', outcome: 'blocked' },
+    }),
+    SecurityEvent.count({
+      where: {
+        ...where24h,
+        eventType: { [Op.in]: INTRUSION_EVENT_TYPES },
+      },
+    }),
+    SecurityEvent.count({
+      where: { ...where24h, eventType: 'bot_detected' },
+    }),
+    SecurityEvent.count({
+      where: {
+        ...where24h,
+        eventType: { [Op.in]: ['license_api_offline', 'suspicious_license_activity', 'license_integrity'] },
+      },
+    }),
+    SecurityEvent.count({
+      where: { ...where24h, eventType: 'license_api_offline' },
+    }),
+    SystemConfig.getConfig<boolean>('intrusion_detection_enabled', true),
+    SystemConfig.getConfig<boolean>('bot_detection_enabled', true),
+    SystemConfig.getConfig<string | null>(SecurityConfigKeys.workerHeartbeat, null),
+  ]);
+
+  return {
+    fileIntegrity: { enabled: true, lastIssues24h: fileIssues },
+    activityMonitor: {
+      enabled: true,
+      suspicious24h: suspicious,
+      failedLogins24h: failedLogins,
+    },
+    intrusionDetection: {
+      enabled: intrusionEnabled !== false,
+      threats24h: intrusionEvents,
+    },
+    botDetection: {
+      enabled: botEnabled !== false,
+      bots24h: botEvents,
+    },
+    licenseMonitoring: {
+      enabled: process.env.LICENSE_MONITORING_ENABLED !== 'false',
+      apiOffline24h: licenseApiOffline,
+      suspicious24h: licenseIssueEvents,
+    },
+    lastCycleAt:
+      lastCycle && lastCycle !== 'null' ? lastCycle : null,
+  };
+}
+
+export function computeSecurityScore(
+  threatLevel: ThreatLevel,
+  features: SecurityFeatureSnapshot
+): number {
+  let score = 100;
+  const penalties: Record<ThreatLevel, number> = {
+    low: 0,
+    medium: 12,
+    high: 28,
+    critical: 45,
+  };
+  score -= penalties[threatLevel];
+  score -= Math.min(20, features.fileIntegrity.lastIssues24h * 8);
+  score -= Math.min(15, features.activityMonitor.suspicious24h * 3);
+  score -= Math.min(10, features.intrusionDetection.threats24h * 5);
+  score -= Math.min(10, features.botDetection.bots24h * 5);
+  score -= Math.min(8, features.licenseMonitoring.apiOffline24h * 4);
+  score -= Math.min(8, features.licenseMonitoring.suspicious24h * 2);
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+// auto-repair tamper test

@@ -101,7 +101,6 @@ export function computeWithSettings(
 export function orderPricesFromUsCost(usCost: number, settings?: Partial<PriceCalculatorSettings>) {
   const r = computeWithSettings(usCost, settings);
   return {
-    usCost: r.usCost,
     costPrice: r.itemTotal,
     clientPrice: r.lineTotal,
     ...r,

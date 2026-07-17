@@ -1,0 +1,38 @@
+# Computer Dynamics v2 — Cloudflare Tunnel ingress
+# Same tunnel as v1; points at v2 portal (:3000) and license API (:5001).
+# Do not run v1 and v2 tunnel scripts at the same time.
+#
+# protocol: http2 — avoids QUIC datagram/control-stream failures on some networks
+# (constant "control stream encountered a failure while serving" / connIndex=3 loops).
+
+tunnel: cdcb0769-874b-4923-aeed-a493e1a2b6af
+credentials-file: C:\Users\User\.cloudflared\cdcb0769-874b-4923-aeed-a493e1a2b6af.json
+protocol: http2
+
+ingress:
+  # Direct license API (POS production uses api.computerdynamicstt.com)
+  - hostname: api.computerdynamicstt.com
+    service: http://127.0.0.1:5001
+  # Mini assistant API (requires MINI_API_TOKEN on all protected routes)
+  - hostname: mini.computerdynamicstt.com
+    service: http://127.0.0.1:8876
+  # Showcase portal (start-showcase.bat on :3001 — demo data, dual-run with main :3000)
+  - hostname: demo.computerdynamicstt.com
+    service: http://127.0.0.1:3001
+  # MSP portal UI (:3000) — /api/* proxied internally to Express (:4000)
+  - hostname: computerdynamicstt.com
+    service: http://127.0.0.1:3000
+  - hostname: www.computerdynamicstt.com
+    service: http://127.0.0.1:3000
+# --- Developer Toolbox (portal-managed) ---
+  # Dev 1: Event Sponsor CRM
+  - hostname: dev1.computerdynamicstt.com
+    service: http://192.168.131.121:7755
+  # Dev 2: Auto.M
+  - hostname: dev2.computerdynamicstt.com
+    service: http://localhost:6001
+  # Dev 3: DEV autom
+  - hostname: dev3.computerdynamicstt.com
+    service: http://192.168.131.39:6001
+# --- end Developer Toolbox ---
+  - service: http_status:404

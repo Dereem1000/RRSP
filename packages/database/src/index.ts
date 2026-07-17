@@ -9,9 +9,12 @@ import { NoticeBoard } from './models/NoticeBoard';
 import { EmergencyOverride } from './models/EmergencyOverride';
 import { SecurityEvent } from './models/SecurityEvent';
 import { Backup } from './models/Backup';
+import { SalesOpportunity } from './models/SalesOpportunity';
+import { CalendarEvent } from './models/CalendarEvent';
 
 Client.hasMany(Ticket, { foreignKey: 'clientId' });
-Ticket.belongsTo(Client, { foreignKey: 'clientId' });
+SalesOpportunity.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
+Ticket.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 
 User.hasMany(Ticket, { as: 'createdTickets', foreignKey: 'createdBy' });
 User.hasMany(Ticket, { as: 'assignedTickets', foreignKey: 'assignedTo' });
@@ -34,6 +37,8 @@ export const models = {
   EmergencyOverride,
   SecurityEvent,
   Backup,
+  SalesOpportunity,
+  CalendarEvent,
 };
 
 function rebindModelsToSequelize(db: Sequelize) {
@@ -47,6 +52,9 @@ setSequelizeRecreateHook(rebindModelsToSequelize);
 rebindModelsToSequelize(getSequelize());
 
 export { getSequelize, getDatabasePath, getLiveDatabasePath, getMonorepoRoot, testConnection, closeConnection, reopenConnection, setSequelizeRecreateHook } from './connection';
+export { ensureSalesSchema } from './ensure-sales-schema';
+export { ensureCalendarSchema } from './ensure-calendar-schema';
+export { ensureEmailLogSchema } from './ensure-email-log-schema';
 export {
   disableDemoSandbox,
   enableDemoSandbox,
@@ -57,6 +65,12 @@ export {
   syncDemoModeFromMarker,
 } from './demo-sandbox';
 export { isDemoModeActive, setDemoModeCache } from './demo-mode';
+export {
+  getBackupAppPaths,
+  getBackupOnlyPaths,
+  getLicenseProtectedFilePaths,
+  getProtectedFilePaths,
+} from './protected-paths';
 
 export {
   User,
@@ -68,5 +82,9 @@ export {
   EmergencyOverride,
   SecurityEvent,
   Backup,
+  SalesOpportunity,
+  CalendarEvent,
 };
 export type { BackupType, BackupStatus } from './models/Backup';
+export type { SalesStage, SalesProduct, SalesDealType } from './models/SalesOpportunity';
+export type { CalendarEventType } from './models/CalendarEvent';

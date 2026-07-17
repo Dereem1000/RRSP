@@ -4,7 +4,7 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import { getMonorepoRoot } from '@cd-v2/database';
 import { Client } from '@/lib/db';
-import { FEATURE_TO_LICENSE_KEY, activationFeaturesFromLicenseRows, type ActivationFeature } from '@/lib/license-constants';
+import { FEATURE_TO_LICENSE_KEY, getActivationFeatures, type ActivationFeature } from '@/lib/license-constants';
 
 export type LicenseRow = {
   id: number;
@@ -161,13 +161,161 @@ export function isLicenseDbAvailable(): boolean {
   }
 }
 
+export type LicenseCompanyMatch = {
+  mspClientId: string;
+  companyName: string;
+  email: string | null;
+  match: 'exact' | 'prefix';
+};
+
+/** Match Mini/business names like "Solomon Industries Dev41" to license "Solomon Industries". */
+export async function findMspClientIdByCompanyName(
+  companyName: string
+): Promise<LicenseCompanyMatch | null> {
+  const reported = String(companyName || '').trim();
+  if (!reported || !isLicenseDbAvailable()) return null;
+
+  const db = await openDb();
+  try {
+    const lowered = reported.toLowerCase();
+    const exact = await get(
+      db,
+      `SELECT msp_client_id, company_name, email FROM company_registration
+       WHERE lower(company_name) = lower(?) AND msp_client_id IS NOT NULL AND trim(msp_client_id) != ''
+       LIMIT 1`,
+      [reported]
+    );
+    const exactMspClientId = exact?.msp_client_id != null ? String(exact.msp_client_id) : '';
+    if (exactMspClientId) {
+      return {
+        mspClientId: exactMspClientId,
+        companyName: String(exact?.company_name ?? ''),
+        email: exact?.email != null ? String(exact.email) : null,
+        match: 'exact',
+      };
+    }
+
+    const rows = await all<{ msp_client_id: string | null; company_name: string; email: string }>(
+      db,
+      `SELECT msp_client_id, company_name, email FROM company_registration
+       WHERE msp_client_id IS NOT NULL AND trim(msp_client_id) != ''`
+    );
+
+    let best: LicenseCompanyMatch | null = null;
+    for (const row of rows) {
+      const candidate = String(row.company_name || '').trim();
+      const candidateLower = candidate.toLowerCase();
+      const mspClientId = String(row.msp_client_id || '').trim();
+      if (!mspClientId || candidateLower.length < 4) continue;
+
+      const prefixMatch =
+        lowered === candidateLower ||
+        lowered.startsWith(`${candidateLower} `) ||
+        candidateLower.startsWith(`${lowered} `);
+      if (!prefixMatch) continue;
+
+      if (!best || candidate.length > best.companyName.length) {
+        best = {
+          mspClientId,
+          companyName: candidate,
+          email: row.email ?? null,
+          match: 'prefix',
+        };
+      }
+    }
+    return best;
+  } finally {
+    await closeDb(db);
+  }
+}
+
+type CompanyRef = { id: number; msp_client_id: string | null; email: string };
+
+async function findCompanyForMspClient(
+  db: sqlite3.Database,
+  mspClientId: string,
+  portalEmail?: string | null
+): Promise<CompanyRef | undefined> {
+  const byMsp = await get(
+    db,
+    `SELECT id, msp_client_id, email FROM company_registration WHERE msp_client_id = ?`,
+    [mspClientId]
+  );
+  if (byMsp) return byMsp as CompanyRef;
+
+  if (portalEmail) {
+    const byEmail = await get(
+      db,
+      `SELECT id, msp_client_id, email FROM company_registration WHERE lower(email) = lower(?)`,
+      [portalEmail]
+    );
+    if (byEmail) return byEmail as CompanyRef;
+  }
+
+  return undefined;
+}
+
+async function loadLicenseRowsForMspClient(
+  db: sqlite3.Database,
+  mspClientId: string,
+  portalEmail?: string | null
+): Promise<DbRow[]> {
+  const company = await findCompanyForMspClient(db, mspClientId, portalEmail);
+  if (company) {
+    return all<DbRow>(db, `${LICENSE_QUERY} WHERE cr.id = ?`, [company.id]);
+  }
+
+  // Legacy rows without company_registration.msp_client_id
+  const byMsp = await all<DbRow>(db, `${LICENSE_QUERY} WHERE cr.msp_client_id = ?`, [mspClientId]);
+  if (byMsp.length > 0) return byMsp;
+
+  if (portalEmail) {
+    return all<DbRow>(db, `${LICENSE_QUERY} WHERE lower(cr.email) = lower(?)`, [portalEmail]);
+  }
+
+  return [];
+}
+
+function buildCombinedLicenseStatus(rows: DbRow[]): CombinedLicenseStatus | null {
+  if (rows.length === 0) return null;
+
+  const combinedFeatures: Record<string, boolean> = {};
+  let hasActiveLicense = false;
+  const allLicenses: LicenseRow[] = [];
+
+  for (const row of rows) {
+    const features = parseFeatures(row.features);
+    const active = isLicenseCurrentlyActive(row);
+    if (active) {
+      hasActiveLicense = true;
+      for (const [k, v] of Object.entries(features)) {
+        if (v) combinedFeatures[k] = true;
+      }
+    }
+    allLicenses.push(rowToLicense(row));
+  }
+
+  const first = rows[0];
+  return {
+    id: first.id,
+    serialNumber: first.serial_number,
+    licenseType: first.license_type,
+    isActive: hasActiveLicense,
+    maxUsers: first.max_users,
+    features: combinedFeatures,
+    activationDate: first.activation_date,
+    expirationDate: first.expiration_date,
+    companyName: first.company_name,
+    contactPerson: first.contact_person,
+    email: first.email,
+    allLicenses,
+  };
+}
+
 export async function getLicensesForClient(mspClientId: string, email?: string | null): Promise<LicenseRow[]> {
   const db = await openDb();
   try {
-    let rows = await all<DbRow>(db, `${LICENSE_QUERY} WHERE cr.msp_client_id = ?`, [mspClientId]);
-    if (rows.length === 0 && email) {
-      rows = await all<DbRow>(db, `${LICENSE_QUERY} WHERE cr.email = ?`, [email]);
-    }
+    const rows = await loadLicenseRowsForMspClient(db, mspClientId, email);
     return rows.map(rowToLicense);
   } finally {
     await closeDb(db);
@@ -180,43 +328,8 @@ export async function getLicenseStatusByMspClientId(mspClientId: string): Promis
 
   const db = await openDb();
   try {
-    let rows = await all<DbRow>(db, `${LICENSE_QUERY} WHERE cr.msp_client_id = ?`, [mspClientId]);
-    if (rows.length === 0) {
-      rows = await all<DbRow>(db, `${LICENSE_QUERY} WHERE cr.email = ?`, [client.email]);
-    }
-    if (rows.length === 0) return null;
-
-    const combinedFeatures: Record<string, boolean> = {};
-    let hasActiveLicense = false;
-    const allLicenses: LicenseRow[] = [];
-
-    for (const row of rows) {
-      const features = parseFeatures(row.features);
-      const active = isLicenseCurrentlyActive(row);
-      if (active) {
-        hasActiveLicense = true;
-        for (const [k, v] of Object.entries(features)) {
-          if (v) combinedFeatures[k] = true;
-        }
-      }
-      allLicenses.push(rowToLicense(row));
-    }
-
-    const first = rows[0];
-    return {
-      id: first.id,
-      serialNumber: first.serial_number,
-      licenseType: first.license_type,
-      isActive: hasActiveLicense,
-      maxUsers: first.max_users,
-      features: combinedFeatures,
-      activationDate: first.activation_date,
-      expirationDate: first.expiration_date,
-      companyName: first.company_name,
-      contactPerson: first.contact_person,
-      email: first.email,
-      allLicenses,
-    };
+    const rows = await loadLicenseRowsForMspClient(db, mspClientId, client.email);
+    return buildCombinedLicenseStatus(rows);
   } finally {
     await closeDb(db);
   }
@@ -249,6 +362,33 @@ export type FeatureLicenseStatusEntry = {
   licenseType?: string;
 };
 
+export type FeatureLicenseDisplayStatus =
+  | 'Active'
+  | 'Pending'
+  | 'Expired'
+  | 'Not synced'
+  | 'Unavailable';
+
+/** True when a license row exists and its expiration date is in the past. */
+export function isFeatureLicenseExpired(
+  entry: Pick<FeatureLicenseStatusEntry, 'expirationDate'>
+): boolean {
+  if (!entry.expirationDate) return false;
+  return new Date(entry.expirationDate) <= new Date();
+}
+
+/** Portal label for a single activation feature (removed DB rows → Not synced, not Expired). */
+export function featureLicenseDisplayStatus(
+  entry: FeatureLicenseStatusEntry | undefined,
+  dbAvailable: boolean
+): FeatureLicenseDisplayStatus {
+  if (!dbAvailable) return 'Unavailable';
+  if (!entry?.hasLicense) return 'Not synced';
+  if (entry.isActive) return 'Active';
+  if (isFeatureLicenseExpired(entry)) return 'Expired';
+  return 'Pending';
+}
+
 export type ClientLicenseSnapshot = {
   dbAvailable: boolean;
   dbPath?: string;
@@ -259,24 +399,26 @@ export type ClientLicenseSnapshot = {
   license: CombinedLicenseStatus | null;
 };
 
-/** License DB is the source of truth — derive all display/sync data from license rows */
-export function buildLicenseSnapshot(license: CombinedLicenseStatus | null): ClientLicenseSnapshot {
-  if (!license) {
+/** Portal activation features define required systems; license DB rows hold active state */
+export function buildLicenseSnapshot(
+  license: CombinedLicenseStatus | null,
+  requiredFeatures: ActivationFeature[]
+): ClientLicenseSnapshot {
+  if (requiredFeatures.length === 0) {
     return {
       dbAvailable: true,
       activationFeatures: [],
       featureLicenseStatus: {},
       overallStatus: 'Not Found',
       hasActiveLicense: false,
-      license: null,
+      license: license ?? null,
     };
   }
 
-  const activationFeatures = activationFeaturesFromLicenseRows(license.allLicenses);
   const featureLicenseStatus: Partial<Record<ActivationFeature, FeatureLicenseStatusEntry>> = {};
 
-  for (const feature of activationFeatures) {
-    const row = findLicenseRowForFeature(license.allLicenses, feature);
+  for (const feature of requiredFeatures) {
+    const row = license ? findLicenseRowForFeature(license.allLicenses, feature) : undefined;
     featureLicenseStatus[feature] = {
       hasLicense: Boolean(row),
       isActive: row ? isLicenseRowActive(row) : false,
@@ -289,17 +431,17 @@ export function buildLicenseSnapshot(license: CombinedLicenseStatus | null): Cli
 
   const statuses = Object.values(featureLicenseStatus);
   const activeCount = statuses.filter((s) => s?.isActive).length;
-  const hasAny = statuses.length > 0;
+  const licensedCount = statuses.filter((s) => s?.hasLicense).length;
   const hasActiveLicense = activeCount > 0;
 
   let overallStatus: ClientLicenseSnapshot['overallStatus'] = 'Not Found';
-  if (hasAny && activeCount === statuses.length) overallStatus = 'Active';
+  if (activeCount === requiredFeatures.length) overallStatus = 'Active';
   else if (hasActiveLicense) overallStatus = 'Partial';
-  else if (hasAny) overallStatus = 'Pending';
+  else if (licensedCount > 0) overallStatus = 'Pending';
 
   return {
     dbAvailable: true,
-    activationFeatures,
+    activationFeatures: requiredFeatures,
     featureLicenseStatus,
     overallStatus,
     hasActiveLicense,
@@ -308,11 +450,26 @@ export function buildLicenseSnapshot(license: CombinedLicenseStatus | null): Cli
 }
 
 export async function getClientLicenseSnapshot(mspClientId: string): Promise<ClientLicenseSnapshot> {
+  const client = await Client.findByPk(mspClientId, { attributes: ['id', 'features'] });
+  const requiredFeatures = getActivationFeatures(client?.features);
+
+  if (requiredFeatures.length === 0) {
+    return {
+      dbAvailable: isLicenseDbAvailable(),
+      dbPath: getLicenseDbPathForDisplay(),
+      activationFeatures: [],
+      featureLicenseStatus: {},
+      overallStatus: 'Not Found',
+      hasActiveLicense: false,
+      license: null,
+    };
+  }
+
   if (!isLicenseDbAvailable()) {
     return {
       dbAvailable: false,
       dbPath: getLicenseDbPathForDisplay(),
-      activationFeatures: [],
+      activationFeatures: requiredFeatures,
       featureLicenseStatus: {},
       overallStatus: 'Unavailable',
       hasActiveLicense: false,
@@ -321,25 +478,17 @@ export async function getClientLicenseSnapshot(mspClientId: string): Promise<Cli
   }
 
   const license = await getLicenseStatusByMspClientId(mspClientId);
-  return buildLicenseSnapshot(license);
+  return buildLicenseSnapshot(license, requiredFeatures);
 }
 
 export type FeatureLicenseStatus = Record<ActivationFeature, FeatureLicenseStatusEntry>;
 
-/** @deprecated Use buildLicenseSnapshot — kept for callers passing explicit feature lists */
+/** Build per-feature status for explicit portal activation features */
 export function buildFeatureLicenseStatus(
   activationFeatures: ActivationFeature[],
   license: CombinedLicenseStatus | null
 ): Partial<FeatureLicenseStatus> {
-  const snapshot = buildLicenseSnapshot(license);
-  const result: Partial<FeatureLicenseStatus> = {};
-  for (const feature of activationFeatures) {
-    result[feature] = snapshot.featureLicenseStatus[feature] ?? {
-      hasLicense: false,
-      isActive: false,
-    };
-  }
-  return result;
+  return buildLicenseSnapshot(license, activationFeatures).featureLicenseStatus;
 }
 
 export async function activateLicense(licenseId: number): Promise<boolean> {
@@ -349,6 +498,106 @@ export async function activateLicense(licenseId: number): Promise<boolean> {
       licenseId,
     ]);
     return true;
+  } finally {
+    await closeDb(db);
+  }
+}
+
+export async function deactivateLicense(licenseId: number): Promise<boolean> {
+  const db = await openDb();
+  try {
+    await run(db, `UPDATE license_activation SET is_active = 0, updated_at = datetime('now') WHERE id = ?`, [
+      licenseId,
+    ]);
+    return true;
+  } finally {
+    await closeDb(db);
+  }
+}
+
+export type ProjectGuardLicenseActionResult = {
+  deactivatedIds: number[];
+  reactivatedIds: number[];
+  skippedIds: number[];
+};
+
+function licenseRowMatchesFeature(row: DbRow, feature?: ActivationFeature): boolean {
+  if (!feature) return true;
+  const key = FEATURE_TO_LICENSE_KEY[feature];
+  return Boolean(parseFeatures(row.features)[key]);
+}
+
+export async function deactivateLicensesForMspClient(
+  mspClientId: string,
+  options?: { feature?: ActivationFeature }
+): Promise<ProjectGuardLicenseActionResult> {
+  const client = await Client.findByPk(mspClientId, { attributes: ['id', 'email'] });
+  if (!client) {
+    return { deactivatedIds: [], reactivatedIds: [], skippedIds: [] };
+  }
+
+  const db = await openDb();
+  try {
+    const rows = await loadLicenseRowsForMspClient(db, mspClientId, client.email);
+    const deactivatedIds: number[] = [];
+    const skippedIds: number[] = [];
+
+    for (const row of rows) {
+      if (!licenseRowMatchesFeature(row, options?.feature)) {
+        skippedIds.push(row.id);
+        continue;
+      }
+      if (!row.is_active) {
+        skippedIds.push(row.id);
+        continue;
+      }
+      await run(
+        db,
+        `UPDATE license_activation SET is_active = 0, updated_at = datetime('now') WHERE id = ?`,
+        [row.id]
+      );
+      deactivatedIds.push(row.id);
+    }
+
+    return { deactivatedIds, reactivatedIds: [], skippedIds };
+  } finally {
+    await closeDb(db);
+  }
+}
+
+export async function reactivateLicensesForMspClient(
+  mspClientId: string,
+  options?: { feature?: ActivationFeature }
+): Promise<ProjectGuardLicenseActionResult> {
+  const client = await Client.findByPk(mspClientId, { attributes: ['id', 'email'] });
+  if (!client) {
+    return { deactivatedIds: [], reactivatedIds: [], skippedIds: [] };
+  }
+
+  const db = await openDb();
+  try {
+    const rows = await loadLicenseRowsForMspClient(db, mspClientId, client.email);
+    const reactivatedIds: number[] = [];
+    const skippedIds: number[] = [];
+
+    for (const row of rows) {
+      if (!licenseRowMatchesFeature(row, options?.feature)) {
+        skippedIds.push(row.id);
+        continue;
+      }
+      if (row.is_active) {
+        skippedIds.push(row.id);
+        continue;
+      }
+      await run(
+        db,
+        `UPDATE license_activation SET is_active = 1, updated_at = datetime('now') WHERE id = ?`,
+        [row.id]
+      );
+      reactivatedIds.push(row.id);
+    }
+
+    return { deactivatedIds: [], reactivatedIds, skippedIds };
   } finally {
     await closeDb(db);
   }

@@ -1,34 +1,60 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { FormEvent, useCallback, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
+import { LoginCaptcha } from '@/components/LoginCaptcha';
+import { resolveReturnPath } from '@/lib/safe-return-url';
 
-export function LoginForm() {
+type LoginFormProps = {
+  demoPortalUrl?: string | null;
+};
+
+export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnPath = resolveReturnPath(searchParams?.get('returnUrl'));
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const captchaRef = useRef<{ getToken: () => string; reset: () => void; required: boolean }>({
+    getToken: () => '',
+    reset: () => {},
+    required: false,
+  });
+
+  const handleCaptchaReady = useCallback(
+    (api: { getToken: () => string; reset: () => void; required: boolean }) => {
+      captchaRef.current = api;
+    },
+    []
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
+      const captchaToken = captchaRef.current.getToken();
+      if (captchaRef.current.required && !captchaToken) {
+        throw new Error('Please complete the CAPTCHA verification.');
+      }
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, captchaToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
-      router.push('/dashboard');
+      router.push(returnPath);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+      captchaRef.current.reset();
     } finally {
       setLoading(false);
     }
@@ -105,6 +131,8 @@ export function LoginForm() {
               />
             </div>
 
+            <LoginCaptcha onReady={handleCaptchaReady} />
+
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -125,6 +153,23 @@ export function LoginForm() {
                 'Sign in'
               )}
             </button>
+
+            {demoPortalUrl ? (
+              <a
+                href={demoPortalUrl}
+                target="_top"
+                rel="noopener noreferrer"
+                className="flex w-full flex-col items-center justify-center gap-0.5 rounded-xl border border-cd-200 bg-cd-50 py-3 text-sm font-semibold text-cd-900 transition hover:border-cd-300 hover:bg-cd-100"
+              >
+                <span className="inline-flex items-center gap-2">
+                  Go to demo
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="text-xs font-normal text-slate-500">
+                  Explore the portal with sample data
+                </span>
+              </a>
+            ) : null}
           </form>
         </div>
       </div>

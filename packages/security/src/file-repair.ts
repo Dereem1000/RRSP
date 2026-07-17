@@ -46,7 +46,7 @@ export async function attemptFileRepairFromBackup(
       eventType: 'file_repair_failed',
       severity: 'high',
       description: `File repair failed: ${relativePath}`,
-      details: { error: result.error },
+      details: { relativePath, error: result.error },
     });
     return { repaired: false, message: result.error ?? 'Backup extract failed' };
   }

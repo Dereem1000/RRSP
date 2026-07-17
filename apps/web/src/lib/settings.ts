@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import {
   SystemConfig,
   disableDemoSandbox,
@@ -5,6 +6,7 @@ import {
   isDemoSandboxActive,
   setDemoModeCache,
 } from '@cd-v2/database';
+import { normalizeStoredPhone } from '@/lib/phone-utils';
 
 export type EmailSettings = {
   enabled: boolean;
@@ -115,7 +117,7 @@ export async function saveEmailSettings(config: Partial<EmailSettings>) {
     ['email_from_email', config.fromEmail ?? '', 'string'],
     ['email_company_name', config.companyName ?? 'Computer Dynamics', 'string'],
     ['email_company_address', config.companyAddress ?? '', 'string'],
-    ['email_company_phone', config.companyPhone ?? '', 'string'],
+    ['email_company_phone', normalizeStoredPhone(config.companyPhone ?? '') ?? '', 'string'],
     ['email_company_website', config.companyWebsite ?? '', 'string'],
     ['email_confirm_before_client_send', config.confirmBeforeClientEmail ?? true, 'boolean'],
   ];
@@ -179,7 +181,7 @@ export async function saveTicketNotificationSettings(config: Partial<TicketNotif
   }
 }
 
-export async function getGeneralSettings(): Promise<GeneralSettings> {
+export const getGeneralSettings = cache(async (): Promise<GeneralSettings> => {
   const [maintenanceMode, maintenanceMessage, systemVersion, configDemoMode] = await Promise.all([
     SystemConfig.getConfig<boolean>('maintenance_mode', false),
     SystemConfig.getConfig<string>('maintenance_message', 'System is currently under maintenance.'),
@@ -200,7 +202,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
     systemVersion: systemVersion ?? '2.1.0',
     demoMode: demoModeEnabled,
   };
-}
+});
 
 export async function saveGeneralSettings(config: Partial<GeneralSettings>) {
   if (config.demoMode === true && !isDemoSandboxActive()) {

@@ -54,3 +54,20 @@ export function ticketFormDefaultsFromClient(client?: ClientPickerOption | null)
     priority: client.priorityLevel?.trim() || 'medium',
   };
 }
+
+/** Parse typed client search text into contact name and optional company. */
+export function parseClientSearchQuery(query: string): { name: string; companyName?: string } {
+  const q = query.trim();
+  if (!q) return { name: '' };
+
+  const sep = q.includes(' — ') ? ' — ' : q.includes(' - ') ? ' - ' : null;
+  if (sep) {
+    const [left, ...rest] = q.split(sep);
+    const right = rest.join(sep).trim();
+    if (left.trim() && right.trim()) {
+      return { companyName: left.trim(), name: right.trim() };
+    }
+  }
+
+  return { name: q };
+}

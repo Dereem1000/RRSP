@@ -112,7 +112,8 @@ export async function getRecentNotices(
           publishAt: { [Op.lte]: now },
           [Op.or]: [{ expiresAt: null }, { expiresAt: { [Op.gt]: now } }],
           tags: { [Op.like]: `%"client:${scope.clientId}"%` },
-        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
         order: [
           ['isPinned', 'DESC'],
           ['publishAt', 'DESC'],

@@ -1,33 +1,21 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  Briefcase,
-  Bot,
   Calculator as CalcIcon,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard,
   LogOut,
-  Package,
   PanelLeftClose,
   PanelLeftOpen,
-  PieChart,
   Pin,
-  Receipt,
-  Settings,
-  Target,
-  Ticket,
-  Users,
-  Wrench,
-  type LucideIcon,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
 import { PortalPriceCalculator } from '@/components/portal/PortalPriceCalculator';
 import { usePriceCalculatorOpenListener } from '@/contexts/PriceCalculatorContext';
+import { getPortalNavForRole, getPortalNavLabel } from '@/lib/portal-nav';
 
 const STORAGE_PINNED = 'cd_sidebar_pinned';
 const STORAGE_CALCULATOR = 'cd_sidebar_calculator_open';
@@ -54,24 +42,65 @@ function sidebarWidthPx(stayExpanded: boolean, calculatorOpen: boolean): number 
   return 256;
 }
 
-const nav: Array<{
+function PortalNavLink({
+  href,
+  active,
+  effectivelyCollapsed,
+  displayLabel,
+  icon: Icon,
+}: {
   href: string;
-  label: string;
-  icon: LucideIcon;
-  roles: string[];
-}> = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'technician', 'client'] },
-  { href: '/tickets', label: 'Tickets', icon: Ticket, roles: ['admin', 'technician', 'client'] },
-  { href: '/billing', label: 'Billing', icon: Receipt, roles: ['client'] },
-  { href: '/orders', label: 'Orders', icon: Package, roles: ['admin', 'technician', 'client'] },
-  { href: '/sales', label: 'Sales', icon: Target, roles: ['admin', 'technician'] },
-  { href: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['admin', 'technician'] },
-  { href: '/clients', label: 'Clients', icon: Users, roles: ['admin', 'technician'] },
-  { href: '/msp', label: 'MSP', icon: Briefcase, roles: ['admin', 'technician'] },
-  { href: '/accounting', label: 'Accounting', icon: PieChart, roles: ['admin', 'technician'] },
-  { href: '/developer-toolbox', label: 'Developer Toolbox', icon: Wrench, roles: ['admin'] },
-  { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
-];
+  active: boolean;
+  effectivelyCollapsed: boolean;
+  displayLabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Link
+      href={href}
+      title={effectivelyCollapsed ? displayLabel : undefined}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+        active
+          ? 'bg-cd-500/20 text-white ring-1 ring-cd-500/30'
+          : 'text-slate-400 hover:bg-white/5 hover:text-white'
+      } ${effectivelyCollapsed ? 'justify-center px-2' : ''}`}
+    >
+      <PortalNavLinkContent
+        active={active}
+        effectivelyCollapsed={effectivelyCollapsed}
+        displayLabel={displayLabel}
+        icon={Icon}
+      />
+    </Link>
+  );
+}
+
+function PortalNavLinkContent({
+  active,
+  effectivelyCollapsed,
+  displayLabel,
+  icon: Icon,
+}: {
+  active: boolean;
+  effectivelyCollapsed: boolean;
+  displayLabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      <Icon className={`h-4 w-4 shrink-0 ${pending ? 'opacity-60' : ''}`} />
+      {!effectivelyCollapsed && (
+        <>
+          <span className={`truncate ${pending ? 'opacity-60' : ''}`}>{displayLabel}</span>
+          {active && <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />}
+        </>
+      )}
+    </>
+  );
+}
 
 export function PortalSidebar({
   user,
@@ -82,12 +111,7 @@ export function PortalSidebar({
   onWidthChange: (px: number) => void;
   miniDockActive?: boolean;
 }) {
-  const visibleNav = nav.filter((item) => item.roles.includes(user.role));
-  const miniNavItem =
-    user.role === 'admin' && miniDockActive
-      ? [{ href: '/mini', label: 'Mini', icon: Bot, roles: ['admin'] as string[] }]
-      : [];
-  const sidebarNav = [...visibleNav.slice(0, -1), ...miniNavItem, ...visibleNav.slice(-1)];
+  const sidebarNav = getPortalNavForRole(user.role, { miniDockActive });
   const pathname = usePathname();
   const router = useRouter();
   const showCalculatorTool = user.role === 'admin' || user.role === 'technician';
@@ -198,7 +222,7 @@ export function PortalSidebar({
   return (
     <aside
       style={{ width: sidebarPx }}
-      className={`fixed inset-y-0 left-0 z-[70] flex flex-col bg-cd-950 text-white shadow-2xl ${
+      className={`portal-sidebar fixed inset-y-0 left-0 z-[70] flex flex-col bg-cd-950 text-white shadow-2xl ${
         hydrated ? 'transition-[width] duration-200 ease-out' : ''
       }`}
     >
@@ -269,33 +293,18 @@ export function PortalSidebar({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {sidebarNav.map(({ href, label, icon: Icon }) => {
+        {sidebarNav.map(({ href, icon: Icon }) => {
           const active = pathname === href;
-          const displayLabel =
-            user.role === 'client' && href === '/tickets'
-              ? 'My tickets'
-              : user.role === 'client' && href === '/orders'
-                ? 'My orders'
-                : label;
+          const displayLabel = getPortalNavLabel(href, user.role);
           return (
-            <Link
+            <PortalNavLink
               key={href}
               href={href}
-              title={effectivelyCollapsed ? displayLabel : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                active
-                  ? 'bg-cd-500/20 text-white ring-1 ring-cd-500/30'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              } ${effectivelyCollapsed ? 'justify-center px-2' : ''}`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!effectivelyCollapsed && (
-                <>
-                  <span className="truncate">{displayLabel}</span>
-                  {active && <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />}
-                </>
-              )}
-            </Link>
+              active={active}
+              effectivelyCollapsed={effectivelyCollapsed}
+              displayLabel={displayLabel}
+              icon={Icon}
+            />
           );
         })}
       </nav>

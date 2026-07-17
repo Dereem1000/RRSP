@@ -10,7 +10,7 @@ import {
   EmptyOrdersState,
   Eye,
   LoadingState,
-  OrderFormFields,
+  OrderFormModal,
   RefreshCw,
   Search,
   StaffOrderDetailModal,
@@ -22,6 +22,7 @@ import {
   type OrderFormValues,
   type OrderView,
 } from '@/components/orders/order-ui';
+import { ReceiveAtOfficePanel } from '@/components/orders/ReceiveAtOfficePanel';
 import { ORDER_STATUSES, SHIPPING_STAGES } from '@/lib/order-constants';
 import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 import type { ClientPickerOption } from '@/lib/client-picker';
@@ -34,66 +35,6 @@ type PaginationMeta = { total: number; page: number; limit: number; pages: numbe
 
 const PAGE_SIZE = 20;
 const EMPTY_PAGINATION: PaginationMeta = { total: 0, page: 1, limit: PAGE_SIZE, pages: 0 };
-
-function canSubmitNewOrder(form: OrderFormValues, showCost?: boolean) {
-  if (!form.clientId.trim() || !form.title.trim() || !form.itemName.trim()) return false;
-  if (form.clientPrice === '' || Number.isNaN(Number(form.clientPrice))) return false;
-  if (showCost && (form.costPrice === '' || Number.isNaN(Number(form.costPrice)))) return false;
-  return true;
-}
-
-function OrderFormModal({
-  title,
-  form,
-  onChange,
-  clients,
-  showCost,
-  loading,
-  error,
-  onClose,
-  onSubmit,
-  isNewOrder,
-}: {
-  title: string;
-  form: OrderFormValues;
-  onChange: (patch: Partial<OrderFormValues>) => void;
-  clients: ClientOption[];
-  showCost?: boolean;
-  loading?: boolean;
-  error?: string;
-  onClose: () => void;
-  onSubmit: () => void;
-  isNewOrder?: boolean;
-}) {
-  const canSubmit = !isNewOrder || canSubmitNewOrder(form, showCost);
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-            {isNewOrder && <p className="mt-0.5 text-sm text-slate-500">Client required · ticket created automatically</p>}
-          </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
-        </div>
-        {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        <OrderFormFields form={form} onChange={onChange} clients={clients} showCost={showCost} isNewOrder={isNewOrder} />
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={loading || !canSubmit}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {loading ? 'Saving…' : isNewOrder ? 'Create order & ticket' : 'Create order'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function StaffOrdersPageClient({
   isAdmin,
@@ -122,6 +63,7 @@ export function StaffOrdersPageClient({
   const [notice, setNotice] = useState<{ text: string; ticketId?: string; ticketNumber?: string } | null>(null);
 
   useEffect(() => {
+    if (!searchParams) return;
     const clientIdParam = searchParams.get('clientId');
     if (searchParams.get('create') === '1') {
       setShowCreate(true);
@@ -132,6 +74,7 @@ export function StaffOrdersPageClient({
   }, [searchParams]);
 
   useEffect(() => {
+    if (!searchParams) return;
     const orderId = searchParams.get('order');
     if (orderId) void openDetail(orderId);
   }, [searchParams]);
@@ -223,6 +166,7 @@ export function StaffOrdersPageClient({
           currentLocation: createForm.currentLocation || null,
           isLoggedInPreAlerts: createForm.isLoggedInPreAlerts,
           preAlertNotes: createForm.preAlertNotes || null,
+          serialNumber: createForm.serialNumber || null,
           notes: createForm.notes || null,
           sendEmail,
         }),
@@ -342,6 +286,13 @@ export function StaffOrdersPageClient({
       )}
 
       {isAdmin && <EmailMonitoringPanel />}
+
+      <ReceiveAtOfficePanel
+        onReceived={() => {
+          loadSummary();
+          loadOrders();
+        }}
+      />
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  Mail,
   RefreshCw,
   Shield,
   Zap,
@@ -13,8 +14,13 @@ import {
 } from 'lucide-react';
 import {
   ACTIVATION_FEATURE_LABELS,
+  getActivationFeatures,
   type ActivationFeature,
 } from '@/lib/license-constants';
+import {
+  LicenseSerialUnlockPanel,
+  useLicenseSerialReveal,
+} from '@/components/licenses/LicenseSerialUnlockPanel';
 
 type FeatureStatus = {
   hasLicense: boolean;
@@ -36,44 +42,60 @@ type LicenseStatusResponse = {
   source?: string;
   activationFeatures?: ActivationFeature[];
   featureLicenseStatus?: Partial<Record<ActivationFeature, FeatureStatus>>;
+  serialsRevealed?: boolean;
 };
 
 export function ClientLicensePanel({
   clientId,
-  serviceLevel,
+  features,
   isAdmin,
+  isStaff = false,
+  forceShow = false,
 }: {
   clientId: string;
-  serviceLevel?: string | null;
+  features?: unknown;
   isAdmin: boolean;
+  isStaff?: boolean;
+  forceShow?: boolean;
 }) {
   const [data, setData] = useState<LicenseStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const serialReveal = useLicenseSerialReveal();
 
-  const mspLevel = serviceLevel && ['basic', 'standard', 'premium', 'enterprise', 'per-job'].includes(serviceLevel);
+  const activationFeatures = getActivationFeatures(features);
+  const showPanel = forceShow || activationFeatures.length > 0;
+  const canRevealSerials = isAdmin || isStaff;
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/msp/license-status/${clientId}`);
+      const res = await fetch(`/api/msp/license-status/${clientId}`, {
+        headers: serialReveal.authHeaders(),
+        credentials: 'include',
+      });
       const json = (await res.json()) as LicenseStatusResponse;
       if (!res.ok) throw new Error(json.message || 'Failed to load license status');
       setData(json);
+      if (typeof json.serialsRevealed === 'boolean') {
+        serialReveal.setRevealed(json.serialsRevealed);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load license status');
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, serialReveal.authHeaders, serialReveal.setRevealed]);
 
   useEffect(() => {
-    if (mspLevel) loadStatus();
+    if (showPanel) loadStatus();
     else setLoading(false);
-  }, [mspLevel, loadStatus]);
+  }, [showPanel, loadStatus]);
 
   async function syncLicenses() {
     setAction('sync');
@@ -113,9 +135,43 @@ export function ClientLicensePanel({
     }
   }
 
-  if (!mspLevel) return null;
+  async function sendLicensesEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canRevealSerials || !emailPassword) return;
+    setEmailSending(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch(`/api/msp/clients/${clientId}/licenses/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: emailPassword }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to send email');
+      setMessage(json.message || 'License details emailed to client');
+      setEmailPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send email');
+    } finally {
+      setEmailSending(false);
+    }
+  }
 
-  const features = data?.activationFeatures ?? [];
+  async function handleUnlock(password: string) {
+    const ok = await serialReveal.unlock(password);
+    if (ok) await loadStatus();
+  }
+
+  async function handleLock() {
+    await serialReveal.lock();
+    await loadStatus();
+  }
+
+  if (!showPanel) return null;
+
+  const licensedFeatures = data?.activationFeatures ?? activationFeatures;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -153,6 +209,43 @@ export function ClientLicensePanel({
         </div>
       </div>
 
+      {canRevealSerials && (
+        <LicenseSerialUnlockPanel
+          revealed={serialReveal.revealed}
+          unlocking={serialReveal.unlocking}
+          error={serialReveal.error}
+          onUnlock={handleUnlock}
+          onLock={handleLock}
+        />
+      )}
+
+      {canRevealSerials && licensedFeatures.length > 0 && (
+        <form onSubmit={sendLicensesEmail} className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+          <p className="text-sm font-medium text-slate-800">Email licenses to client</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Sends full license serials to the client&apos;s email on file. Requires your password.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="password"
+              value={emailPassword}
+              onChange={(e) => setEmailPassword(e.target.value)}
+              placeholder="Your password to confirm"
+              autoComplete="current-password"
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={emailSending || !emailPassword}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {emailSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              Send to client
+            </button>
+          </div>
+        </form>
+      )}
+
       {(error || message) && (
         <div className={`mt-4 rounded-xl px-3 py-2 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
           {error || message}
@@ -175,14 +268,14 @@ export function ClientLicensePanel({
             )}
           </div>
 
-          {features.length === 0 ? (
+          {licensedFeatures.length === 0 ? (
             <p className="mt-4 text-sm text-slate-500">
-              No licenses in the activation system for this client. Select activation features in the form above,
-              save, then use Push to license system — or register licenses in the activation GUI.
+              No licenses in the activation system for this client. Save the client, then use Push to license system — or
+              register licenses in the activation GUI.
             </p>
           ) : (
             <ul className="mt-4 space-y-2">
-              {features.map((feature) => {
+              {licensedFeatures.map((feature) => {
                 const status = data?.featureLicenseStatus?.[feature];
                 const active = status?.isActive;
                 const pending = status?.hasLicense && !status.isActive;
@@ -195,8 +288,12 @@ export function ClientLicensePanel({
                       <p className="text-sm font-medium text-slate-800">
                         {ACTIVATION_FEATURE_LABELS[feature].title}
                       </p>
-                      {status?.serialNumber && (
-                        <p className="truncate text-xs text-slate-500">{status.serialNumber}</p>
+                      {status?.hasLicense && (
+                        <p className="truncate text-xs text-slate-500">
+                          {serialReveal.revealed && status.serialNumber
+                            ? status.serialNumber
+                            : 'Serial hidden — unlock to view'}
+                        </p>
                       )}
                       <p className="text-xs text-slate-400">
                         {status?.licenseType && <span className="capitalize">{status.licenseType}</span>}

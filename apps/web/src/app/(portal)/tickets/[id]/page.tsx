@@ -11,6 +11,9 @@ import {
   serializeTicket,
 } from '@/lib/tickets';
 import { TicketDetailClient } from '@/components/tickets/TicketDetailClient';
+import { listInvoicesForTicket } from '@/lib/accounting';
+import { listOrdersForTicket } from '@/lib/orders';
+import { flattenInvoiceLineItems } from '@/lib/ticket-invoice-order';
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -41,6 +44,16 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   const includeInternal = user.role !== 'client';
   const comments = await getTicketComments(id, includeInternal);
+  const linkedOrders = await listOrdersForTicket(id, { includeCost: user.role === 'admin' });
+  const ticketInvoices =
+    user.role === 'admin' && ticket.clientId
+      ? await listInvoicesForTicket({
+          ticketId: id,
+          ticketNumber: ticket.ticketNumber,
+          clientId: ticket.clientId,
+        })
+      : [];
+  const invoiceOrderItems = flattenInvoiceLineItems(ticketInvoices);
 
   const technicians =
     user.role === 'client'
@@ -67,13 +80,14 @@ export default async function TicketDetailPage({ params }: PageProps) {
   return (
     <TicketDetailClient
       ticket={serializeTicket(ticket) as Parameters<typeof TicketDetailClient>[0]['ticket']}
-      comments={comments.map((c: { id: string; comment: string; commentType: string; authorName: string; timestamp: string; isInternal: number }) => ({
+      comments={comments.map((c: { id: string; comment: string; commentType: string; authorName: string; timestamp: string; isInternal: number; linkedOrderId?: string | null }) => ({
         id: c.id,
         comment: c.comment,
         commentType: c.commentType,
         authorName: c.authorName,
         timestamp: c.timestamp,
         isInternal: c.isInternal,
+        linkedOrderId: c.linkedOrderId ?? null,
       }))}
       technicians={technicians.map((t) => ({
         id: t.id,
@@ -83,6 +97,18 @@ export default async function TicketDetailPage({ params }: PageProps) {
       }))}
       clients={clients.map((c) => mapClientToPickerOption(c))}
       userRole={user.role}
+      linkedOrders={linkedOrders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        title: order.title,
+        itemName: order.itemName,
+        status: order.status,
+        shippingStage: order.shippingStage,
+        clientPrice: order.clientPrice,
+        trackingNumber: order.trackingNumber ?? null,
+        vendor: order.vendor ?? null,
+      }))}
+      invoiceOrderItems={invoiceOrderItems}
     />
   );
 }

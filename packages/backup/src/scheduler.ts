@@ -1,6 +1,10 @@
-import { Backup, SystemConfig } from '@cd-v2/database';
-import { BackupConfigKeys, type AutoBackupConfig } from './config-keys';
-import { createBackupJob } from './service';
+import { SystemConfig, type BackupType } from '@cd-v2/database';
+import {
+  BackupConfigKeys,
+  DEFAULT_AUTO_BACKUP_CONFIG,
+  type AutoBackupConfig,
+} from './config-keys';
+import { createBackupJob, isBackupEnabled } from './service';
 import { enforceRetentionPolicy } from './retention';
 
 function calculateNextRun(config: AutoBackupConfig): Date | null {
@@ -32,31 +36,7 @@ export async function saveAutoBackupConfig(config: AutoBackupConfig): Promise<Au
   return stored;
 }
 
-export async function maybeRunAutoBackup(): Promise<boolean> {
-  const config = await getAutoBackupConfigParsed();
-  if (!config?.enabled) return false;
-
-  const now = new Date();
-  const nextRun = config.nextRun ? new Date(config.nextRun) : null;
-  if (nextRun && nextRun > now) return false;
-
-  try {
-    await createBackupJob((config.type as 'full') ?? 'auto');
-    await enforceRetentionPolicy();
-    const updated: AutoBackupConfig = {
-      ...config,
-      lastRun: now.toISOString(),
-      nextRun: calculateNextRun(config)?.toISOString() ?? null,
-    };
-    await SystemConfig.setConfig(BackupConfigKeys.autoBackup, updated, 'json', 'backup');
-    return true;
-  } catch (err) {
-    console.error('[cd-backup] Auto backup failed:', err);
-    return false;
-  }
-}
-
-async function getAutoBackupConfigParsed(): Promise<AutoBackupConfig | null> {
+export async function getAutoBackupConfigParsed(): Promise<AutoBackupConfig | null> {
   const raw = await SystemConfig.getConfig<AutoBackupConfig | string | null>(
     BackupConfigKeys.autoBackup,
     null
@@ -70,4 +50,41 @@ async function getAutoBackupConfigParsed(): Promise<AutoBackupConfig | null> {
     }
   }
   return raw;
+}
+
+/** Seed daily auto-backup defaults when none exist yet. */
+export async function ensureAutoBackupConfig(): Promise<AutoBackupConfig> {
+  const existing = await getAutoBackupConfigParsed();
+  if (existing) return existing;
+  return saveAutoBackupConfig({
+    ...DEFAULT_AUTO_BACKUP_CONFIG,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function maybeRunAutoBackup(): Promise<boolean> {
+  if (!(await isBackupEnabled())) return false;
+
+  const config = await ensureAutoBackupConfig();
+  if (!config.enabled) return false;
+
+  const now = new Date();
+  const nextRun = config.nextRun ? new Date(config.nextRun) : calculateNextRun(config);
+  if (nextRun && nextRun > now) return false;
+
+  try {
+    const backupType = (config.type ?? 'full') as BackupType;
+    await createBackupJob(backupType, 'Scheduled auto-backup');
+    await enforceRetentionPolicy();
+    const updated: AutoBackupConfig = {
+      ...config,
+      lastRun: now.toISOString(),
+      nextRun: calculateNextRun(config)?.toISOString() ?? null,
+    };
+    await SystemConfig.setConfig(BackupConfigKeys.autoBackup, updated, 'json', 'backup');
+    return true;
+  } catch (err) {
+    console.error('[cd-backup] Auto backup failed:', err);
+    return false;
+  }
 }

@@ -159,9 +159,9 @@ export async function runFileIntegrityPass(
         eventType: 'file_integrity',
         severity: 'critical',
         description: `Protected file changed: ${result.relativePath} (${result.reason})`,
-        details: result.details ?? { reason: result.reason },
+        details: { relativePath: result.relativePath, ...(result.details ?? { reason: result.reason }) },
       });
-      if (!bypass) {
+      if (!bypass && !result.relativePath.endsWith('package.json')) {
         await attemptFileRepairFromBackup(result.relativePath, result.reason);
       }
     }
@@ -193,6 +193,61 @@ export function resolveWorkerHealth(
   if (age > staleAfter * 3) return 'offline';
   if (age > staleAfter) return 'stale';
   return 'online';
+}
+
+/** Lightweight probe for /api/health — avoids security event scans and emergency refresh. */
+export type PlatformHealthProbeDetails = {
+  worker: PlatformSecurityStatus['worker'];
+  license: Awaited<ReturnType<typeof import('./license-health').getLicenseApiHealthSnapshot>> & {
+    dbAvailable: boolean;
+    activeLicenseCount: number | null;
+    licenseCount: number | null;
+  };
+};
+
+export async function getPlatformHealthProbeDetails(): Promise<PlatformHealthProbeDetails> {
+  const { getLicenseApiHealthSnapshot } = await import('./license-health');
+  const [
+    enabled,
+    intervalMs,
+    lastHeartbeat,
+    version,
+    checksTotal,
+    lastError,
+    apiHealth,
+  ] = await Promise.all([
+    SystemConfig.getConfig<boolean>(SecurityConfigKeys.monitoringEnabled, true),
+    SystemConfig.getConfig<number>(
+      SecurityConfigKeys.monitoringIntervalMs,
+      DEFAULT_MONITOR_INTERVAL_MS
+    ),
+    SystemConfig.getConfig<string | null>(SecurityConfigKeys.workerHeartbeat, null),
+    SystemConfig.getConfig<string | null>(SecurityConfigKeys.workerVersion, null),
+    SystemConfig.getConfig<number>(SecurityConfigKeys.workerChecks, 0),
+    SystemConfig.getConfig<string | null>(SecurityConfigKeys.workerLastError, null),
+    getLicenseApiHealthSnapshot(),
+  ]);
+
+  const resolvedInterval = intervalMs || DEFAULT_MONITOR_INTERVAL_MS;
+  const monitoringEnabled = enabled !== false;
+  const { isLicenseDbAvailable } = await import('./license-paths');
+
+  return {
+    worker: {
+      health: resolveWorkerHealth(monitoringEnabled, lastHeartbeat, resolvedInterval),
+      lastHeartbeat: lastHeartbeat && lastHeartbeat !== 'null' ? lastHeartbeat : null,
+      version,
+      checksTotal: checksTotal || 0,
+      lastError: lastError && lastError !== 'null' ? lastError : null,
+      intervalMs: resolvedInterval,
+    },
+    license: {
+      ...apiHealth,
+      dbAvailable: isLicenseDbAvailable(),
+      activeLicenseCount: null,
+      licenseCount: null,
+    },
+  };
 }
 
 export async function getPlatformSecurityStatus(): Promise<PlatformSecurityStatus> {
@@ -418,6 +473,15 @@ export async function runMonitorCycle(): Promise<void> {
     console.error('[cd-security] License API health check failed:', message);
   }
 
+  // Auto-backup runs independently of security monitoring toggles.
+  try {
+    const { maybeRunAutoBackup } = await import('@cd-v2/backup');
+    await maybeRunAutoBackup();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[cd-security] Auto backup check failed:', message);
+  }
+
   if (!enabled) return;
 
   try {
@@ -435,9 +499,6 @@ export async function runMonitorCycle(): Promise<void> {
     if (!bypassActive) {
       await runLicenseIntegrityChecks();
     }
-
-    const { maybeRunAutoBackup } = await import('@cd-v2/backup');
-    await maybeRunAutoBackup();
 
     const threatLevel = await computeThreatLevel();
     await SystemConfig.setConfig(

@@ -1198,6 +1198,8 @@
 
                     <!-- Submit Section -->
                     <div class="submit-section">
+                        <div id="captcha-container" style="margin: 0 auto 16px; display: none; max-width: 304px;"></div>
+                        <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;" aria-hidden="true">
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <div class="loading-spinner"></div>
                             <span class="btn-text">
@@ -1214,6 +1216,8 @@
         </div>
     </main>
 
+    <script src="/js/public-captcha.js"></script>
+    <script src="/js/public-phone-input.js"></script>
     <script>
         // Toggle section function
         function toggleSection(sectionTitle) {
@@ -1235,6 +1239,8 @@
             const successMessage = document.getElementById('successMessage');
             const requestBtn = document.getElementById('requestTechnicianBtn');
             const formContainer = document.getElementById('formContainer');
+
+            CDPublicCaptcha.render(document.getElementById('captcha-container'));
 
             // Show form when request button is clicked
             requestBtn.addEventListener('click', function() {
@@ -1294,8 +1300,27 @@
 
                     data.services = selectedServices;
 
-                    // Simulate API call (replace with actual endpoint)
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    let captchaToken = '';
+                    try {
+                        captchaToken = CDPublicCaptcha.requireToken();
+                    } catch (err) {
+                        if (String(err.message || err).includes('CAPTCHA')) {
+                            alert('Please complete the CAPTCHA verification.');
+                            return;
+                        }
+                    }
+                    data.captchaToken = captchaToken || undefined;
+
+                    const response = await fetch('/api/public/request-technician', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'Failed to submit request');
+                    }
 
                     // Show success message
                     successMessage.classList.add('show');
@@ -1311,7 +1336,8 @@
 
                 } catch (error) {
                     console.error('Error submitting form:', error);
-                    alert('There was an error submitting your request. Please try again.');
+                    alert(error.message || 'There was an error submitting your request. Please try again.');
+                    CDPublicCaptcha.reset();
                 } finally {
                     // Reset button state
                     submitBtn.classList.remove('loading');

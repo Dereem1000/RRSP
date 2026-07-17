@@ -4,6 +4,11 @@ build/
 .env
 .env.local
 .env.*.local
+scripts/tmp-login.json
+cloudflared-computerdynamics.yml
+**/.session_secret
+Management Systems/**/.env
+Management Systems/**/.env.local
 apps/web/.next/
 .next/
 data/computer_dynamics.db
@@ -14,6 +19,8 @@ data/*.db-*
 data/*.db-journal
 data/backups/
 data/.demo_mode/
+data/mini-dock.json
+data/security-audit-reports/
 *.log
 .DS_Store
 Thumbs.db

@@ -1,8 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { getMonorepoRoot } from '@cd-v2/database';
-import { getLicenseProtectedFilePaths } from './license-paths';
+import { getMonorepoRoot, getProtectedFilePaths } from '@cd-v2/database';
 
 export type FileBaseline = {
   hash: string;
@@ -16,59 +15,11 @@ export type IntegrityResult =
 
 /**
  * Bump when the protected path list changes so the worker rebaselines on next cycle.
- * 2.0.2 — licensing stack (Flask API, proxy, license monitor modules).
+ * 2.1.1 — shared catalog with backup app/ paths (+ file-repair, http-guard).
  */
-export const PROTECTED_FILES_VERSION = '2.0.2';
+export const PROTECTED_FILES_VERSION = '2.1.1';
 
-/** Critical paths relative to monorepo root. */
-export function getProtectedFilePaths(): string[] {
-  return [
-    // Monorepo / ops
-    'package.json',
-    'start.bat',
-    'stop.bat',
-
-    // Database layer
-    'packages/database/src/connection.ts',
-    'packages/database/src/models/User.ts',
-    'packages/database/src/models/SystemConfig.ts',
-    'packages/database/src/models/EmergencyOverride.ts',
-    'packages/database/src/models/SecurityEvent.ts',
-
-    // Security package (worker + domain logic)
-    'packages/security/package.json',
-    'packages/security/src/worker.ts',
-    'packages/security/src/worker-cli.ts',
-    'packages/security/src/monitoring.ts',
-    'packages/security/src/emergency.ts',
-    'packages/security/src/auth.ts',
-    'packages/security/src/events.ts',
-    'packages/security/src/protected-files.ts',
-    'packages/security/src/activity-monitor.ts',
-    'packages/security/src/intrusion-scan.ts',
-    'packages/security/src/features.ts',
-    'packages/security/src/sequelize-time.ts',
-
-    // Portal auth + middleware
-    'apps/web/src/lib/auth.ts',
-    'apps/web/src/lib/jwt.ts',
-    'apps/web/src/middleware.ts',
-
-    // Security API surface
-    'apps/web/src/app/api/security/platform-status/route.ts',
-    'apps/web/src/app/api/security/toggle/route.ts',
-    'apps/web/src/app/api/security/emergency-override/route.ts',
-    'apps/web/src/app/api/security/emergency-override/disable/route.ts',
-    'apps/web/src/app/api/security/emergency-status/route.ts',
-    'apps/web/src/app/api/security/auth-code/route.ts',
-    'apps/web/src/app/api/security/file-integrity/route.ts',
-    'apps/web/src/app/api/security/events/route.ts',
-    'apps/web/src/app/api/emergency/overrides/route.ts',
-
-    // Licensing
-    ...getLicenseProtectedFilePaths(),
-  ];
-}
+export { getProtectedFilePaths } from '@cd-v2/database';
 
 /** Paths that exist on disk from the current list. */
 export function getExistingProtectedPaths(): string[] {

@@ -47,13 +47,6 @@ function resolveBypassMinutes(
   return Math.min(maxMinutes, Math.max(1, minutes));
 }
 
-function formatLicenseLastCheck(value: string | null | undefined): string {
-  if (!value || value === 'Never' || value === 'null') return 'Not checked yet';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return 'Not checked yet';
-  return d.toLocaleString();
-}
-
 function formatDurationSummary(minutes: number): string {
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
   if (minutes < 24 * 60) {
@@ -398,53 +391,6 @@ export function SettingsSecuritySection({
               </div>
             </div>
           </div>
-
-          {(metrics?.license || platform?.license) && (() => {
-            const license = metrics?.license ?? platform?.license;
-            const apiStatus = license?.status ?? 'unknown';
-            const apiOnline = apiStatus === 'online';
-            const apiMessage = metrics?.license?.message ?? platform?.license?.message;
-            return (
-            <div
-              className={`rounded-2xl border p-4 ${
-                apiOnline
-                  ? 'border-indigo-200 bg-indigo-50/40'
-                  : apiStatus === 'unknown'
-                    ? 'border-slate-200 bg-slate-50/60'
-                    : 'border-red-200 bg-red-50/40'
-              }`}
-            >
-              <h4 className="text-sm font-semibold text-slate-800">License system</h4>
-              <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-4">
-                <p>
-                  API:{' '}
-                  <strong className="capitalize">{apiStatus}</strong>
-                  {license?.latencyMs != null && license.latencyMs > 0 && ` (${license.latencyMs}ms)`}
-                </p>
-                <p>
-                  DB:{' '}
-                  {license?.dbAvailable
-                    ? `${license.activeLicenseCount ?? 0} active / ${license.licenseCount ?? 0} total`
-                    : 'unavailable'}
-                </p>
-                <p>
-                  Events (24h): integrity{' '}
-                  {license?.events24h?.integrity ?? 0}, suspicious{' '}
-                  {license?.events24h?.suspicious ?? 0}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Last check: {formatLicenseLastCheck(license?.lastCheck)}
-                </p>
-              </div>
-              {!apiOnline && apiMessage && apiStatus !== 'unknown' && (
-                <p className="mt-2 text-xs text-red-700">{apiMessage}</p>
-              )}
-              {license?.baseUrl && (
-                <p className="mt-1 text-xs text-slate-400">Health URL: {license.baseUrl}/health</p>
-              )}
-            </div>
-            );
-          })()}
 
           {metrics && (
             <div className="grid gap-3 md:grid-cols-3">

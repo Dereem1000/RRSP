@@ -1,3 +1,4 @@
 @echo off
-REM Alias — full startup (portal + license API + tunnel) is in start.bat
-call "%~dp0start.bat"
+REM Start only the Cloudflare tunnel (portal + license API must already be running).
+call "%~dp0scripts\restart-cloudflared-tunnel.bat"
+exit /b %ERRORLEVEL%

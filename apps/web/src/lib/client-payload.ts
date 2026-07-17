@@ -1,4 +1,6 @@
 /** Map API request body fields to client create/update payload (v1-compatible). */
+import { normalizeStoredPhone } from '@/lib/phone-utils';
+
 export function pickClientFields(body: Record<string, unknown>) {
   const payload: Record<string, unknown> = {};
 
@@ -19,7 +21,11 @@ export function pickClientFields(body: Record<string, unknown>) {
 
   for (const field of scalarFields) {
     if (body[field] !== undefined) {
-      payload[field] = body[field] === '' ? null : body[field];
+      if (field === 'phone') {
+        payload[field] = normalizeStoredPhone(String(body[field] ?? ''));
+      } else {
+        payload[field] = body[field] === '' ? null : body[field];
+      }
     }
   }
 

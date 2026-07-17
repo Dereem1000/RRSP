@@ -235,6 +235,56 @@ Disable all license checks with `LICENSE_MONITORING_ENABLED=false` in `.env`.
 | Integrity alerts after deploy | Expected if protected files changed; review events or refresh baselines |
 | Bypass not pausing checks | Confirm worker is running and `emergency_override_active` is true |
 
+## Security audit suite
+
+Two-step security review for production:
+
+| Step | Command | What it does |
+|------|---------|--------------|
+| **1 — Config audit** | `npm run audit:security` | Secrets, DB config, npm audit, filesystem (offline) |
+| **2 — Pentest** | `npm run audit:security:pentest` | Simulated web attacks against live production URL |
+| **Both** | `npm run audit:security:full` | Runs Step 1 then Step 2 |
+
+```bash
+# Full 2-step review (recommended before/after production deploy)
+npm run audit:security:full
+
+# Or run steps separately
+npm run audit:security
+npm run audit:security:pentest -- --base-url=https://www.computerdynamicstt.com
+
+# Windows shortcut (runs full 2-step)
+run-security-audit.bat
+```
+
+### Step 1 — Configuration audit
+
+Offline hygiene checks. No HTTP attacks.
+
+| Output | Location |
+|--------|----------|
+| Full JSON report | `data/security-audit-reports/audit-<timestamp>.json` |
+| Human-readable | `data/security-audit-reports/latest.md` |
+
+### Step 2 — Production penetration test
+
+Anonymous attacker probes against your live portal (default: `NEXT_PUBLIC_SITE_URL` or `https://www.computerdynamicstt.com`):
+
+- Bot detection, brute-force login, honeypot, rate limiting
+- SQL injection and XSS probes on login
+- Unauthorized access to `/api/users`, settings, security, backup, MSP APIs
+- Public form honeypot on client signup
+- Dashboard redirect without session
+
+| Output | Location |
+|--------|----------|
+| Pentest JSON | `data/security-audit-reports/pentest-<timestamp>.json` |
+| Pentest report | `data/security-audit-reports/latest-pentest.md` |
+
+Set `PENTEST_BASE_URL` to override the production target. Use RFC5737 test IPs only — safe for repeated runs.
+
+Related: `npm run preflight:production` (deploy blockers), `npm run test:security:external` (local dev wrapper for Step 2).
+
 ## Package layout
 
 ```

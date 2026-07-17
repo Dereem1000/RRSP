@@ -85,7 +85,7 @@ function createSequelizeInstance(storage: string): Sequelize {
       freezeTableName: true,
     },
     pool: {
-      max: 5,
+      max: 10,
       min: 0,
       acquire: 30000,
       idle: 10000,
@@ -94,6 +94,8 @@ function createSequelizeInstance(storage: string): Sequelize {
 
   instance.addHook('afterConnect', async (connection: { exec: (sql: string) => Promise<void> }) => {
     await connection.exec('PRAGMA foreign_keys = ON;');
+    await connection.exec('PRAGMA journal_mode = WAL;');
+    await connection.exec('PRAGMA busy_timeout = 15000;');
   });
 
   onSequelizeCreated?.(instance);
@@ -117,6 +119,8 @@ export async function testConnection(): Promise<boolean> {
   const db = getSequelize();
   await db.authenticate();
   await db.query('PRAGMA foreign_keys = ON;');
+  await db.query('PRAGMA journal_mode = WAL;');
+  await db.query('PRAGMA busy_timeout = 15000;');
   return true;
 }
 
@@ -132,5 +136,7 @@ export async function reopenConnection(): Promise<Sequelize> {
   const db = getSequelize();
   await db.authenticate();
   await db.query('PRAGMA foreign_keys = ON;');
+  await db.query('PRAGMA journal_mode = WAL;');
+  await db.query('PRAGMA busy_timeout = 15000;');
   return db;
 }

@@ -16,5 +16,12 @@ Built: 2026-05-27T04:31:01.263Z
 ## License
 Activate using the license key provided by your vendor.
 
+If you see a **decryption** or **secure license file** error after moving the POS to another PC or reinstalling Windows:
+1. Stop the POS server.
+2. Delete `server\license.encrypted` (and `server\license.json` if present).
+3. Start the server again and enter the same license serial on this computer.
+
+The local license file is encrypted for this machine only; it is separate from activation in License Studio.
+
 ## Support
 Contact your POS vendor for updates and support. Source code is not included in this package.

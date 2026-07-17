@@ -128,7 +128,10 @@ export async function buildInvoicePrintHtml(invoice: InvoiceDoc) {
       <div>Paid: ${formatMoney(paid, currency)}</div>
       <div><strong>Balance due:</strong> ${formatMoney(balance, currency)}</div>
     </div>
-    <div class="notes">${settings.paymentTerms}<br/><br/>${settings.closingMessage}</div>`;
+    <div class="notes">
+      <strong>Payment Terms</strong><br/>${settings.paymentTerms}<br/><br/>
+      ${settings.closingMessage}
+    </div>`;
 
   return documentShell(`Invoice ${invoice.invoiceNumber}`, body);
 }
@@ -158,9 +161,9 @@ export async function buildQuotePrintHtml(quote: QuoteDoc) {
     ${itemsTable(quote.items ?? [], currency)}
     <div class="totals"><strong>Total:</strong> ${formatMoney(quote.amount, currency)}</div>
     <div class="notes">
-      <strong>Terms</strong><br/>${quote.terms || settings.paymentTerms}<br/><br/>
-      <strong>Warranty</strong><br/>${settings.warrantyTerms}<br/><br/>
-      ${quote.notes ? `${quote.notes}<br/><br/>` : ''}
+      <strong>Payment Terms</strong><br/>${quote.terms || settings.paymentTerms}<br/><br/>
+      <strong>Warranty Terms</strong><br/>${settings.warrantyTerms}<br/><br/>
+      ${quote.notes ? `<strong>Notes</strong><br/>${quote.notes}<br/><br/>` : ''}
       ${settings.closingMessage}
     </div>`;
 
