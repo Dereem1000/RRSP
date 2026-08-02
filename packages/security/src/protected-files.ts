@@ -15,9 +15,9 @@ export type IntegrityResult =
 
 /**
  * Bump when the protected path list changes so the worker rebaselines on next cycle.
- * 2.1.1 — shared catalog with backup app/ paths (+ file-repair, http-guard).
+ * 2.1.4 — broader catalog (API guard, alerts, auth handlers) + activity threshold module.
  */
-export const PROTECTED_FILES_VERSION = '2.1.1';
+export const PROTECTED_FILES_VERSION = '2.1.4';
 
 export { getProtectedFilePaths } from '@cd-v2/database';
 

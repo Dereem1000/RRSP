@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export interface SecurityEventAttributes {
   id: number;
@@ -55,7 +55,7 @@ SecurityEvent.init(
     updated_at: DataTypes.DATE,
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'security_events',
     timestamps: true,
     createdAt: 'created_at',

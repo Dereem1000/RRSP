@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export type CalendarEventType = 'sales_followup' | 'general';
 
@@ -81,7 +81,7 @@ CalendarEvent.init(
     },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'calendar_events',
     timestamps: true,
     createdAt: 'created_at',

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isRrspDbActive } from '@web/lib/rrsp-db';
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import {
   requireSession,
@@ -33,7 +34,7 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    if (session.role === 'client') { if (!isRrspDbActive()) return { status: 403, body: { success: false, message: 'Access denied' } }; } else { requireRole(session, 'admin', 'technician'); }
 
     const searchParams = searchParamsFrom(ctx);
     const stage = searchParams.get('stage') as 'active' | 'closed' | null;
@@ -56,7 +57,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    if (session.role === 'client') { if (!isRrspDbActive()) return { status: 403, body: { success: false, message: 'Access denied' } }; } else { requireRole(session, 'admin', 'technician'); }
 
     const body = ctx.body as Record<string, unknown>;
     const companyName = body.companyName?.trim();

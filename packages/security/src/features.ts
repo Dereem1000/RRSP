@@ -10,6 +10,7 @@ const INTRUSION_EVENT_TYPES = [
   'bot_detected',
   'sql_injection',
   'xss_attempt',
+  'path_traversal',
 ];
 
 export type SecurityFeatureSnapshot = {

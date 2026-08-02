@@ -11,7 +11,6 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { Ticket } from '@web/lib/db';
 import {
   canAccessTicket,
   getTicketById,
@@ -20,6 +19,7 @@ import {
   serializeTicket,
   userDisplayName,
 } from '@web/lib/tickets';
+import { getTicketModel, getTicketCommentModel } from '@web/lib/tickets';
 import { emitMiniCdEvent } from '@web/lib/mini-cd-events.server';
 import { pickTicketFields } from '@web/lib/ticket-payload';
 import { notifyTicketStatusChange } from '@web/lib/ticket-notifications';
@@ -67,7 +67,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
     requireRole(session, 'admin', 'technician');
 
     const { id } = ctx.params;
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }
@@ -137,7 +137,7 @@ export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
     requireRole(session, 'admin', 'technician');
 
     const { id } = ctx.params;
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }

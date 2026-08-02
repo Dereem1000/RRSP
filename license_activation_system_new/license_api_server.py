@@ -40,6 +40,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 import json
 import logging
+from werkzeug.exceptions import BadRequest
 from werkzeug.serving import WSGIRequestHandler
 from functools import wraps
 from collections import defaultdict
@@ -84,6 +85,8 @@ SYSTEM_TYPE_TO_FEATURE_KEY = {
     'auto_system': 'auto_system',
     'distribution': 'distribution_system',
     'distribution_system': 'distribution_system',
+    'rrsp': 'rrsp_online',
+    'rrsp_online': 'rrsp_online',
 }
 
 
@@ -347,15 +350,18 @@ def validate_license():
     """Validate a license serial number"""
     try:
         print('🔍 License validation request received')
-        print(f'📋 Request body: {request.get_json()}')
-        
-        data = request.get_json()
-        if not data:
+        data = request.get_json(silent=True)
+        if data is None:
+            raw_len = len(request.get_data(cache=True) or b'')
+            print(f'📋 Request body missing or invalid JSON (raw bytes: {raw_len})')
             return jsonify({
                 'success': False,
+                'valid': False,
                 'error': 'No JSON data provided',
-                'message': 'Please provide license validation data in JSON format'
+                'message': 'Please provide license validation data in JSON format',
             }), 400
+
+        print(f'📋 Request body keys: {list(data.keys())}')
         
         # Debug: Log the raw request data
         print(f'📋 Raw request JSON data: {json.dumps(data, indent=2)}')
@@ -600,6 +606,15 @@ def validate_license():
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }), 403
             
+    except BadRequest as e:
+        print(f'❌ License validation bad request: {e}')
+        return jsonify({
+            'success': False,
+            'valid': False,
+            'error': 'Invalid request',
+            'message': 'Request body must be valid JSON with a serial_number field',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        }), 400
     except Exception as e:
         import traceback
         import sys
@@ -959,5 +974,13 @@ if __name__ == '__main__':
     print(f'     • ?api_key=<key> query parameter')
     print(f'\nNote: TLS/HTTPS handshake attempts will be silently ignored (this is normal for HTTP servers)')
     
-    # Use custom request handler to filter TLS handshake attempts
-    app.run(host='0.0.0.0', port=port, debug=debug, request_handler=FilteredWSGIRequestHandler)
+    # Use custom request handler to filter TLS handshake attempts.
+    # threaded=True so /health and concurrent /api/license/validate do not block each other
+    # (Werkzeug defaults to single-threaded, which caused intermittent 503s under load).
+    app.run(
+        host='0.0.0.0',
+        port=port,
+        debug=debug,
+        threaded=True,
+        request_handler=FilteredWSGIRequestHandler,
+    )

@@ -71,7 +71,11 @@ function buildFeedItems(feed: FeedPayload | null, limit = 14): FeedItem[] {
       key: `chat-${entry.fingerprint || index}-${entry.role}-${entry.content.slice(0, 24)}`,
     })),
     ...notices
-      .filter((notice) => notice.source !== 'mini_companion')
+      .filter((notice) => {
+        // Companion thoughts live in chat; keep companion *requests* (e.g. CAPTCHA) as notices.
+        if (notice.source !== 'mini_companion') return true;
+        return notice.kind === 'request' || notice.level === 'warning';
+      })
       .map((notice, index) => ({
         kind: 'notice' as const,
         title: notice.title,

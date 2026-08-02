@@ -18,11 +18,13 @@ import {
   TrendingUp,
   Zap,
   ExternalLink,
+  Globe2,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { MiniSystemLogsTab } from '@/components/mini/MiniSystemLogsTab';
 import { MiniProjectGuardTab } from '@/components/mini/MiniProjectGuardTab';
 import { MiniLibraryTab } from '@/components/mini/MiniLibraryTab';
+import { MiniWebBrowserTab } from '@/components/mini/MiniWebBrowserTab';
 import {
   companionBubbleClass,
   companionKindBadgeClass,
@@ -40,9 +42,9 @@ import {
 import { useAdaptiveMiniPoll } from '@/lib/use-adaptive-mini-poll';
 import { useUrlTab } from '@/lib/use-url-tab';
 
-type MiniTab = 'overview' | 'system-logs' | 'project-guard' | 'library';
+type MiniTab = 'overview' | 'system-logs' | 'project-guard' | 'library' | 'web-browser';
 
-const MINI_TABS: MiniTab[] = ['overview', 'system-logs', 'project-guard', 'library'];
+const MINI_TABS: MiniTab[] = ['overview', 'system-logs', 'project-guard', 'library', 'web-browser'];
 
 type MiniLlmUsage = {
   status?: string;
@@ -363,6 +365,7 @@ export function MiniDashboardClient({ miniDashboardUrl }: { miniDashboardUrl: st
           [
             ['overview', 'Overview', LayoutDashboard],
             ['library', 'Library', BookOpen],
+            ['web-browser', 'Web Browser', Globe2],
             ['project-guard', 'Project Guard', Shield],
             ['system-logs', 'System Logs', ScrollText],
           ] as const
@@ -389,6 +392,8 @@ export function MiniDashboardClient({ miniDashboardUrl }: { miniDashboardUrl: st
         <MiniProjectGuardTab />
       ) : tab === 'library' ? (
         <MiniLibraryTab />
+      ) : tab === 'web-browser' ? (
+        <MiniWebBrowserTab />
       ) : (
         <>
       {error && (

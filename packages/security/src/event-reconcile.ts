@@ -1,15 +1,17 @@
 import { Op } from 'sequelize';
 import { Client, SecurityEvent, SystemConfig } from '@cd-v2/database';
+import {
+  ACTIVITY_WINDOW_MS,
+  EVENT_BURST_THRESHOLD,
+  FAILED_LOGIN_THRESHOLD,
+} from './activity-thresholds';
 import { SecurityConfigKeys } from './config-keys';
-import { checkFileIntegrity } from './protected-files';
+import { checkFileIntegrity, getProtectedFilePaths } from './protected-files';
 import { ensureFileBaselines, computeThreatLevel } from './monitoring';
 import { isEmergencyBypassActive } from './emergency';
 import { eventCreatedAt, whereCreatedSince } from './sequelize-time';
 import type { ThreatLevel } from './types';
 
-const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
-const FAILED_LOGIN_THRESHOLD = 5;
-const EVENT_BURST_THRESHOLD = 15;
 const LICENSE_ACTIVATION_BURST = 10;
 const LICENSE_VALIDATION_FAIL_BURST = 50;
 const LICENSE_BURST_WINDOW_MIN = 5;
@@ -55,6 +57,8 @@ function extractProtectedPath(event: SecurityEvent): string | null {
 async function isProtectedFileEventResolved(event: SecurityEvent): Promise<boolean> {
   const rel = extractProtectedPath(event);
   if (!rel) return false;
+  // Catalog removed this path (e.g. old per-route files after [[...path]] consolidation).
+  if (!getProtectedFilePaths().includes(rel)) return true;
   const baselines = await ensureFileBaselines();
   const baseline = baselines[rel];
   if (!baseline) return false;

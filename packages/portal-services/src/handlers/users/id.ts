@@ -12,6 +12,8 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { deleteUser, getStaffUserById, updateUser } from '@web/lib/users';
+import { logSecurityEvent } from '@cd-v2/security';
+import { getClientIpFromCtx } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -49,6 +51,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 
     const { id } = ctx.params;
     const body = ctx.body as Record<string, unknown>;
+    const before = await getStaffUserById(Number(id));
 
     const user = await updateUser(Number(id), {
       username: body.username,
@@ -65,6 +68,36 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 
     if (!user) {
       return { status: 404, body: { success: false, message: 'User not found' } };
+    }
+
+    if (before) {
+      const roleChanged = body.role !== undefined && before.role !== user.role;
+      const clearanceChanged =
+        body.securityClearance !== undefined && before.securityClearance !== user.securityClearance;
+      const activeChanged = body.isActive !== undefined && before.isActive !== user.isActive;
+      if (roleChanged || clearanceChanged || activeChanged) {
+        await logSecurityEvent({
+          eventType: 'privilege_change',
+          severity: 'high',
+          description: `Staff privileges changed for ${user.username} by user #${session.id}`,
+          userId: session.id,
+          ipAddress: getClientIpFromCtx(ctx),
+          details: {
+            targetUserId: user.id,
+            before: {
+              role: before.role,
+              securityClearance: before.securityClearance,
+              isActive: before.isActive,
+            },
+            after: {
+              role: user.role,
+              securityClearance: user.securityClearance,
+              isActive: user.isActive,
+            },
+          },
+          skipDedup: true,
+        });
+      }
     }
 
     return { status: 200, body: { success: true, message: 'User updated', user } };

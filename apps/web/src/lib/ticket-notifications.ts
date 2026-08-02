@@ -12,6 +12,29 @@ import {
 import { sendEmail } from '@/lib/email';
 import { createAutomatedNotice, isNoticeEnabled } from '@/lib/notices';
 import { getTicketNotificationSettings } from '@/lib/settings';
+import { userDisplayName } from '@/lib/tickets';
+
+/** Coerce a display name — callers sometimes pass a Sequelize User by mistake. */
+function asDisplayName(value: unknown, fallback = 'Support team'): string {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || fallback;
+  }
+  if (value && typeof value === 'object') {
+    const named = userDisplayName(value as { firstName?: string; lastName?: string; username?: string });
+    if (named && named !== 'User') return named;
+    const plain = value as { get?: (key: string) => unknown; dataValues?: Record<string, unknown> };
+    const fromGet = typeof plain.get === 'function'
+      ? userDisplayName({
+          firstName: String(plain.get('firstName') ?? ''),
+          lastName: String(plain.get('lastName') ?? ''),
+          username: String(plain.get('username') ?? ''),
+        })
+      : '';
+    if (fromGet && fromGet !== 'User') return fromGet;
+  }
+  return fallback;
+}
 
 async function shouldEmail(flag: keyof Awaited<ReturnType<typeof getTicketNotificationSettings>>) {
   const settings = await getTicketNotificationSettings();
@@ -203,13 +226,14 @@ export async function buildTicketEmailHtml(options: {
   };
 }
 
-export async function notifyTicketCreated(ticket: Ticket, createdByName: string) {
+export async function notifyTicketCreated(ticket: Ticket, createdByName: string | unknown) {
+  const creatorLabel = asDisplayName(createdByName);
   const data = {
     ticketNumber: ticket.ticketNumber,
     title: ticket.issue,
     clientName: ticket.clientName,
     priority: ticket.priority ?? 'medium',
-    createdBy: createdByName,
+    createdBy: creatorLabel,
   };
 
   if (await isNoticeEnabled('create')) {
@@ -222,7 +246,7 @@ export async function notifyTicketCreated(ticket: Ticket, createdByName: string)
   if (client?.email) {
     const bodyHtml = [
       paragraph('Your support ticket has been created. We will update you as work progresses.'),
-      ticketInfoRows(ticket, infoRow('Created by', escapeHtml(createdByName))),
+      ticketInfoRows(ticket, infoRow('Created by', escapeHtml(creatorLabel))),
     ].join('');
 
     await sendTicketBrandedEmail({
@@ -240,7 +264,7 @@ export async function notifyTicketCreated(ticket: Ticket, createdByName: string)
     if (admin.email) {
       const bodyHtml = [
         paragraph(`A new ticket was submitted by <strong>${escapeHtml(ticket.clientName || 'Unknown client')}</strong>.`),
-        ticketInfoRows(ticket, infoRow('Created by', escapeHtml(createdByName))),
+        ticketInfoRows(ticket, infoRow('Created by', escapeHtml(creatorLabel))),
       ].join('');
 
       await sendTicketBrandedEmail({

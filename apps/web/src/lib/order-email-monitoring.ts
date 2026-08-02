@@ -1,6 +1,6 @@
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
-import { SystemConfig } from '@cd-v2/database';
+import { isDbPauseRequested, SystemConfig } from '@cd-v2/database';
 import { DEFAULT_OFFICE_LOCATION } from '@/lib/order-constants';
 import { parseShipmentEmailWithMini } from '@/lib/order-email-mini-parse';
 import {
@@ -295,6 +295,10 @@ function fetchRecentMessages(config: EmailMonitoringConfig, limit = 15): Promise
 }
 
 export async function runEmailMonitoringCheck() {
+  if (isDbPauseRequested()) {
+    return { success: false, message: 'Database paused for demo mode switch', processed: 0, updated: 0 };
+  }
+
   const config = await getEmailMonitoringConfig();
   if (!config.enabled) {
     return { success: false, message: 'Email monitoring is disabled', processed: 0, updated: 0 };
@@ -313,6 +317,15 @@ export async function runEmailMonitoringCheck() {
   }> = [];
 
   for (const raw of rawMessages) {
+    if (isDbPauseRequested()) {
+      return {
+        success: false,
+        message: 'Database paused for demo mode switch',
+        processed,
+        updated,
+        shipmentUpdates,
+      };
+    }
     processed += 1;
     const parsed = await simpleParser(raw);
     const subject = parsed.subject ?? '';

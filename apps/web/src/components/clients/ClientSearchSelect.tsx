@@ -86,18 +86,21 @@ export function ClientSearchSelect({
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base: ClientOption[] = allowAll ? [{ id: 'all', name: allLabel, companyName: null }, ...clients] : clients;
-    if (!q) return base.slice(0, 80);
-    return base
-      .filter((c) => {
-        if (c.id === 'all') return allLabel.toLowerCase().includes(q) || 'all clients'.includes(q);
-        const label = formatClientLabel(c).toLowerCase();
-        return (
-          label.includes(q) ||
-          c.name.toLowerCase().includes(q) ||
-          (c.companyName?.toLowerCase().includes(q) ?? false)
-        );
-      })
-      .slice(0, 80);
+    // Show the full list (scrollable). Truncating hid clients past the first page
+    // and made "New ticket" look like it was missing names.
+    if (!q) return base;
+    return base.filter((c) => {
+      if (c.id === 'all') return allLabel.toLowerCase().includes(q) || 'all clients'.includes(q);
+      const label = formatClientLabel(c).toLowerCase();
+      return (
+        label.includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        (c.companyName?.toLowerCase().includes(q) ?? false) ||
+        (c.contactPerson?.toLowerCase().includes(q) ?? false) ||
+        (c.email?.toLowerCase().includes(q) ?? false) ||
+        (c.phone?.toLowerCase().includes(q) ?? false)
+      );
+    });
   }, [clients, query, allowAll, allLabel]);
 
   const trimmedQuery = query.trim();

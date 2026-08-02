@@ -4,7 +4,8 @@
   "private": true,
   "main": "./dist/index.js",
   "scripts": {
-    "dev": "node --max-old-space-size=4096 ../../node_modules/tsx/dist/cli.mjs watch src/index.ts",
+    "dev": "node --max-old-space-size=4096 ../../node_modules/tsx/dist/cli.mjs src/index.ts",
+    "dev:watch": "node --max-old-space-size=4096 ../../node_modules/tsx/dist/cli.mjs watch --exclude \"../../apps/web/src/lib/**/*.{js,js.map,d.ts,d.ts.map}\" --exclude \"../../data/**\" --clear-screen=false src/index.ts",
     "build": "node -e \"console.log('@cd-v2/api ready (tsx runtime)')\"",
     "start": "node --max-old-space-size=4096 ../../node_modules/tsx/dist/cli.mjs src/index.ts"
   },

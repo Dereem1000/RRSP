@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Activity,
   AlertTriangle,
@@ -167,12 +168,12 @@ export function SettingsSecuritySection({
   const [disableAuth, setDisableAuth] = useState('');
   const [newAuthCode, setNewAuthCode] = useState('');
   const [integrityItems, setIntegrityItems] = useState<IntegrityItem[] | null>(null);
-  const [allEvents, setAllEvents] = useState<Platform['recentEvents'] | null>(null);
   const [metrics, setMetrics] = useState<{
     intrusion: { enabled: boolean; threats24h: number; blockedIps: number; rateLimited24h: number };
     bot: { enabled: boolean; detected24h: number; blocked24h: number; captchaEnabled: boolean };
     repair: { enabled: boolean; attempted24h: number; succeeded24h: number };
-    blockedIps: Array<{ ip: string; reason: string }>;
+    activity?: { suspicious24h: number; failedLogins24h: number };
+    blockedIps: Array<{ ip: string; reason: string; blockedAt?: string }>;
     license?: {
       status: string;
       latencyMs: number | null;
@@ -185,6 +186,9 @@ export function SettingsSecuritySection({
       events24h?: { integrity: number; suspicious: number; mismatch: number; apiOffline: number };
     };
   } | null>(null);
+  const [blockIpInput, setBlockIpInput] = useState('');
+  const [blockIpReason, setBlockIpReason] = useState('');
+
 
   const loadAll = useCallback(async () => {
     setLoading('load');
@@ -217,7 +221,6 @@ export function SettingsSecuritySection({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to refresh monitoring status');
       setPlatform(data.platform);
-      setAllEvents(null);
       onMessage(data.message || 'Monitoring status refreshed');
       const metricsRes = await fetch('/api/security/threat-metrics');
       const metricsData = await metricsRes.json();
@@ -374,7 +377,13 @@ export function SettingsSecuritySection({
                 </div>
                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                   <span className="font-medium">Activity</span>
-                  <p className="text-slate-500">{platform.features.activityMonitor.suspicious24h} suspicious</p>
+                  <p className="text-slate-500">
+                    {platform.features.activityMonitor.suspicious24h} suspicious
+                    {(metrics?.activity?.failedLogins24h ??
+                      platform.features.activityMonitor.failedLogins24h) > 0
+                      ? ` · ${metrics?.activity?.failedLogins24h ?? platform.features.activityMonitor.failedLogins24h} failed logins`
+                      : ''}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                   <span className="font-medium">Intrusion IDS</span>
@@ -442,23 +451,119 @@ export function SettingsSecuritySection({
             </div>
           )}
 
-          {metrics && metrics.blockedIps.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <h4 className="text-sm font-semibold text-slate-800">Blocked IP addresses</h4>
-              <ul className="mt-2 max-h-32 overflow-y-auto text-sm">
-                {metrics.blockedIps.map((b) => (
-                  <li key={b.ip} className="flex justify-between border-b border-slate-50 py-1">
-                    <span className="font-mono">{b.ip}</span>
+          <section className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800">Blocked IP addresses</h4>
+                <p className="mt-1 text-xs text-slate-500">
+                  Requests from these IPs are rejected by the HTTP guard (even during emergency
+                  bypass). Requires S-CLS1 to change.
+                </p>
+              </div>
+              <Link
+                href="/settings/security/events"
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+              >
+                View related events
+              </Link>
+            </div>
+
+            <form
+              className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const ip = blockIpInput.trim();
+                if (!ip) return;
+                setLoading('block-ip');
+                onError('');
+                try {
+                  const res = await fetch('/api/security/blocked-ips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'block',
+                      ip,
+                      reason: blockIpReason.trim() || 'Manual block from Security settings',
+                    }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.message || 'Failed to block IP');
+                  setBlockIpInput('');
+                  setBlockIpReason('');
+                  onMessage(data.message || `Blocked ${ip}`);
+                  await loadAll();
+                } catch (err) {
+                  onError(err instanceof Error ? err.message : 'Failed to block IP');
+                } finally {
+                  setLoading('');
+                }
+              }}
+            >
+              <input
+                value={blockIpInput}
+                onChange={(e) => setBlockIpInput(e.target.value)}
+                placeholder="IP address (e.g. 157.230.41.239)"
+                className={inputClass + ' font-mono'}
+                required
+              />
+              <input
+                value={blockIpReason}
+                onChange={(e) => setBlockIpReason(e.target.value)}
+                placeholder="Reason (optional)"
+                className={inputClass}
+              />
+              <button
+                type="submit"
+                disabled={!!loading || !blockIpInput.trim()}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {loading === 'block-ip' ? 'Blocking…' : 'Block IP'}
+              </button>
+            </form>
+
+            {(metrics?.blockedIps?.length ?? 0) === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">No IPs are currently blocked.</p>
+            ) : (
+              <ul className="mt-4 max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-100">
+                {metrics!.blockedIps.map((b) => (
+                  <li key={b.ip} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-medium text-slate-900">{b.ip}</span>
+                        <Link
+                          href={`/settings/security/events?ip=${encodeURIComponent(b.ip)}`}
+                          className="text-xs text-indigo-600 hover:underline"
+                        >
+                          Events
+                        </Link>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">
+                        {b.reason || 'No reason'}
+                        {b.blockedAt ? ` · ${new Date(b.blockedAt).toLocaleString()}` : ''}
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      className="text-xs text-indigo-600"
+                      disabled={!!loading}
+                      className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                       onClick={async () => {
-                        await fetch('/api/security/blocked-ips', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ action: 'unblock', ip: b.ip }),
-                        });
-                        loadAll();
+                        setLoading('unblock-ip');
+                        onError('');
+                        try {
+                          const res = await fetch('/api/security/blocked-ips', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'unblock', ip: b.ip }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.message || 'Failed to unblock');
+                          onMessage(data.message || `Unblocked ${b.ip}`);
+                          await loadAll();
+                        } catch (err) {
+                          onError(err instanceof Error ? err.message : 'Failed to unblock');
+                        } finally {
+                          setLoading('');
+                        }
                       }}
                     >
                       Unblock
@@ -466,8 +571,8 @@ export function SettingsSecuritySection({
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            )}
+          </section>
 
           <p className="text-sm text-slate-500">
             System recovery and ZIP restores are on the <strong>Backup</strong> settings tab (replaces the old
@@ -531,7 +636,7 @@ export function SettingsSecuritySection({
                 <span className="text-xs font-semibold uppercase text-slate-600">Emergency bypass</span>
               </div>
               <p className={`mt-2 text-sm font-semibold ${bypassActive ? 'text-amber-900' : 'text-emerald-800'}`}>
-                {bypassActive ? 'ACTIVE — checks paused' : 'Inactive — normal protection'}
+                {bypassActive ? 'ACTIVE — checks paused (blocklist still on)' : 'Inactive — normal protection'}
               </p>
               {bypassActive && platform.emergency.expiresAt && (
                 <p className="mt-1 text-xs text-amber-800">
@@ -617,25 +722,12 @@ export function SettingsSecuritySection({
               >
                 Rebaseline files
               </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setLoading('events');
-                  try {
-                    const res = await fetch('/api/security/events?limit=50');
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message);
-                    setAllEvents(data.events ?? []);
-                  } catch (err) {
-                    onError(err instanceof Error ? err.message : 'Failed');
-                  } finally {
-                    setLoading('');
-                  }
-                }}
+              <Link
+                href="/settings/security/events"
                 className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium"
               >
                 View all events
-              </button>
+              </Link>
               <button
                 type="button"
                 disabled={authConfigured}
@@ -712,25 +804,32 @@ export function SettingsSecuritySection({
               </div>
             )}
 
-            {(allEvents ?? platform.recentEvents).length > 0 && (
+            {platform.recentEvents.length > 0 && (
               <div className="mt-4">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">
-                    Recent events ({allEvents ? allEvents.length : platform.recentEvents.length}
-                    {allEvents ? '' : ' of ' + platform.monitoring.eventsLast24h})
+                    Recent events ({platform.recentEvents.length} of {platform.monitoring.eventsLast24h})
                   </p>
-                  <button
-                    type="button"
-                    onClick={refreshMonitoringStatus}
-                    disabled={!!loading}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-60"
-                  >
-                    <RefreshCw className={`h-3 w-3 ${loading === 'reconcile' ? 'animate-spin' : ''}`} />
-                    Clear resolved
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/settings/security/events"
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    >
+                      Open full page
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={refreshMonitoringStatus}
+                      disabled={!!loading}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-60"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${loading === 'reconcile' ? 'animate-spin' : ''}`} />
+                      Clear resolved
+                    </button>
+                  </div>
                 </div>
                 <ul className="max-h-40 space-y-2 overflow-y-auto text-sm">
-                  {(allEvents ?? platform.recentEvents).map((ev) => (
+                  {platform.recentEvents.map((ev) => (
                     <li key={ev.id} className="rounded-lg border bg-slate-50/80 px-3 py-2">
                       <span className="font-medium">{ev.eventType}</span>
                       <span className="text-slate-400"> · {ev.severity} · </span>
@@ -799,7 +898,10 @@ export function SettingsSecuritySection({
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-red-700">Activate emergency bypass</h3>
             <p className="mt-2 text-sm text-slate-600">
-              Pauses file-integrity and activity checks until expiry or manual end. Fully audited.
+              Pauses file integrity, activity checks, license integrity, HTTP bot/IDS/rate
+              limits, and outbound security alerts until expiry or manual end. Also clears any
+              blocked loopback IPs (::1 / 127.0.0.1). The IP block list stays enforced —
+              blocked addresses cannot get through. Fully audited.
             </p>
             <form onSubmit={activateOverride} className="mt-4 space-y-4">
               <label className="block">

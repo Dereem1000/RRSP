@@ -1,4 +1,5 @@
 import { SecurityEvent } from '@cd-v2/database';
+import { maybeNotifySecurityAlert } from './alerts';
 
 const recentFingerprints = new Map<string, number>();
 const DEDUP_MS = 5 * 60 * 1000;
@@ -39,7 +40,7 @@ export async function logSecurityEvent(input: {
     return null;
   }
 
-  return SecurityEvent.create({
+  const created = await SecurityEvent.create({
     eventType: input.eventType,
     severity: input.severity,
     userId: input.userId ?? null,
@@ -50,4 +51,16 @@ export async function logSecurityEvent(input: {
     userAgent: input.userAgent ?? null,
     isActive: true,
   });
+
+  void maybeNotifySecurityAlert({
+    eventType: input.eventType,
+    severity: input.severity,
+    description: input.description,
+    ipAddress: input.ipAddress,
+    userId: input.userId,
+  }).catch(() => {
+    /* never block request path on alert failure */
+  });
+
+  return created;
 }

@@ -7,7 +7,20 @@ function mirrorPath(): string {
   return path.join(process.cwd(), 'data', 'security_blocked_ips.json');
 }
 
+function isLoopbackIp(ip: string): boolean {
+  const n = (ip || '').trim().toLowerCase();
+  if (!n || n === 'unknown') return false;
+  return (
+    n === '::1' ||
+    n === 'localhost' ||
+    n === '127.0.0.1' ||
+    n.startsWith('127.') ||
+    n === '::ffff:127.0.0.1'
+  );
+}
+
 export function isIpBlockedSync(ip: string): boolean {
+  if (isLoopbackIp(ip)) return false;
   try {
     const p = mirrorPath();
     if (!fs.existsSync(p)) return false;

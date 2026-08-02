@@ -14,6 +14,7 @@ import {
 import { Client } from '@web/lib/db';
 import { serializeClient } from '@web/lib/clients';
 import { SERVICE_LEVELS } from '@web/lib/client-constants';
+import { normalizeServicePlanData } from '@web/lib/rrsp';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -51,7 +52,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     };
 
     const servicePlanData = {
-      ...(client.servicePlanData as Record<string, unknown>),
+      ...normalizeServicePlanData(client.servicePlanData),
       billingCycle: body.billingCycle ?? body.contractType ?? 'monthly',
       planName: body.planName ?? serviceLevel ?? client.serviceLevel,
       autoRenew: body.autoRenew ?? true,

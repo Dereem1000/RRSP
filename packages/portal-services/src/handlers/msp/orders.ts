@@ -20,6 +20,7 @@ import { addOrderLink, createOrder, getOrdersSummary, listOrders } from '@web/li
 import { ensureCommentLinkedOrderColumn } from '@web/lib/ticket-schema';
 import { getTicketById } from '@web/lib/tickets';
 import { TicketComment } from '@web/lib/db';
+import { isRrspDbActive } from '@web/lib/rrsp-db';
 import { getRequestPublicOriginFromCtx } from '../../http-helpers';
 
 
@@ -37,7 +38,13 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+    } else {
+      requireRole(session, 'admin', 'technician');
+    }
 
     const searchParams = searchParamsFrom(ctx);
     const page = Number(searchParams.get('page') ?? 1);
@@ -60,7 +67,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
       shippingStage: shippingStage && shippingStage !== 'all' ? shippingStage : undefined,
       clientId: clientId && clientId !== 'all' ? clientId : undefined,
       search,
-      includeCost: session.role === 'admin',
+      includeCost: session.role === 'admin' || (session.role === 'client' && isRrspDbActive()),
     });
 
     return { status: 200, body: { success: true, ...result } };
@@ -72,8 +79,13 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin');
-
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+    } else {
+      requireRole(session, 'admin');
+    }
     const body = ctx.body as Record<string, unknown>;
     const clientId = String(body.clientId ?? '').trim();
     const skipUsCost = body.skipUsCost === true;

@@ -15,6 +15,45 @@ export type EmailBrand = {
 };
 
 export async function getEmailBrand(): Promise<EmailBrand> {
+  try {
+    const { getRrspContext } = await import('@/lib/rrsp-db');
+    const rrsp = getRrspContext();
+    if (rrsp?.mspClientId) {
+      const {
+        getRrspBrandingForClient,
+        getRrspEmailSettingsForClient,
+        isCustomRrspLogo,
+      } = await import('@/lib/rrsp-branding');
+      const [branding, rrspEmail] = await Promise.all([
+        getRrspBrandingForClient(rrsp.mspClientId),
+        getRrspEmailSettingsForClient(rrsp.mspClientId),
+      ]);
+
+      // Shop emails must never fall back to Computer Dynamics naming/logo/closing/contact copy.
+      const shopName =
+        String(branding?.companyName ?? '').trim() ||
+        String(rrspEmail?.fromName ?? '').trim() ||
+        'Shop';
+      const hasCustomLogo = isCustomRrspLogo(branding?.companyLogo);
+      // parseRrspBranding already fills address/phone from the client account when blank.
+      const companyAddress = String(branding?.companyAddress ?? '').trim();
+      const companyPhone = String(branding?.companyPhone ?? '').trim();
+
+      return {
+        companyName: shopName,
+        companyAddress,
+        companyPhone,
+        companyWebsite: String(branding?.companyWebsite ?? '').trim(),
+        companyEmail: String(rrspEmail?.fromEmail || rrspEmail?.user || '').trim(),
+        // Empty logo → template shows shop name text instead of the CD mark.
+        companyLogo: hasCustomLogo ? String(branding!.companyLogo) : '',
+        closingMessage: `Thank you for choosing ${shopName}.`,
+      };
+    }
+  } catch {
+    // Fall through to platform brand.
+  }
+
   const [company, email] = await Promise.all([getCompanySettings(), getEmailConfig()]);
   return {
     companyName: company.companyName,
@@ -46,7 +85,21 @@ function encodeAttrUrl(url: string): string {
 }
 
 export function escapeHtml(value: unknown): string {
-  return String(value ?? '')
+  let text: string;
+  if (typeof value === 'string') {
+    text = value;
+  } else if (value == null) {
+    text = '';
+  } else if (typeof value === 'object') {
+    // Avoid "[object SequelizeInstance:User]" leaking into emails.
+    const maybe = value as { username?: string; email?: string; firstName?: string; lastName?: string };
+    const name = `${maybe.firstName ?? ''} ${maybe.lastName ?? ''}`.trim();
+    text = name || maybe.username || maybe.email || '';
+  } else {
+    text = String(value);
+  }
+  if (text.startsWith('[object ')) text = '';
+  return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -96,7 +149,7 @@ export async function renderEmailLayout({
   title,
   preheader,
   bodyHtml,
-  footerNote = 'This is an automated message from your service provider. Please do not reply directly to this email.',
+  footerNote,
 }: LayoutOptions): Promise<BrandedEmailContent> {
   const logo = await prepareEmailLogo(brand.companyLogo);
   const logoUrl = logo.imgSrc;
@@ -107,6 +160,9 @@ export async function renderEmailLayout({
   const contactHtml = contactLine(brand)
     ? `<div style="margin-top:8px;color:#64748b;font-size:13px;line-height:1.5;">${contactLine(brand)}</div>`
     : '';
+  const resolvedFooter =
+    footerNote ??
+    `This is an automated message from ${brand.companyName}. Please do not reply directly to this email.`;
 
   return {
     html: `<!DOCTYPE html>
@@ -142,7 +198,7 @@ export async function renderEmailLayout({
                 <div style="font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(brand.companyName)}</div>
                 ${addressHtml}
                 ${contactHtml}
-                <div style="margin-top:14px;font-size:11px;color:#94a3b8;">${escapeHtml(footerNote)}</div>
+                <div style="margin-top:14px;font-size:11px;color:#94a3b8;">${escapeHtml(resolvedFooter)}</div>
               </div>
             </td>
           </tr>

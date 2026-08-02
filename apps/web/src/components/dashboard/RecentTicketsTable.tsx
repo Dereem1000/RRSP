@@ -12,20 +12,36 @@ const statusColors: Record<string, string> = {
   Completed: 'bg-emerald-100 text-emerald-800',
 };
 
-export function RecentTicketsTable({ tickets }: { tickets: RecentTicket[] }) {
+export function RecentTicketsTable({
+  tickets,
+  title = 'Recent tickets',
+  viewAllHref = '/tickets',
+  viewAllLabel = 'View all',
+  ticketBasePath = '/tickets',
+  clientBasePath = '/clients',
+  clientColumnLabel = 'Client',
+}: {
+  tickets: RecentTicket[];
+  title?: string;
+  viewAllHref?: string;
+  viewAllLabel?: string;
+  ticketBasePath?: string;
+  clientBasePath?: string;
+  clientColumnLabel?: string;
+}) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h2 className="font-semibold text-slate-900">Recent tickets</h2>
-        <Link href="/tickets" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
-          View all
+        <h2 className="font-semibold text-slate-900">{title}</h2>
+        <Link href={viewAllHref} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+          {viewAllLabel}
         </Link>
       </div>
       <table className="min-w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80">
             <th className="px-5 py-3 font-semibold text-slate-600">Ticket</th>
-            <th className="px-5 py-3 font-semibold text-slate-600">Client</th>
+            <th className="px-5 py-3 font-semibold text-slate-600">{clientColumnLabel}</th>
             <th className="px-5 py-3 font-semibold text-slate-600">Issue</th>
             <th className="px-5 py-3 font-semibold text-slate-600">Status</th>
           </tr>
@@ -41,10 +57,32 @@ export function RecentTicketsTable({ tickets }: { tickets: RecentTicket[] }) {
             tickets.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50/50">
                 <td className="px-5 py-3.5">
-                  <TicketLink id={t.id} label={t.ticketNumber} />
+                  {ticketBasePath === '/tickets' ? (
+                    <TicketLink id={t.id} label={t.ticketNumber} />
+                  ) : (
+                    <Link
+                      href={ticketBasePath}
+                      className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      {t.ticketNumber}
+                    </Link>
+                  )}
                 </td>
                 <td className="px-5 py-3.5">
-                  <ClientLink id={t.clientId} label={t.clientName} className="font-medium text-slate-900 hover:text-indigo-700" />
+                  {clientBasePath === '/clients' ? (
+                    <ClientLink
+                      id={t.clientId}
+                      label={t.clientName}
+                      className="font-medium text-slate-900 hover:text-indigo-700"
+                    />
+                  ) : (
+                    <Link
+                      href={clientBasePath}
+                      className="font-medium text-slate-900 hover:text-indigo-700"
+                    >
+                      {t.clientName}
+                    </Link>
+                  )}
                 </td>
                 <td className="max-w-xs truncate px-5 py-3.5 text-slate-600">{t.issue}</td>
                 <td className="px-5 py-3.5">

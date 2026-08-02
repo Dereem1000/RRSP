@@ -49,7 +49,7 @@ export function ClientHeaderActions({ role }: { role: string }) {
     try {
       const res = await fetch(`/api/clients/${clientId}/resend-welcome`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to reset portal access');
+      if (!res.ok) throw new Error(data.message || data.error || 'Failed to reset portal access');
       if (data.emailSent) {
         setMessage(data.message || 'Portal welcome sent');
       } else {

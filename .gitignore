@@ -19,8 +19,13 @@ data/*.db-*
 data/*.db-journal
 data/backups/
 data/.demo_mode/
+data/rrsp/**
+!data/rrsp/.gitkeep
 data/mini-dock.json
+data/marketing-image-overrides.json
 data/security-audit-reports/
+apps/web/public/images/marketing-overrides/*
+!apps/web/public/images/marketing-overrides/.gitkeep
 *.log
 .DS_Store
 Thumbs.db
@@ -28,3 +33,11 @@ Thumbs.db
 coverage/
 **/sftp_keys/
 **/license.encrypted
+
+# Accidental tsc emits beside Next.js TypeScript sources (tsconfig has noEmit)
+apps/web/src/**/*.js
+apps/web/src/**/*.js.map
+apps/web/src/**/*.d.ts.map
+apps/web/src/lib/**/*.d.ts
+!apps/web/src/lib/multiserver/multiserver-demo-proxy.js
+!apps/web/src/types/**/*.d.ts

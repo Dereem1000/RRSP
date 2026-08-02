@@ -17,8 +17,10 @@ from license_activation_gui import (
     GUI_LICENSE_FEATURE_KEY_TO_LABEL,
     GUI_LICENSE_FEATURE_LABEL_TO_KEY,
     create_app,
+    deactivate_expired_licenses,
     enabled_business_feature_labels,
     license_row_display_status,
+    license_row_is_currently_active,
     summarize_license_statuses,
 )
 
@@ -155,6 +157,7 @@ class LicenseGuiService:
         def inner() -> dict[str, Any]:
             companies = CompanyRegistration.query.count()
             licenses = LicenseActivation.query.all()
+            deactivate_expired_licenses(licenses)
             counts = summarize_license_statuses(licenses)
             recent = (
                 LicenseActivation.query.order_by(LicenseActivation.created_at.desc()).limit(8).all()
@@ -192,7 +195,9 @@ class LicenseGuiService:
         def inner() -> list[dict[str, Any]]:
             rows = []
             query = LicenseActivation.query.order_by(LicenseActivation.id.desc())
-            for lic in query.all():
+            licenses = query.all()
+            deactivate_expired_licenses(licenses)
+            for lic in licenses:
                 status = license_row_display_status(lic)
                 if status_filter != 'all' and status.lower() != status_filter.lower():
                     continue
@@ -204,6 +209,7 @@ class LicenseGuiService:
                 haystack = f'{company_name} {lic.serial_number} {product}'.lower()
                 if search and search.lower() not in haystack:
                     continue
+                currently_active = license_row_is_currently_active(lic)
                 rows.append(
                     {
                         'id': lic.id,
@@ -216,7 +222,7 @@ class LicenseGuiService:
                         'expires': lic.expiration_date.strftime('%Y-%m-%d')
                         if lic.expiration_date
                         else 'No expiry',
-                        'is_active': bool(lic.is_active),
+                        'is_active': currently_active,
                         'max_users': lic.max_users or 1,
                         'binding': self._binding_label(lic),
                     }
@@ -245,17 +251,19 @@ class LicenseGuiService:
             lic = db.session.get(LicenseActivation, license_id)
             if not lic:
                 return None
+            deactivate_expired_licenses([lic])
             company = db.session.get(CompanyRegistration, lic.company_id)
+            status = license_row_display_status(lic)
             return {
                 'id': lic.id,
                 'serial': lic.serial_number,
                 'company': company.company_name if company else 'Unknown',
-                'status': license_row_display_status(lic),
+                'status': status,
                 'license_type': normalize_license_type(lic.license_type, 'Day Pass'),
                 'max_users': lic.max_users or 1,
                 'expires': lic.expiration_date,
                 'activation_date': lic.activation_date,
-                'is_active': bool(lic.is_active),
+                'is_active': status == 'Active',
                 'product': ', '.join(
                     enabled_business_feature_labels(lic.features, lic.serial_number)
                 )
@@ -322,6 +330,7 @@ class LicenseGuiService:
                         'auto_system': False,
                         'distribution_system': False,
                         'customer_management': False,
+                        'rrsp_online': False,
                     }
                 ),
             )
@@ -347,7 +356,7 @@ class LicenseGuiService:
             lic = db.session.get(LicenseActivation, license_id)
             if not lic:
                 raise ValueError('License not found')
-            if lic.is_active:
+            if license_row_is_currently_active(lic):
                 raise ValueError('License is already active')
             selected_key = GUI_LICENSE_FEATURE_LABEL_TO_KEY.get(product_label, 'pos_systems')
             now = datetime.now(timezone.utc)
@@ -366,6 +375,7 @@ class LicenseGuiService:
                     'auto_system': selected_key == 'auto_system',
                     'distribution_system': selected_key == 'distribution_system',
                     'customer_management': selected_key == 'customer_management',
+                    'rrsp_online': selected_key == 'rrsp_online',
                 }
             )
             lic.is_active = True
@@ -475,6 +485,7 @@ class LicenseGuiService:
                 'auto_system': 'auto',
                 'distribution_system': 'distribution',
                 'customer_management': 'crm',
+                'rrsp_online': 'rrsp',
             }
             serial = ensure_unique_license_serial(
                 db.session,

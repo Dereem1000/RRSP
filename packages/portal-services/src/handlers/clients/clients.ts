@@ -13,6 +13,7 @@ import {
 
 import { Op } from 'sequelize';
 import { Client, Ticket } from '@web/lib/db';
+import { getShopClientModel, isRrspDbActive } from '@web/lib/rrsp-db';
 import {
   buildDefaultUsageTracking,
   buildUsageInfo,
@@ -29,6 +30,7 @@ import { getDefaultMonthlyRate, getDefaultSlaForLevel } from '@web/lib/client-co
 import { pickClientFields } from '@web/lib/client-payload';
 import { buildPortalUrl, getRequestPublicOrigin } from '@web/lib/site-url';
 import { getRequestPublicOriginFromCtx } from '../../http-helpers';
+import { randomUUID } from 'crypto';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -45,7 +47,13 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+    } else {
+      requireRole(session, 'admin', 'technician');
+    }
 
     const searchParams = searchParamsFrom(ctx);
     const status = searchParams.get('status');
@@ -69,10 +77,13 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
       });
     }
 
-    const clients = await Client.findAll({
+    const ClientModel = isRrspDbActive() ? getShopClientModel() : Client;
+    // Picker UIs (New ticket / New order) need the full active client set.
+    // Cap high enough for MSP directories; search still narrows in the UI.
+    const clients = await ClientModel.findAll({
       where,
-      order: [['created_at', 'DESC']],
-      limit: 500,
+      order: [['name', 'ASC']],
+      limit: 5000,
     });
 
     return { status: 200, body: {
@@ -87,7 +98,14 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    const rrsp = isRrspDbActive();
+    if (session.role === 'client') {
+      if (!rrsp) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+    } else {
+      requireRole(session, 'admin', 'technician');
+    }
 
     const body = ctx.body as Record<string, unknown>;
     const name = body.name?.trim();
@@ -95,6 +113,37 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
 
     if (!name || !email) {
       return { status: 400, body: { success: false, message: 'Name and email are required' } };
+    }
+
+    const ClientModel = rrsp ? getShopClientModel() : Client;
+
+    if (rrsp) {
+      const existing = await ClientModel.findOne({ where: { email } });
+      if (existing) {
+        return { status: 400, body: { success: false, message: 'A client with this email already exists' } };
+      }
+      const client = await ClientModel.create({
+        id: randomUUID(),
+        name,
+        email,
+        phone: body.phone ?? null,
+        address: body.address ?? null,
+        contactPerson: body.contactPerson ?? null,
+        companyName: body.companyName ?? null,
+        status: body.status || 'active',
+        isActive: body.isActive !== false,
+        supportTier: 'silver',
+        monthlyRate: 0,
+        features: [],
+        billingInfo: {},
+        contractDetails: {},
+        servicePlanData: {},
+        communicationHistory: [],
+      });
+      return {
+        status: 201,
+        body: { success: true, client: serializeClient(client), message: 'Client created' },
+      };
     }
 
     if (!(await resolveUniqueEmail(email))) {

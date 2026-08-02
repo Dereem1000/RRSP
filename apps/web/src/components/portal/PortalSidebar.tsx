@@ -10,6 +10,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
   Pin,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
@@ -48,12 +49,14 @@ function PortalNavLink({
   effectivelyCollapsed,
   displayLabel,
   icon: Icon,
+  badge = 0,
 }: {
   href: string;
   active: boolean;
   effectivelyCollapsed: boolean;
   displayLabel: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
 }) {
   return (
     <Link
@@ -71,6 +74,7 @@ function PortalNavLink({
         effectivelyCollapsed={effectivelyCollapsed}
         displayLabel={displayLabel}
         icon={Icon}
+        badge={badge}
       />
     </Link>
   );
@@ -81,21 +85,35 @@ function PortalNavLinkContent({
   effectivelyCollapsed,
   displayLabel,
   icon: Icon,
+  badge = 0,
 }: {
   active: boolean;
   effectivelyCollapsed: boolean;
   displayLabel: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
 }) {
   const { pending } = useLinkStatus();
 
   return (
     <>
-      <Icon className={`h-4 w-4 shrink-0 ${pending ? 'opacity-60' : ''}`} />
+      <span className="relative shrink-0">
+        <Icon className={`h-4 w-4 ${pending ? 'opacity-60' : ''}`} />
+        {badge > 0 && effectivelyCollapsed && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[9px] font-bold text-slate-900">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </span>
       {!effectivelyCollapsed && (
         <>
           <span className={`truncate ${pending ? 'opacity-60' : ''}`}>{displayLabel}</span>
-          {active && <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />}
+          {badge > 0 && (
+            <span className="ml-auto rounded-full bg-amber-400/90 px-1.5 py-0.5 text-[10px] font-bold text-slate-900">
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+          {active && badge <= 0 && <ChevronRight className="ml-auto h-4 w-4 shrink-0 opacity-60" />}
         </>
       )}
     </>
@@ -106,12 +124,28 @@ export function PortalSidebar({
   user,
   onWidthChange,
   miniDockActive = false,
+  rrspAccess = null,
+  partsIncomingBadge = 0,
+  onOpenProfile,
+  onEditLogo,
+  shopLogoUrl = null,
+  shopLogoAlt,
 }: {
   user: { firstName: string; lastName: string; role: string; securityClearance: string };
   onWidthChange: (px: number) => void;
   miniDockActive?: boolean;
+  rrspAccess?: { featureEnabled?: boolean; enabled: boolean; modules: string[] } | null;
+  partsIncomingBadge?: number;
+  onOpenProfile?: () => void;
+  /** Opens profile Business info tab (RRSP logo edit). */
+  onEditLogo?: () => void;
+  shopLogoUrl?: string | null;
+  shopLogoAlt?: string;
 }) {
-  const sidebarNav = getPortalNavForRole(user.role, { miniDockActive });
+  const sidebarNav = getPortalNavForRole(user.role, {
+    miniDockActive,
+    rrsp: rrspAccess,
+  });
   const pathname = usePathname();
   const router = useRouter();
   const showCalculatorTool = user.role === 'admin' || user.role === 'technician';
@@ -229,8 +263,24 @@ export function PortalSidebar({
       <div className="border-b border-white/10 px-3 py-4">
         {!effectivelyCollapsed ? (
           <>
-            <div className="px-1">
-              <BrandLogo href="/dashboard" size="xl" />
+            <div className="relative px-1">
+              <BrandLogo
+                href="/dashboard"
+                size="xl"
+                src={shopLogoUrl}
+                alt={shopLogoAlt || 'Portal logo'}
+              />
+              {onEditLogo ? (
+                <button
+                  type="button"
+                  onClick={onEditLogo}
+                  className="absolute -right-0.5 -top-0.5 rounded-full border border-white/20 bg-cd-900/90 p-1.5 text-slate-200 shadow-md transition hover:bg-cd-800 hover:text-white"
+                  aria-label="Edit business logo"
+                  title="Edit business logo"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </div>
             <div className="mt-1 flex items-center justify-between gap-2 px-1">
               <p className="truncate text-xs font-medium text-cd-400">MSP Portal</p>
@@ -293,18 +343,29 @@ export function PortalSidebar({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {sidebarNav.map(({ href, icon: Icon }) => {
+        {sidebarNav.map(({ href, icon: Icon, section }) => {
           const active = pathname === href;
           const displayLabel = getPortalNavLabel(href, user.role);
+          const badge =
+            partsIncomingBadge > 0 && (href === '/parts' || href === '/rrsp/parts')
+              ? partsIncomingBadge
+              : 0;
           return (
-            <PortalNavLink
-              key={href}
-              href={href}
-              active={active}
-              effectivelyCollapsed={effectivelyCollapsed}
-              displayLabel={displayLabel}
-              icon={Icon}
-            />
+            <div key={href}>
+              {section && !effectivelyCollapsed ? (
+                <p className="mb-1 mt-3 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 first:mt-0">
+                  {section}
+                </p>
+              ) : null}
+              <PortalNavLink
+                href={href}
+                active={active}
+                effectivelyCollapsed={effectivelyCollapsed}
+                displayLabel={displayLabel}
+                icon={Icon}
+                badge={badge}
+              />
+            </div>
           );
         })}
       </nav>
@@ -338,7 +399,12 @@ export function PortalSidebar({
         )}
 
         {!effectivelyCollapsed ? (
-          <div className="mb-3 rounded-xl bg-white/5 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            title="Open your profile"
+            className="mb-3 w-full rounded-xl bg-white/5 px-3 py-2.5 text-left transition hover:bg-white/10"
+          >
             <p className="text-sm font-medium">
               {user.firstName} {user.lastName}
             </p>
@@ -348,17 +414,19 @@ export function PortalSidebar({
                 <span className="ml-1 text-cd-400">· pinned</span>
               )}
             </p>
-          </div>
+          </button>
         ) : (
-          <div
-            className="mb-3 flex justify-center"
-            title={`${user.firstName} ${user.lastName}`}
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="mb-3 flex w-full justify-center"
+            title={`${user.firstName} ${user.lastName} — open profile`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cd-500/30 text-xs font-bold text-cd-200">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cd-500/30 text-xs font-bold text-cd-200 ring-1 ring-white/10 transition hover:bg-cd-500/45">
               {user.firstName.charAt(0)}
               {user.lastName.charAt(0)}
             </div>
-          </div>
+          </button>
         )}
 
         <button

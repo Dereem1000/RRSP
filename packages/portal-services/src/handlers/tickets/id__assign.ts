@@ -11,8 +11,9 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { Ticket, User } from '@web/lib/db';
+import { User } from '@web/lib/db';
 import { getTicketById, resolveTechnicianName, serializeTicket } from '@web/lib/tickets';
+import { getTicketModel, getTicketCommentModel } from '@web/lib/tickets';
 import { notifyTicketAssigned } from '@web/lib/ticket-notifications';
 import { IN_PROGRESS_STATUS } from '@web/lib/ticket-constants';
 
@@ -41,7 +42,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       return { status: 400, body: { success: false, message: 'assignedTo is required' } };
     }
 
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }

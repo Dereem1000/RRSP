@@ -74,10 +74,10 @@ Heartbeats are stored in `system_configs`:
 1. Write heartbeat (+ increment check counter).
 2. If monitoring disabled → stop.
 3. Refresh emergency bypass state (expire old rows).
-4. If bypass active → skip checks (still heartbeat).
+4. If bypass active → skip integrity/activity/IDS residual checks **and** HTTP bot/IDS/rate limits (Express `guardRequest`). **IP block list still applies.** Outbound high/critical alerts are also suppressed. Activating bypass clears blocked loopback IPs only (`::1`, `127.0.0.1`).
 5. **File integrity** — SHA-256 baselines for critical v2 paths (stored in `security_file_baselines`). Optional auto-repair from backups when `security_repair_enabled` is true.
-6. **Activity monitor** — brute-force / event-burst patterns from `security_events` (deduplicated).
-7. **Intrusion scan** — pattern match on recent event text.
+6. **Activity monitor** — brute-force / event-burst patterns from `security_events` (3 failed logins or 10 events / 5 min).
+7. **Intrusion scan** — residual pattern match on recent event text (live HTTP IDS runs in Express `expressRequestGuard`).
 8. **Auto-backup** — `maybeRunAutoBackup()` when scheduled (`autoBackupConfig`).
 9. Update `security_threat_level` (`low` | `medium` | `high` | `critical`).
 
@@ -104,6 +104,7 @@ After a **normal code deploy**, use **Settings → Rebaseline files** (S-CLS1) o
    - `emergency_override_active`
    - `emergency_override_expires`
 4. Worker skips integrity/activity checks until expiry or **End bypass**.
+5. HTTP bot/IDS/rate limits pause; **manual/automated IP block list remains enforced**.
 
 Authorization codes are **never stored in plain text** in override rows (masked as `***`).
 
@@ -195,9 +196,27 @@ It waits for `/api/health` to report a worker status of `online`, `stale`, or `d
 
 ## HTTP request guards
 
-- **Middleware** — reads `data/security_blocked_ips.json` for fast IP blocks on `/api/*`.
-- **Login / backup routes** — `guardRequest()` rate limits and bot scoring; optional Cloudflare Turnstile when `TURNSTILE_SECRET_KEY` is set.
+- **Express `/api` middleware** — `expressRequestGuard` on every API route (after body parsers): IP block list, rate limits, **live Intrusion IDS** (path/query/body), and bot heuristics. Health endpoints are skipped.
+- **Next middleware** — reads `data/security_blocked_ips.json` for fast IP blocks on `/api/*`.
+- **Login / public forms / license validate** — honeypot + optional Cloudflare Turnstile when `TURNSTILE_SECRET_KEY` is set; login honeypot returns 401 (does not fingerprint via 403).
 - **Settings** — threat metrics, blocked IP list, module toggles (`intrusion_detection_enabled`, `bot_detection_enabled`, `security_repair_enabled`).
+
+### Intrusion IDS (live)
+
+When `intrusion_detection_enabled` is true, each guarded request is scanned for SQL injection, XSS, path traversal, and common probe paths (`wp-admin`, `.env`, etc.). Hits are logged as `sql_injection` / `xss_attempt` / `path_traversal` / `intrusion_detected` and blocked with HTTP 403. The security worker still runs a residual scan over recent event text.
+
+### Bot detection
+
+When `bot_detection_enabled` is true, requests are scored (User-Agent, Accept-Language, path signals, honeypot). Score ≥ 0.7 is blocked (`bot_detected`); ≥ 0.9 also adds the IP to the block list. Explicit `bot`/`crawler`/`spider` user-agents are blocked on their own; plain `curl`/`wget` need a second signal so product installers keep working. **Loopback IPs (`::1`, `127.0.0.1`) are never permanently blocked.**
+
+### Outbound alerts
+
+High/critical events (except routine `login_attempt` / `system_change` / `emergency_override`) can notify outside the UI:
+
+- `SECURITY_ALERT_WEBHOOK_URL` or SystemConfig `security_alert_webhook_url` — JSON POST
+- `SECURITY_ALERT_EMAIL` or SystemConfig `security_alert_email` — uses portal SMTP (`email_*` settings)
+
+Alerts are suppressed while emergency bypass is active.
 
 ## Backup & recovery
 

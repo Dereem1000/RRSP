@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export interface NoticeBoardAttributes {
   id: number;
@@ -73,7 +73,7 @@ NoticeBoard.init(
     tags: { type: DataTypes.JSON, defaultValue: [] },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'notice_board',
     timestamps: false,
     underscored: true,

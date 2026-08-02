@@ -37,6 +37,19 @@ export function getRequestPublicOriginFromCtx(ctx: ApiContext): string {
 }
 
 export async function applyRequestGuardFromCtx(ctx: ApiContext): Promise<ApiResult | null> {
+  const body =
+    ctx.body == null
+      ? null
+      : typeof ctx.body === 'string'
+        ? ctx.body
+        : (() => {
+            try {
+              return JSON.stringify(ctx.body);
+            } catch {
+              return null;
+            }
+          })();
+
   const guard = await guardRequest({
     ip: getClientIpFromCtx(ctx),
     path: ctx.urlPath,
@@ -50,6 +63,11 @@ export async function applyRequestGuardFromCtx(ctx: ApiContext): Promise<ApiResu
         return [[key, value]];
       }) as [string, string][]
     ).toString(),
+    body,
+    honeypot:
+      ctx.body && typeof ctx.body === 'object' && typeof (ctx.body as { website?: unknown }).website === 'string'
+        ? (ctx.body as { website: string }).website
+        : null,
   });
   if (!guard.allow) {
     return {
@@ -81,8 +99,8 @@ export async function guardPublicFormFromCtx(
   ctx: ApiContext,
   body: { captchaToken?: string; turnstileToken?: string; website?: string }
 ): Promise<ApiResult | null> {
-  const guard = await applyRequestGuardFromCtx(ctx);
-  if (guard) return guard;
+  // Bot / IDS / rate limits run in Express request-guard middleware.
+  // Keep form-specific honeypot + captcha here.
 
   if (body.website?.trim()) {
     return { status: 403, body: { success: false, message: 'Request blocked' } };

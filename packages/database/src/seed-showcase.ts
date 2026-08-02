@@ -629,6 +629,135 @@ async function seedQuotes(clients: DemoClient[], adminId: number) {
   );
 }
 
+async function seedPosCatalog(createdBy: number) {
+  const sequelize = getSequelize();
+  const now = iso();
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS pos_products (
+      id TEXT PRIMARY KEY,
+      sku TEXT,
+      name TEXT NOT NULL,
+      description TEXT,
+      unitPrice REAL NOT NULL DEFAULT 0,
+      costPrice REAL NOT NULL DEFAULT 0,
+      quantity INTEGER NOT NULL DEFAULT 0,
+      availableQuantity INTEGER NOT NULL DEFAULT 0,
+      productKind TEXT NOT NULL DEFAULT 'physical',
+      isActive INTEGER NOT NULL DEFAULT 1,
+      createdBy INTEGER,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS idx_pos_products_active_qty
+    ON pos_products (isActive, availableQuantity)
+  `);
+
+  const items = [
+    {
+      id: randomUUID(),
+      sku: 'DEMO-CABLE',
+      name: 'Demo USB-C Cable',
+      description: 'Showcase stocked physical item',
+      unitPrice: 45,
+      costPrice: 18,
+      quantity: 25,
+      productKind: 'physical',
+    },
+    {
+      id: randomUUID(),
+      sku: 'DEMO-CASE',
+      name: 'Demo Phone Case',
+      description: 'Showcase stocked physical item',
+      unitPrice: 80,
+      costPrice: 30,
+      quantity: 12,
+      productKind: 'physical',
+    },
+    {
+      id: randomUUID(),
+      sku: 'DEMO-TEMPER',
+      name: 'Demo Tempered Glass',
+      description: 'Showcase stocked physical item',
+      unitPrice: 60,
+      costPrice: 20,
+      quantity: 40,
+      productKind: 'physical',
+    },
+    {
+      id: randomUUID(),
+      sku: 'DEMO-GIFT',
+      name: 'Demo Gift Wrap',
+      description: 'Item sold without quantity tracking',
+      unitPrice: 15,
+      costPrice: 5,
+      quantity: 0,
+      productKind: 'non_stock',
+    },
+    {
+      id: randomUUID(),
+      sku: 'DEMO-SETUP',
+      name: 'Demo Device Setup',
+      description: 'Showcase service / labour fee',
+      unitPrice: 120,
+      costPrice: 0,
+      quantity: 0,
+      productKind: 'service',
+    },
+  ];
+
+  for (const item of items) {
+    const tracksStock = item.productKind === 'physical';
+    await sequelize.query(
+      `
+        INSERT INTO pos_products (
+          id, sku, name, description, unitPrice, costPrice, quantity, availableQuantity,
+          productKind, isActive, createdBy, createdAt, updatedAt
+        ) VALUES (
+          :id, :sku, :name, :description, :unitPrice, :costPrice, :quantity, :availableQuantity,
+          :productKind, 1, :createdBy, :now, :now
+        )
+      `,
+      {
+        replacements: {
+          ...item,
+          quantity: tracksStock ? item.quantity : 0,
+          availableQuantity: tracksStock ? item.quantity : 0,
+          createdBy,
+          now,
+        },
+      }
+    );
+  }
+
+  // Walk-in counter customer used by staff POS.
+  const existingWalkIn = await Client.findOne({
+    where: { email: 'walk-in@pos.local' },
+    attributes: ['id'],
+  });
+  if (!existingWalkIn) {
+    await Client.create({
+      id: randomUUID(),
+      name: 'Walk-in',
+      companyName: 'Walk-in / Counter',
+      email: 'walk-in@pos.local',
+      notes: 'System customer for POS counter sales',
+      status: 'active',
+      isActive: true,
+      billingInfo: {},
+      contractDetails: { showcase: true },
+      communicationHistory: [],
+      usageTracking: {},
+      features: [],
+      servicePlanData: {},
+      slaAgreement: {},
+      created_at: new Date(now),
+      updated_at: new Date(now),
+    } as never);
+  }
+}
+
 export async function seedShowcaseDatabase(): Promise<void> {
   const dbPath = getDatabasePath();
   console.log('Seeding showcase database:', dbPath);
@@ -664,6 +793,7 @@ export async function seedShowcaseDatabase(): Promise<void> {
   await seedCalendar(admin.id);
   await seedNoticeBoard(admin.id);
   await seedQuotes(clients, admin.id);
+  await seedPosCatalog(admin.id);
   await seedSystemConfig();
 
   console.log('Showcase seed complete.');

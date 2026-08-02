@@ -47,6 +47,7 @@ GUI_LICENSE_FEATURE_KEY_TO_LABEL = {
     'auto_system': 'Auto System',
     'distribution_system': 'Distribution System',
     'customer_management': 'Event Sponsor CRM',
+    'rrsp_online': 'Repair Report Service Platform (RRSP)',
     'inventory_management': 'Inventory Management',
     'reporting_analytics': 'Reporting & Analytics',
     'multi_location': 'Multi-Location Support',
@@ -68,21 +69,73 @@ BUSINESS_LICENSE_FEATURE_KEYS = (
     'auto_system',
     'distribution_system',
     'customer_management',
+    'rrsp_online',
 )
 
 
-def license_row_display_status(license_row, now=None):
-    """Active, Expired (past date), or Inactive (pending / deactivated, not past expiry)."""
+def _coerce_utc_datetime(value):
+    """Normalize license date fields to timezone-aware UTC datetimes."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            value = datetime.fromisoformat(text.replace('Z', '+00:00'))
+        except ValueError:
+            for fmt in ('%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+                try:
+                    value = datetime.strptime(text, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                return None
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def license_row_is_expired(license_row, now=None) -> bool:
+    """True when expiration_date is set and is at or before now (UTC)."""
     now = now or datetime.now(timezone.utc)
-    exp = license_row.expiration_date
-    if exp is not None:
-        if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
-        if exp < now:
-            return 'Expired'
+    exp = _coerce_utc_datetime(getattr(license_row, 'expiration_date', None))
+    return bool(exp and exp <= now)
+
+
+def license_row_display_status(license_row, now=None):
+    """Active, Expired (past date), or Inactive (pending / deactivated, not past expiry).
+
+    Calendar expiry always wins over the stored is_active flag — otherwise Studio can
+    show Active for licenses that validation already rejects as expired.
+    """
+    now = now or datetime.now(timezone.utc)
+    if license_row_is_expired(license_row, now):
+        return 'Expired'
     if license_row.is_active:
         return 'Active'
     return 'Inactive'
+
+
+def license_row_is_currently_active(license_row, now=None) -> bool:
+    """True only when the license is usable right now (not expired / deactivated)."""
+    return license_row_display_status(license_row, now) == 'Active'
+
+
+def deactivate_expired_licenses(licenses, *, commit: bool = True) -> int:
+    """Flip is_active=False for any row whose expiration has passed. Returns count updated."""
+    now = datetime.now(timezone.utc)
+    updated = 0
+    for lic in licenses:
+        if license_row_is_expired(lic, now) and lic.is_active:
+            lic.is_active = False
+            updated += 1
+    if updated and commit:
+        db.session.commit()
+    return updated
 
 
 def summarize_license_statuses(licenses):
@@ -496,10 +549,12 @@ FEATURES: {', '.join(current_features) if current_features else 'None'}"""
                     company_name = company.company_name if company else "Unknown Company"
                     
                     # Display license information
+                    display_status = license_row_display_status(license)
+                    currently_active = display_status == 'Active'
                     info_text = f"""ID: {license.id} | Serial: {license.serial_number}
 Company: {company_name}
 Type: {license.license_type} | Users: {license.max_users}
-Status: {'Active' if license.is_active else 'Inactive'} | Service: {license.service_level or 'N/A'}
+Status: {display_status} | Service: {license.service_level or 'N/A'}
 Device: {self._binding_status_label(license)}
 Activated: {license.activation_date or 'Not activated'}
 Expires: {license.expiration_date or 'No expiration'}
@@ -510,14 +565,11 @@ Issue "Add Device License" for a second register, PC, or browser profile."""
                     self.license_info_text.delete(1.0, tk.END)
                     self.license_info_text.insert(1.0, info_text)
                     
-                    # Handle configuration form based on license status
-                    is_active = license.is_active
-                    
-                    # Enable/disable configuration form
+                    # Enable config / activate only when not currently usable
                     for widget in self.config_frame.winfo_children():
-                        self.set_widget_state(widget, not is_active)
+                        self.set_widget_state(widget, not currently_active)
                     
-                    if is_active:
+                    if currently_active:
                         # Clear form for active licenses
                         self.license_type_var.set("")
                         self.feature_var.set("")
@@ -526,7 +578,7 @@ Issue "Add Device License" for a second register, PC, or browser profile."""
                         self.features_text.delete(1.0, tk.END)
                         self.primary_action_button.config(text="License is Active")
                     else:
-                        # Populate form for inactive licenses
+                        # Populate form for inactive / expired licenses
                         self.license_type_var.set(normalize_license_type(license.license_type, 'Day Pass'))
                         self.duration_var.set(str(license.max_users or 1))
                         self.max_users_var.set(str(license.max_users or 1))
@@ -546,7 +598,10 @@ Issue "Add Device License" for a second register, PC, or browser profile."""
                         else:
                             self.feature_var.set('Point of Sale Systems')
                         
-                        self.primary_action_button.config(text="Activate Selected License")
+                        if display_status == 'Expired':
+                            self.primary_action_button.config(text="License Expired — Reactivate")
+                        else:
+                            self.primary_action_button.config(text="Activate Selected License")
                         self.update_features()
                     
         except Exception as e:
@@ -809,6 +864,7 @@ Issue "Add Device License" for a second register, PC, or browser profile."""
                     'inventory_management': selected_feature_key == 'inventory_management',
                     'reporting_analytics': selected_feature_key == 'reporting_analytics',
                     'customer_management': selected_feature_key == 'customer_management',
+                    'rrsp_online': selected_feature_key == 'rrsp_online',
                     'multi_location': selected_feature_key == 'multi_location',
                 }
                 
@@ -954,7 +1010,8 @@ License Details:
                         'auto_system': False,
                         'distribution_system': False,
                         'reporting_analytics': False,
-                        'customer_management': False
+                        'customer_management': False,
+                        'rrsp_online': False,
                     })
                 )
                 
@@ -1028,6 +1085,7 @@ License Details:
                     'auto_system': 'auto',
                     'distribution_system': 'distribution',
                     'customer_management': 'crm',
+                    'rrsp_online': 'rrsp',
                 }
                 serial_number = ensure_unique_license_serial(
                     db.session,

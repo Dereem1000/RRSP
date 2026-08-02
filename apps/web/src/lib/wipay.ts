@@ -168,5 +168,14 @@ export async function recordWiPayPayment(params: WiPayResponseParams) {
     return { ok: false as const, reason: 'Invoice not found.' };
   }
 
+  if (result.invoice?.status === 'paid') {
+    try {
+      const { markPartsPackagePaidFromInvoice } = await import('@/lib/parts-billing');
+      await markPartsPackagePaidFromInvoice(meta.invoiceId);
+    } catch (error) {
+      console.error('Failed to clear parts package unpaid flag after WiPay', error);
+    }
+  }
+
   return { ok: true as const, invoiceId: meta.invoiceId, duplicate: false, invoice: result.invoice };
 }

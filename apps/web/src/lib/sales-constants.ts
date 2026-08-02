@@ -17,7 +17,13 @@ export const ACTIVE_PIPELINE_STAGES = [
   'proposal_sent',
 ] as const satisfies readonly SalesStage[];
 
-export const SALES_PRODUCTS = ['document', 'auto', 'distribution', 'ecommerce'] as const satisfies readonly SalesProduct[];
+export const SALES_PRODUCTS = [
+  'document',
+  'auto',
+  'distribution',
+  'ecommerce',
+  'medical',
+] as const satisfies readonly SalesProduct[];
 
 export const SALES_DEAL_TYPES = ['subscription', 'standalone'] as const satisfies readonly SalesDealType[];
 
@@ -56,6 +62,7 @@ export const PRODUCT_LABELS: Record<SalesProduct, string> = {
   auto: 'Auto Maintenance Ticket CRM',
   distribution: 'Wholesale Distribution System',
   ecommerce: 'E-commerce Web Store',
+  medical: 'Medical Records Management Platform',
 };
 
 export const PRODUCT_TO_FEATURE: Record<SalesProduct, ActivationFeature> = {
@@ -63,6 +70,7 @@ export const PRODUCT_TO_FEATURE: Record<SalesProduct, ActivationFeature> = {
   auto: 'auto',
   distribution: 'distribution',
   ecommerce: 'ecommerce',
+  medical: 'medical',
 };
 
 /** Live demo slug served at /demo/<slug>/ */
@@ -71,6 +79,7 @@ export const PRODUCT_DEMO_SLUG: Record<SalesProduct, string> = {
   auto: 'autom-jsd-management',
   distribution: 'distribution',
   ecommerce: 'pos-2026-05-27-demo',
+  medical: 'medical-records',
 };
 
 export const PRODUCT_LEARN_MORE: Record<SalesProduct, string> = {
@@ -78,6 +87,7 @@ export const PRODUCT_LEARN_MORE: Record<SalesProduct, string> = {
   auto: '/auto-system.html',
   distribution: '/distribution-system.html',
   ecommerce: '/pos-system-learn-more.html',
+  medical: '/medical-records-system.html',
 };
 
 export const PRODUCT_TARGET_PROFILE: Record<SalesProduct, string> = {
@@ -85,6 +95,7 @@ export const PRODUCT_TARGET_PROFILE: Record<SalesProduct, string> = {
   auto: 'Independent garages tracking parts and vehicle statuses on paper tags or text messages.',
   distribution: 'Distributors in industrial estates using old desktop systems or paper ledgers.',
   ecommerce: 'Local shops selling only via Instagram/WhatsApp without a proper checkout system.',
+  medical: 'Clinics and private practices still managing patient charts on paper or disconnected spreadsheets.',
 };
 
 export const PRODUCT_PITCH_HOOK: Record<SalesProduct, string> = {
@@ -92,6 +103,7 @@ export const PRODUCT_PITCH_HOOK: Record<SalesProduct, string> = {
   auto: 'Digital tracking card on a phone — tap "Parts Ordered" instead of paper tags.',
   distribution: 'Automated client ordering portal with multi-tier wholesale pricing.',
   ecommerce: 'Automated web store with local shipping fees — customers checkout without WhatsApp back-and-forth.',
+  medical: 'Secure patient charts, visit history, and prescriptions in one place — no more missing paper files.',
 };
 
 export const PRODUCT_DEMO_HIGHLIGHT: Record<SalesProduct, string> = {
@@ -99,6 +111,7 @@ export const PRODUCT_DEMO_HIGHLIGHT: Record<SalesProduct, string> = {
   auto: 'Show the mechanic tapping "Parts Ordered" on a phone screen.',
   distribution: 'Show multi-tier wholesale pricing working live.',
   ecommerce: 'Show a customer adding an item to cart and checking out.',
+  medical: 'Show pulling up a patient chart and visit timeline in seconds.',
 };
 
 export const DEAL_TYPE_LABELS: Record<SalesDealType, string> = {

@@ -17,10 +17,11 @@ MSP_FEATURE_LONG_CODES: dict[str, str] = {
     'distribution': 'DISTRIBUTION',
     'crm': 'EVENTSPONSORCRM',
     'customer': 'EVENTSPONSORCRM',
+    'rrsp': 'RRSPONLINE',
 }
 
 # Legacy short codes — parsed for existing DB rows only; never generated for new serials.
-LEGACY_SHORT_FEATURE_CODES = frozenset({'POS', 'REST', 'DOC', 'ECOM', 'AUTO', 'DIST', 'CRM', 'GEN'})
+LEGACY_SHORT_FEATURE_CODES = frozenset({'POS', 'REST', 'DOC', 'ECOM', 'AUTO', 'DIST', 'CRM', 'RRSP', 'GEN'})
 
 LICENSE_KEY_TO_CODE: dict[str, str] = {
     'pos_systems': 'POINTOFSALE',
@@ -30,6 +31,7 @@ LICENSE_KEY_TO_CODE: dict[str, str] = {
     'auto_system': 'AUTOSYSTEM',
     'distribution_system': 'DISTRIBUTION',
     'customer_management': 'EVENTSPONSORCRM',
+    'rrsp_online': 'RRSPONLINE',
 }
 
 CODE_TO_LICENSE_KEY: dict[str, str] = {code: key for key, code in LICENSE_KEY_TO_CODE.items()}
@@ -44,6 +46,7 @@ MSP_FEATURE_TO_LICENSE_KEY: dict[str, str] = {
     'distribution': 'distribution_system',
     'crm': 'customer_management',
     'customer': 'customer_management',
+    'rrsp': 'rrsp_online',
 }
 
 BUSINESS_LICENSE_FEATURE_KEYS = tuple(LICENSE_KEY_TO_CODE.keys())

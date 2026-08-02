@@ -1,6 +1,6 @@
 {
   "name": "computer-dynamics-v2",
-  "version": "2.1.1",
+  "version": "2.1.4",
   "private": true,
   "description": "Computer Dynamics MSP Intranet — Next.js + TypeScript (legacy SQLite compatible)",
   "workspaces": [
@@ -20,8 +20,8 @@
     "stop:showcase": "node scripts/stop-showcase.mjs",
     "build": "npm run build -w @cd-v2/database && npm run build -w @cd-v2/backup && npm run build -w @cd-v2/security && npm run build -w @cd-v2/api-handlers && npm run build -w @cd-v2/portal-services && npm run build -w @cd-v2/api && npm run build -w @cd-v2/web",
     "start": "npm run start -w @cd-v2/web",
-    "start:production": "npx concurrently -k -n web,api,security,license -c blue,green,yellow,magenta \"npm run start -w @cd-v2/web\" \"npm run start -w @cd-v2/api\" \"npm run security:worker:prod\" \"npm run start:license\"",
-    "start:production:runtime": "npx concurrently -k -n web,api,security,license -c blue,green,yellow,magenta \"npm run start -w @cd-v2/web\" \"npm run start -w @cd-v2/api\" \"npm run security:worker:run\" \"npm run start:license\"",
+    "start:production": "npx concurrently -n web,api,security,license -c blue,green,yellow,magenta --restart-tries 100 --restart-after 2000 \"npm run start -w @cd-v2/web\" \"npm run start -w @cd-v2/api\" \"npm run security:worker:prod\" \"npm run start:license\"",
+    "start:production:runtime": "npx concurrently -n web,api,security,license -c blue,green,yellow,magenta --restart-tries 100 --restart-after 2000 \"npm run start -w @cd-v2/web\" \"npm run start -w @cd-v2/api\" \"npm run security:worker:run\" \"npm run start:license\"",
     "start:license": "cd license_activation_system_new && set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& python license_api_server.py",
     "security:worker:prod": "npm run build -w @cd-v2/security && node packages/security/dist/worker-cli.js",
     "security:worker:run": "node packages/security/dist/worker-cli.js",

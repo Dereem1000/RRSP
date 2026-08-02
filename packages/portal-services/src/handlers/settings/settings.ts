@@ -14,33 +14,24 @@ import {
 import {
   getEmailSettings,
   getGeneralSettings,
+  getPartsCatalogSettings,
   getTicketNotificationSettings,
   saveEmailSettings,
   saveGeneralSettings,
+  savePartsCatalogSettings,
   saveTicketNotificationSettings,
 } from '@web/lib/settings';
-
-
-function searchParamsFrom(ctx: ApiContext): URLSearchParams {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(ctx.query)) {
-    if (value === undefined) continue;
-    if (Array.isArray(value)) value.forEach((v) => params.append(key, v));
-    else params.set(key, value);
-  }
-  return params;
-}
-
 
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
     requireRole(session, 'admin');
 
-    const [email, tickets, general] = await Promise.all([
+    const [email, tickets, general, partsCatalog] = await Promise.all([
       getEmailSettings(),
       getTicketNotificationSettings(),
       getGeneralSettings(),
+      getPartsCatalogSettings(),
     ]);
 
     return { status: 200, body: {
@@ -48,6 +39,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
       email: { ...email, password: email.password ? '********' : '' },
       tickets,
       general,
+      partsCatalog,
     } };
   } catch (error) {
     return authErrorResult(error);
@@ -63,6 +55,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
     if (body.email) await saveEmailSettings(body.email);
     if (body.tickets) await saveTicketNotificationSettings(body.tickets);
     if (body.general) await saveGeneralSettings(body.general);
+    if (body.partsCatalog) await savePartsCatalogSettings(body.partsCatalog);
 
     return { status: 200, body: { success: true, message: 'Settings saved' } };
   } catch (error) {

@@ -384,8 +384,9 @@ export function featureLicenseDisplayStatus(
 ): FeatureLicenseDisplayStatus {
   if (!dbAvailable) return 'Unavailable';
   if (!entry?.hasLicense) return 'Not synced';
-  if (entry.isActive) return 'Active';
+  // Expiry wins over a stale is_active flag left true after calendar expiry.
   if (isFeatureLicenseExpired(entry)) return 'Expired';
+  if (entry.isActive) return 'Active';
   return 'Pending';
 }
 

@@ -1,5 +1,5 @@
 import { QueryTypes } from 'sequelize';
-import { getSequelize } from '@cd-v2/database';
+import { getOperationalSequelize as getSequelize, getRrspContext, ensureRrspDatabase } from '@/lib/rrsp-db';
 
 let ordersSchemaReady = false;
 
@@ -20,6 +20,11 @@ export async function ensureOrderSerialColumn() {
 }
 
 export async function ensureOrdersSchema() {
+  const rrsp = getRrspContext();
+  if (rrsp) {
+    await ensureRrspDatabase(rrsp.mspClientId);
+    return;
+  }
   if (ordersSchemaReady) return;
   const sequelize = getSequelize();
 

@@ -12,6 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { Client, Ticket } from '@web/lib/db';
+import { getShopClientModel, isRrspDbActive } from '@web/lib/rrsp-db';
 import {
   forceDeleteClient,
   getClientById,
@@ -22,6 +23,7 @@ import {
 } from '@web/lib/clients';
 import { pickClientFields } from '@web/lib/client-payload';
 import { getDefaultMonthlyRate, getDefaultSlaForLevel } from '@web/lib/client-constants';
+import { normalizeServicePlanData } from '@web/lib/rrsp';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -38,6 +40,18 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+      const { id } = ctx.params;
+      const client = await getShopClientModel().findByPk(id);
+      if (!client) {
+        return { status: 404, body: { success: false, message: 'Client not found' } };
+      }
+      return { status: 200, body: { success: true, client: serializeClient(client) } };
+    }
+
     requireRole(session, 'admin', 'technician');
 
     const { id } = ctx.params;
@@ -55,6 +69,30 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+      const { id } = ctx.params;
+      const client = await getShopClientModel().findByPk(id);
+      if (!client) {
+        return { status: 404, body: { success: false, message: 'Client not found' } };
+      }
+      const body = ctx.body as Record<string, unknown>;
+      await client.update({
+        name: body.name?.trim() || client.name,
+        email: body.email?.trim() || client.email,
+        phone: body.phone !== undefined ? body.phone : client.phone,
+        address: body.address !== undefined ? body.address : client.address,
+        contactPerson: body.contactPerson !== undefined ? body.contactPerson : client.contactPerson,
+        companyName: body.companyName !== undefined ? body.companyName : client.companyName,
+        status: body.status || client.status,
+        notes: body.notes !== undefined ? body.notes : client.notes,
+      });
+      await client.reload();
+      return { status: 200, body: { success: true, client: serializeClient(client) } };
+    }
+
     requireRole(session, 'admin');
 
     const { id } = ctx.params;
@@ -79,8 +117,8 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 
     if (body.servicePlanData !== undefined) {
       updates.servicePlanData = {
-        ...(client.servicePlanData as Record<string, unknown>),
-        ...(body.servicePlanData as Record<string, unknown>),
+        ...normalizeServicePlanData(client.servicePlanData),
+        ...normalizeServicePlanData(body.servicePlanData),
       };
     }
 
@@ -117,6 +155,19 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+      const { id } = ctx.params;
+      const client = await getShopClientModel().findByPk(id);
+      if (!client) {
+        return { status: 404, body: { success: false, message: 'Client not found' } };
+      }
+      await client.update({ isActive: false, status: 'inactive' });
+      return { status: 200, body: { success: true, message: 'Client deactivated' } };
+    }
+
     requireRole(session, 'admin');
 
     const { id } = ctx.params;

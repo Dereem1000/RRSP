@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Shield, ShieldAlert } from 'lucide-react';
 
 type BadgeSummary = {
@@ -18,11 +18,17 @@ type BadgeSummary = {
 
 const POLL_MS = 60_000;
 
+function isPosSellPath(pathname: string | null) {
+  return pathname === '/pos' || pathname === '/rrsp/pos';
+}
+
 export function SecurityStatusBadge() {
   const router = useRouter();
+  const pathname = usePathname();
   const [summary, setSummary] = useState<BadgeSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const abovePosCart = isPosSellPath(pathname);
 
   const load = useCallback(async () => {
     try {
@@ -60,11 +66,28 @@ export function SecurityStatusBadge() {
   const hasIssues = issueCount > 0;
   const bypassActive = summary?.bypassActive ?? false;
 
-  const tone = hasIssues
+  const threatLevel = summary?.threatLevel;
+
+  const threatLevelTone = (() => {
+    switch (threatLevel) {
+      case 'high':
+        return 'border-red-300 bg-red-50 text-red-800 shadow-red-200/50 hover:bg-red-100';
+      case 'medium':
+        return 'border-orange-300 bg-orange-50 text-orange-800 shadow-orange-200/50 hover:bg-orange-100';
+      case 'low':
+        return 'border-yellow-300 bg-yellow-50 text-yellow-800 shadow-yellow-200/50 hover:bg-yellow-100';
+      default:
+        return '';
+    }
+  })();
+
+  const tone = threatLevelTone
+    ? threatLevelTone
+    : hasIssues
     ? 'border-red-300 bg-red-50 text-red-800 shadow-red-200/50 hover:bg-red-100'
     : bypassActive
-      ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-amber-200/50 hover:bg-amber-100'
-      : 'border-indigo-200 bg-white text-indigo-900 shadow-indigo-200/40 hover:bg-indigo-50';
+    ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-amber-200/50 hover:bg-amber-100'
+    : 'border-indigo-200 bg-white text-indigo-900 shadow-indigo-200/40 hover:bg-indigo-50';
 
   const ariaLabel = hasIssues
     ? `Security: ${issueCount} issue${issueCount === 1 ? '' : 's'}. Open security settings.`
@@ -84,7 +107,11 @@ export function SecurityStatusBadge() {
             ? 'Emergency bypass is active'
             : `Security score ${summary?.securityScore ?? '—'}`
       }
-      className={`fixed right-4 z-50 flex items-center gap-2 rounded-full border px-3 py-2.5 text-sm font-semibold shadow-lg transition max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 lg:right-6 ${tone}`}
+      className={`fixed right-4 z-[90] flex items-center gap-2 rounded-full border px-3 py-2.5 text-sm font-semibold shadow-lg transition lg:bottom-6 lg:right-6 ${
+        abovePosCart
+          ? 'max-lg:bottom-[calc(8.75rem+env(safe-area-inset-bottom,0px))]'
+          : 'max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]'
+      } ${tone}`}
     >
       {hasIssues ? (
         <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden />

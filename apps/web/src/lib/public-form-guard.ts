@@ -6,7 +6,11 @@ export async function guardPublicForm(
   req: NextRequest,
   body: { captchaToken?: string; turnstileToken?: string; website?: string }
 ): Promise<NextResponse | null> {
-  const guardRes = await applyRequestGuard(req);
+  // Prefer Express request-guard for proxied public APIs; this covers Next-only forms.
+  const guardRes = await applyRequestGuard(req, {
+    body: JSON.stringify(body),
+    honeypot: body.website ?? null,
+  });
   if (guardRes) return guardRes;
 
   if (body.website?.trim()) {

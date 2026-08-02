@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, type WhereOptions } from 'sequelize';
 import { SecurityEvent, SystemConfig } from '@cd-v2/database';
 import {
   activateEmergencyOverride,
@@ -180,28 +180,65 @@ export async function securityEmergencyStatusGet(ctx: ApiContext): Promise<ApiRe
 export async function securityEventsGet(ctx: ApiContext): Promise<ApiResult> {
   requireAdmin(ctx);
 
-  const limitRaw = ctx.query.limit;
-  const limitValue = Array.isArray(limitRaw) ? limitRaw[0] : limitRaw;
-  const limit = Math.min(100, Math.max(1, Number(limitValue ?? 50)));
-  const severityRaw = ctx.query.severity;
-  const eventTypeRaw = ctx.query.eventType;
-  const severity = Array.isArray(severityRaw) ? severityRaw[0] : severityRaw;
-  const eventType = Array.isArray(eventTypeRaw) ? eventTypeRaw[0] : eventTypeRaw;
+  const q = (key: string): string | undefined => {
+    const raw = ctx.query[key];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  };
 
-  const where: Record<string, unknown> = { isActive: true };
+  const limit = Math.min(500, Math.max(1, Number(q('limit') ?? 100)));
+  const offset = Math.max(0, Number(q('offset') ?? 0));
+  const severity = q('severity');
+  const eventType = q('eventType');
+  const ip = q('ip');
+  const search = q('q');
+  const includeInactive = q('includeInactive') === '1' || q('includeInactive') === 'true';
+
+  const where: WhereOptions = {};
+  if (!includeInactive) where.isActive = true;
   if (severity) where.severity = severity;
   if (eventType) where.eventType = eventType;
+  if (ip) {
+    Object.assign(where, {
+      [Op.or]: [
+        { ipAddress: ip },
+        { description: { [Op.like]: `%${ip}%` } },
+      ],
+    });
+  }
+  if (search) {
+    const like = { [Op.like]: `%${search}%` };
+    const searchClause = {
+      [Op.or]: [{ description: like }, { eventType: like }, { ipAddress: like }, { outcome: like }],
+    };
+    const existingOr = (where as { [key: symbol]: unknown })[Op.or];
+    if (existingOr) {
+      Object.assign(where, {
+        [Op.and]: [{ [Op.or]: existingOr }, searchClause],
+      });
+      delete (where as { [key: symbol]: unknown })[Op.or];
+    } else {
+      Object.assign(where, searchClause);
+    }
+  }
 
-  const events = await SecurityEvent.findAll({
-    where,
-    order: [['created_at', 'DESC']],
-    limit,
-  });
+  const [events, total] = await Promise.all([
+    SecurityEvent.findAll({
+      where,
+      order: [['created_at', 'DESC']],
+      limit,
+      offset,
+    }),
+    SecurityEvent.count({ where }),
+  ]);
 
   return {
     status: 200,
     body: {
       success: true,
+      total,
+      limit,
+      offset,
       events: events.map((e) => {
         const j = e.toJSON() as SecurityEvent & { created_at?: Date };
         return {
@@ -211,6 +248,10 @@ export async function securityEventsGet(ctx: ApiContext): Promise<ApiResult> {
           description: j.description,
           outcome: j.outcome,
           userId: j.userId,
+          ipAddress: j.ipAddress ?? null,
+          userAgent: j.userAgent ?? null,
+          details: j.details ?? {},
+          isActive: j.isActive,
           createdAt: j.created_at ? String(j.created_at) : '',
         };
       }),

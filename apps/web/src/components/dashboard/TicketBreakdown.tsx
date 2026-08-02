@@ -14,10 +14,12 @@ export function TicketBreakdown({
   breakdown,
   compact = false,
   fill = false,
+  title = 'Tickets by status',
 }: {
   breakdown: TicketStatusBreakdown[];
   compact?: boolean;
   fill?: boolean;
+  title?: string;
 }) {
   const max = Math.max(...breakdown.map((b) => b.count), 1);
 
@@ -27,7 +29,7 @@ export function TicketBreakdown({
         compact ? 'p-4' : 'p-6'
       } ${fill ? 'flex min-h-0 flex-1 flex-col' : ''}`}
     >
-      <h2 className="shrink-0 font-semibold text-slate-900">Tickets by status</h2>
+      <h2 className="shrink-0 font-semibold text-slate-900">{title}</h2>
       <div
         className={
           fill && compact

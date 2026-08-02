@@ -12,7 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { getPublicCaptchaConfig } from '@cd-v2/security';
-import { applyRequestGuardFromCtx, getClientIpFromCtx, getRequestHostFromCtx } from '../../http-helpers';
+import { getRequestHostFromCtx } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {

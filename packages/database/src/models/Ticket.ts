@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export interface TicketAttributes {
   id: string;
@@ -120,7 +120,7 @@ Ticket.init(
     actualCost: { type: DataTypes.DECIMAL(10, 2), allowNull: true, field: 'actual_cost' },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'tickets',
     timestamps: false,
     underscored: false,

@@ -38,12 +38,15 @@ export function TicketsPageClient({
   clients,
   technicians,
   clientCanCreate = false,
+  shopOperator = false,
 }: {
   tickets: TicketRow[];
   userRole: string;
   clients: ClientOption[];
   technicians: TechnicianOption[];
   clientCanCreate?: boolean;
+  /** RRSP shop user acting as operator (pick shop customers). */
+  shopOperator?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,7 +61,8 @@ export function TicketsPageClient({
   const [importMessage, setImportMessage] = useState('');
   const isStaff = userRole === 'admin' || userRole === 'technician';
   const isAdmin = userRole === 'admin';
-  const canCreate = isStaff || (userRole === 'client' && clientCanCreate);
+  const canCreate = isStaff || shopOperator || (userRole === 'client' && clientCanCreate);
+  const treatAsOperator = isStaff || shopOperator;
 
   useEffect(() => {
     if (searchParams?.get('create') === '1' && canCreate) {
@@ -229,7 +233,7 @@ export function TicketsPageClient({
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/80">
               <th className="px-4 py-3.5 font-semibold text-slate-600">Ticket</th>
-              {userRole !== 'client' && (
+              {treatAsOperator && (
                 <th className="px-4 py-3.5 font-semibold text-slate-600">Client</th>
               )}
               <th className="px-4 py-3.5 font-semibold text-slate-600">Issue</th>
@@ -238,7 +242,7 @@ export function TicketsPageClient({
               <th className="hidden px-4 py-3.5 font-semibold text-slate-600 xl:table-cell">Location</th>
               <th className="px-4 py-3.5 font-semibold text-slate-600">Priority</th>
               <th className="px-4 py-3.5 font-semibold text-slate-600">Status</th>
-              {userRole !== 'client' && (
+              {treatAsOperator && !shopOperator && (
                 <th className="hidden px-4 py-3.5 font-semibold text-slate-600 sm:table-cell">Technician</th>
               )}
               <th className="hidden px-4 py-3.5 font-semibold text-slate-600 lg:table-cell">Due</th>
@@ -269,7 +273,7 @@ export function TicketsPageClient({
                       )}
                     </Link>
                   </td>
-                  {userRole !== 'client' && (
+                  {treatAsOperator && (
                     <td className="px-4 py-4">
                       <ClientLink id={t.clientId} label={t.clientName} className="font-medium text-slate-900 hover:text-indigo-700" />
                     </td>
@@ -284,7 +288,7 @@ export function TicketsPageClient({
                   <td className="px-4 py-4">
                     <TicketStatusBadge status={t.status} />
                   </td>
-                  {userRole !== 'client' && (
+                  {treatAsOperator && !shopOperator && (
                     <td className="hidden px-4 py-4 text-slate-600 sm:table-cell">{t.technician}</td>
                   )}
                   <td className="hidden px-4 py-4 text-xs text-slate-500 lg:table-cell">
@@ -302,9 +306,9 @@ export function TicketsPageClient({
         <CreateTicketModal
           clients={clients}
           technicians={technicians}
-          clientMode={userRole === 'client'}
+          clientMode={userRole === 'client' && !shopOperator}
           defaultClientId={presetClientId}
-          canAddClient={isStaff}
+          canAddClient={treatAsOperator}
           onClose={() => setShowCreate(false)}
         />
       )}

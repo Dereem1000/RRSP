@@ -39,9 +39,14 @@ const EMPTY_PAGINATION: PaginationMeta = { total: 0, page: 1, limit: PAGE_SIZE, 
 export function StaffOrdersPageClient({
   isAdmin,
   clients,
+  hidePageChrome = false,
+  allowSkipUsCost = false,
 }: {
   isAdmin: boolean;
   clients: ClientOption[];
+  /** When embedded under /rrsp/orders (page already has a title). */
+  hidePageChrome?: boolean;
+  allowSkipUsCost?: boolean;
 }) {
   const searchParams = useSearchParams();
   const { askToEmailClient } = useClientEmailPolicy();
@@ -144,6 +149,8 @@ export function StaffOrdersPageClient({
     setCreateError('');
     try {
       const sendEmail = askToEmailClient('Email the client about this new order?');
+      const costNum = Number(createForm.costPrice);
+      const skipUsCost = allowSkipUsCost && (createForm.costPrice === '' || Number.isNaN(costNum));
       const res = await fetch('/api/msp/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +158,8 @@ export function StaffOrdersPageClient({
           clientId: createForm.clientId,
           title: createForm.title,
           itemName: createForm.itemName,
-          costPrice: Number(createForm.costPrice),
+          costPrice: skipUsCost ? 0 : costNum,
+          skipUsCost,
           clientPrice: Number(createForm.clientPrice),
           quantity: Number(createForm.quantity) || 1,
           description: createForm.description || null,
@@ -217,10 +225,14 @@ export function StaffOrdersPageClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Orders</h1>
-          <p className="mt-1 text-sm text-slate-500">Track parts and shipments for clients</p>
-        </div>
+        {!hidePageChrome ? (
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Orders</h1>
+            <p className="mt-1 text-sm text-slate-500">Track parts and shipments for clients</p>
+          </div>
+        ) : (
+          <div />
+        )}
         <div className="flex flex-wrap gap-2">
           {isAdmin && (
             <>
@@ -236,15 +248,17 @@ export function StaffOrdersPageClient({
                 <Plus className="h-4 w-4" />
                 New order
               </button>
-              <button
-                type="button"
-                onClick={checkNonPreAlerted}
-                disabled={!!loading}
-                className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                {loading === 'prealert' ? 'Checking…' : 'Check pre-alerts'}
-              </button>
+              {!hidePageChrome && (
+                <button
+                  type="button"
+                  onClick={checkNonPreAlerted}
+                  disabled={!!loading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  {loading === 'prealert' ? 'Checking…' : 'Check pre-alerts'}
+                </button>
+              )}
             </>
           )}
           <button
@@ -285,15 +299,16 @@ export function StaffOrdersPageClient({
         </div>
       )}
 
-      {isAdmin && <EmailMonitoringPanel />}
+      {isAdmin && !hidePageChrome && <EmailMonitoringPanel />}
 
-      <ReceiveAtOfficePanel
-        onReceived={() => {
-          loadSummary();
-          loadOrders();
-        }}
-      />
-
+      {!hidePageChrome && (
+        <ReceiveAtOfficePanel
+          onReceived={() => {
+            loadSummary();
+            loadOrders();
+          }}
+        />
+      )}
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -415,6 +430,7 @@ export function StaffOrdersPageClient({
           error={createError}
           onClose={() => setShowCreate(false)}
           onSubmit={createOrder}
+          allowSkipUsCost={allowSkipUsCost}
         />
       )}
 

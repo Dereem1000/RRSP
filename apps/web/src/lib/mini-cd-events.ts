@@ -59,7 +59,11 @@ export async function emitMiniCdEvents(events: MiniCdEvent[]): Promise<void> {
 }
 
 export function emitMiniCdEvent(session: TokenPayload, event: Omit<MiniCdEvent, 'actor'> & { actorName?: string }) {
-  void emitMiniCdEvents([buildMiniCdEvent(session, event)]);
+  try {
+    void emitMiniCdEvents([buildMiniCdEvent(session, event)]);
+  } catch {
+    /* learning is best-effort */
+  }
 }
 
 export function emitMiniCdPageView(

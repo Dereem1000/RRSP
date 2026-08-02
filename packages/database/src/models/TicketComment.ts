@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export type CommentType =
   | 'update'
@@ -76,7 +76,7 @@ TicketComment.init(
     linkedOrderId: { type: DataTypes.TEXT, allowNull: true, field: 'linkedOrderId' },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'ticket_comments',
     timestamps: false,
     underscored: false,

@@ -20,6 +20,8 @@ const SYSTEM_KEY_TO_FEATURE: Record<string, ActivationFeature> = {
   ecommerce: 'ecommerce',
   auto: 'auto',
   distribution: 'distribution',
+  medical: 'medical',
+  'medical-records': 'medical',
   crm: 'crm',
 };
 

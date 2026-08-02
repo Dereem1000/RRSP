@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export interface ClientAttributes {
   id: string;
@@ -8,6 +8,10 @@ export interface ClientAttributes {
   email: string;
   phone?: string | null;
   address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** How the pin was set: geocode | pin */
+  locationSource?: 'geocode' | 'pin' | null;
   contactPerson?: string | null;
   billingInfo?: Record<string, unknown>;
   contractDetails?: Record<string, unknown>;
@@ -49,6 +53,9 @@ export class Client
   declare email: string;
   declare phone: string | null;
   declare address: string | null;
+  declare latitude: number | null;
+  declare longitude: number | null;
+  declare locationSource: 'geocode' | 'pin' | null;
   declare contactPerson: string | null;
   declare billingInfo: Record<string, unknown>;
   declare contractDetails: Record<string, unknown>;
@@ -85,6 +92,13 @@ Client.init(
     email: { type: DataTypes.STRING(100), allowNull: false },
     phone: DataTypes.STRING(20),
     address: DataTypes.TEXT,
+    latitude: { type: DataTypes.DOUBLE, allowNull: true },
+    longitude: { type: DataTypes.DOUBLE, allowNull: true },
+    locationSource: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      field: 'location_source',
+    },
     contactPerson: { type: DataTypes.STRING(100), field: 'contact_person' },
     billingInfo: { type: DataTypes.JSON, defaultValue: {}, field: 'billing_info' },
     contractDetails: {
@@ -152,7 +166,7 @@ Client.init(
     userId: { type: DataTypes.INTEGER, allowNull: true, field: 'userId' },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'clients',
     timestamps: true,
     createdAt: 'created_at',

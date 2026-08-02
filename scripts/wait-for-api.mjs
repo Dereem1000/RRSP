@@ -24,10 +24,15 @@ async function waitForApi() {
     try {
       const response = await fetch(healthUrl, { signal: AbortSignal.timeout(15_000) });
       if (response.ok) {
-        console.log(`[wait-for-api] Express API ready at ${healthUrl}`);
-        return;
+        const body = await response.json().catch(() => null);
+        if (body?.status === 'live') {
+          console.log(`[wait-for-api] Express API ready at ${healthUrl}`);
+          return;
+        }
+        lastError = `HTTP ${response.status} status=${body?.status || 'unknown'}`;
+      } else {
+        lastError = `HTTP ${response.status}`;
       }
-      lastError = `HTTP ${response.status}`;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }

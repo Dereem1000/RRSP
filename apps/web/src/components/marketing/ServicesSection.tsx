@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   UtensilsCrossed,
   FileText,
+  HeartPulse,
   Wrench,
   TrendingUp,
   Globe,
@@ -56,6 +57,14 @@ const services = [
     description:
       'Custom document management systems for digital filing, workflow automation, and secure document storage.',
     href: '/document-management.html',
+    cta: 'Learn More',
+  },
+  {
+    icon: HeartPulse,
+    title: 'Medical Records Management',
+    description:
+      'Secure clinical document management for clinics—patient charts, visit history, workstation sync, and audit-ready access controls.',
+    href: '/medical-records-system.html',
     cta: 'Learn More',
   },
   {

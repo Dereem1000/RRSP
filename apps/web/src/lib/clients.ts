@@ -4,20 +4,33 @@ import { Client, Ticket, User, getSequelize } from '@cd-v2/database';
 import { buildUsageLimitsFromLevel, getDefaultMonthlyRate, getDefaultSlaForLevel, type UsageInfo } from '@/lib/client-constants';
 import { sendClientWelcomeEmail } from '@/lib/email';
 import {
+  activationFeaturesFromLicenseRows,
   getActivationFeatures,
+  mergeActivationFeatures,
   type ActivationFeature,
 } from '@/lib/license-constants';
+import { normalizeServicePlanData } from '@/lib/rrsp';
 
-export function serializeClient(client: Client) {
+export function serializeClient(client: { toJSON: () => Record<string, unknown> }) {
   const json = client.toJSON() as unknown as Record<string, unknown>;
   if (json.monthlyRate != null) json.monthlyRate = Number(json.monthlyRate);
   json.features = getActivationFeatures(json.features);
+  json.servicePlanData = normalizeServicePlanData(json.servicePlanData);
   return json;
 }
 
-/** Portal client features define which systems require licenses */
+/** Portal client features + active license rows (so RRSP license enables the feature). */
 export async function resolveClientActivationFeatures(client: Client): Promise<ActivationFeature[]> {
-  return getActivationFeatures(client.features);
+  const stored = getActivationFeatures(client.features);
+  try {
+    const { getLicenseStatusByMspClientId } = await import('@/lib/license-service');
+    const license = await getLicenseStatusByMspClientId(client.id);
+    if (!license?.allLicenses?.length) return stored;
+    const fromLicense = activationFeaturesFromLicenseRows(license.allLicenses);
+    return mergeActivationFeatures(stored, fromLicense);
+  } catch {
+    return stored;
+  }
 }
 
 export async function getClientById(id: string) {
@@ -35,6 +48,9 @@ export async function getClientById(id: string) {
 
 /** Orders FK still references legacy `clients_backup`; mirror live clients before insert. */
 export async function ensureClientMirroredForOrders(clientId: string) {
+  const { isRrspDbActive } = await import('@/lib/rrsp-db');
+  if (isRrspDbActive()) return;
+
   const sequelize = getSequelize();
   const existing = await sequelize.query<{ id: string }>(
     `SELECT id FROM clients_backup WHERE id = :id LIMIT 1`,
@@ -155,7 +171,7 @@ export function calculateNextBillingDate(billingCycle: string | undefined, start
 }
 
 export function getClientBilling(client: Client) {
-  const plan = (client.servicePlanData ?? {}) as Record<string, unknown>;
+  const plan = normalizeServicePlanData(client.servicePlanData);
   const billingCycle = (plan.billingCycle as string) || 'monthly';
   const contractStart = client.contractStartDate ?? client.startDate;
   const contractEnd = client.contractEndDate ?? client.endDate;

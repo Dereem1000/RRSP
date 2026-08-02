@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { DataTypes, Model, Op, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export interface UserAttributes {
   id: number;
@@ -158,7 +158,7 @@ User.init(
     firstLoginAt: { type: DataTypes.DATE, allowNull: true, field: 'firstLoginAt' },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'users',
     timestamps: true,
     createdAt: 'created_at',

@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowRightLeft,
   Ban,
@@ -17,6 +17,7 @@ import {
   Receipt,
   Send,
   Trash2,
+  Wallet,
   X,
 } from 'lucide-react';
 import { ClientSearchSelect } from '@/components/clients/ClientSearchSelect';
@@ -24,7 +25,7 @@ import { EmailSentHistory } from '@/components/accounting/EmailSentHistory';
 import { InvoiceLinksSection, type InvoiceLinkView } from '@/components/accounting/InvoiceLinksSection';
 import { ACCOUNTING_HEADER_EVENTS } from '@/components/accounting/AccountingHeaderActions';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { ClientLink, InvoiceLink, QuoteLink } from '@/components/links/DocumentLinks';
+import { ClientLink } from '@/components/links/DocumentLinks';
 import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 import type { AccountingSummary, RecentFinancialTransaction } from '@/lib/accounting';
 import type { EmailLogEntry } from '@/lib/email-log';
@@ -34,9 +35,40 @@ import {
   type TicketAccountingPrefill,
 } from '@/lib/ticket-accounting-prefill';
 
-type Tab = 'overview' | 'invoices' | 'quotes';
+type Tab = 'overview' | 'invoices' | 'quotes' | 'seller-payouts';
 
-const ACCOUNTING_TABS: Tab[] = ['overview', 'invoices', 'quotes'];
+const ACCOUNTING_TABS_BASE: Tab[] = ['overview', 'invoices', 'quotes'];
+const ACCOUNTING_TABS_WITH_PAYOUTS: Tab[] = [...ACCOUNTING_TABS_BASE, 'seller-payouts'];
+
+type SellerPayable = {
+  id: string;
+  sellerClientId: string;
+  sellerName: string | null;
+  buyerClientId: string | null;
+  buyerName: string | null;
+  sellerAmount: number;
+  payoutTotal: number;
+  listedLineTotal: number;
+  cdMarkupAmount: number;
+  markupPercent?: number | null;
+  status: 'owed' | 'paid_out';
+  buyerInvoiceId: string;
+  buyerInvoiceNumber: string | null;
+  buyerInvoiceAmount: number | null;
+  deliveryPackageId: string;
+  buyerPaidAt: string | null;
+  paidOutAt: string | null;
+  rrspInvoiceId: string | null;
+  creditNoteId?: string | null;
+  creditNoteNumber?: string | null;
+};
+
+type SellerPayableTotals = {
+  owed: number;
+  paidOut: number;
+  countOwed: number;
+  countPaidOut: number;
+};
 
 type Invoice = {
   id: string;
@@ -51,6 +83,9 @@ type Invoice = {
   client?: { id?: string; name?: string; email?: string; serviceLevel?: string };
   description?: string | null;
   items?: QuoteLineItem[];
+  creditNoteTotal?: number | null;
+  creditNoteNumber?: string | null;
+  creditNoteCount?: number;
 };
 
 type Payment = {
@@ -134,15 +169,28 @@ function InvoiceAmountCell({
   amount,
   paidAmount = 0,
   currency = 'TTD',
+  creditNoteTotal = null,
+  creditNoteNumber = null,
+  creditNoteCount = 0,
 }: {
   amount: number;
   paidAmount?: number;
   currency?: string;
+  creditNoteTotal?: number | null;
+  creditNoteNumber?: string | null;
+  creditNoteCount?: number;
 }) {
   const total = Number(amount);
   const paid = Number(paidAmount ?? 0);
   const outstanding = invoiceOutstanding(total, paid);
   const isPartial = paid > 0 && outstanding > 0.009;
+  const creditTotal = creditNoteTotal != null ? Number(creditNoteTotal) : 0;
+  const creditLabel =
+    creditTotal > 0
+      ? creditNoteCount > 1
+        ? `${creditNoteCount} credit notes · ${formatCurrency(creditTotal, currency)}`
+        : `${creditNoteNumber || 'Credit note'} · ${formatCurrency(creditTotal, currency)}`
+      : null;
 
   if (isPartial) {
     return (
@@ -154,6 +202,16 @@ function InvoiceAmountCell({
         <p className="text-xs text-slate-500">
           {formatCurrency(paid, currency)} paid · {formatCurrency(total, currency)} total
         </p>
+        {creditLabel ? <p className="mt-0.5 text-xs font-medium text-emerald-700">{creditLabel}</p> : null}
+      </div>
+    );
+  }
+
+  if (creditLabel) {
+    return (
+      <div className="min-w-[8.5rem]">
+        <p className="font-medium text-slate-900">{formatCurrency(total, currency)}</p>
+        <p className="mt-0.5 text-xs font-medium text-emerald-700">{creditLabel}</p>
       </div>
     );
   }
@@ -181,17 +239,62 @@ const QUOTE_STATUS_COLORS: Record<string, string> = {
 export function AccountingPageClient({
   isAdmin,
   clients,
+  showSellerPayouts = false,
+  /** `/api` for CD portal; `/api/rrsp` for shop books (never CD). */
+  apiBase = '/api',
+  /** `` for CD; `/rrsp` so invoice/client links stay in shop portal. */
+  portalPathPrefix = '',
+  /** Hide outer CD “Accounting” title when the RRSP page already provides one. */
+  hidePageHeader = false,
 }: {
   isAdmin: boolean;
   clients: ClientOption[];
+  /** CD staff portal only — marketplace seller remittances. */
+  showSellerPayouts?: boolean;
+  apiBase?: string;
+  portalPathPrefix?: string;
+  hidePageHeader?: boolean;
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname() ?? '/';
+  const deepLinkHandledRef = useRef<string | null>(null);
   const { confirmBeforeClientEmail, askToEmailClient } = useClientEmailPolicy();
-  const [tab, setTab] = useUrlTab(ACCOUNTING_TABS, 'overview');
+  const accountingTabs = showSellerPayouts ? ACCOUNTING_TABS_WITH_PAYOUTS : ACCOUNTING_TABS_BASE;
+  const [tab, setTab] = useUrlTab(accountingTabs, 'overview');
+  const api = useCallback(
+    (path: string) => {
+      const withoutOrigin = path.replace(/^https?:\/\/[^/]+/i, '');
+      const rest = withoutOrigin.replace(/^\/?api\/?/i, '').replace(/^\/+/, '');
+      return `${apiBase.replace(/\/$/, '')}/${rest}`;
+    },
+    [apiBase]
+  );
   const [summary, setSummary] = useState<AccountingSummary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<RecentFinancialTransaction[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [sellerPayables, setSellerPayables] = useState<SellerPayable[]>([]);
+  const [sellerPayableTotals, setSellerPayableTotals] = useState<SellerPayableTotals>({
+    owed: 0,
+    paidOut: 0,
+    countOwed: 0,
+    countPaidOut: 0,
+  });
+  const [sellerPayableStatus, setSellerPayableStatus] = useState<'all' | 'owed' | 'paid_out'>('owed');
+  const [creditNotes, setCreditNotes] = useState<
+    Array<{
+      id: string;
+      creditNumber: string;
+      invoiceId: string | null;
+      invoiceNumber?: string | null;
+      amount: number;
+      currency: string;
+      markupPercent: number | null;
+      description: string | null;
+      createdAt: string;
+    }>
+  >([]);
   const [loading, setLoading] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -260,7 +363,7 @@ export function AccountingPageClient({
       let prefill: TicketAccountingPrefill | null = null;
       if (ticketIdParam) {
         try {
-          const res = await fetch(`/api/tickets/${ticketIdParam}`);
+          const res = await fetch(api(`/api/tickets/${ticketIdParam}`));
           const data = await res.json();
           if (res.ok && data.ticket) {
             prefill = buildTicketAccountingPrefill(data.ticket);
@@ -292,31 +395,52 @@ export function AccountingPageClient({
 
   useEffect(() => {
     if (!searchParams) return;
-    const invoiceId = searchParams.get('invoice');
-    const quoteId = searchParams.get('quote');
-    if (invoiceId) {
-      setTab('invoices');
-      void openInvoiceDetail(invoiceId);
-    } else if (quoteId) {
-      setTab('quotes');
-      void openQuoteDetail(quoteId);
-    }
-  }, [searchParams]);
+    const invoiceId = searchParams.get('invoice')?.trim() || '';
+    const quoteId = searchParams.get('quote')?.trim() || '';
+    if (!invoiceId && !quoteId) return;
+
+    const key = invoiceId ? `invoice:${invoiceId}` : `quote:${quoteId}`;
+    if (deepLinkHandledRef.current === key) return;
+    deepLinkHandledRef.current = key;
+
+    // One URL write: set tab and strip deep-link params together.
+    // Calling setTab() separately races and can leave ?invoice= stuck, reopening the modal.
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('invoice');
+    params.delete('quote');
+    params.set('tab', invoiceId ? 'invoices' : 'quotes');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+
+    void (async () => {
+      if (invoiceId) await openInvoiceDetail(invoiceId);
+      else await openQuoteDetail(quoteId);
+    })();
+  }, [searchParams, pathname, router]);
+
+  const clearDocumentDeepLink = useCallback(() => {
+    if (!searchParams?.get('invoice') && !searchParams?.get('quote')) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('invoice');
+    params.delete('quote');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [searchParams, pathname, router]);
 
   const loadSummary = useCallback(async () => {
-    const res = await fetch('/api/accounting/summary');
+    const res = await fetch(api('/api/accounting/summary'));
     const data = await res.json();
     if (res.ok) {
       setSummary(data.summary);
       setRecentTransactions(data.recentTransactions ?? []);
     }
-  }, []);
+  }, [api]);
 
   const loadInvoices = useCallback(async () => {
     const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(invoicePage) });
     if (invoiceStatus !== 'all') params.set('status', invoiceStatus);
     if (invoiceClientId !== 'all') params.set('clientId', invoiceClientId);
-    const res = await fetch(`/api/msp/invoices?${params}`);
+    const res = await fetch(api(`/api/msp/invoices?${params}`));
     const data = await res.json();
     if (res.ok) {
       setInvoices(data.invoices ?? []);
@@ -324,13 +448,13 @@ export function AccountingPageClient({
     } else {
       setError(data.message || 'Failed to load invoices');
     }
-  }, [invoiceStatus, invoiceClientId, invoicePage]);
+  }, [api, invoiceStatus, invoiceClientId, invoicePage]);
 
   const loadQuotes = useCallback(async () => {
     const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(quotePage) });
     if (quoteStatus !== 'all') params.set('status', quoteStatus);
     if (quoteClientId !== 'all') params.set('clientId', quoteClientId);
-    const res = await fetch(`/api/msp/quotes?${params}`);
+    const res = await fetch(api(`/api/msp/quotes?${params}`));
     const data = await res.json();
     if (res.ok) {
       setQuotes(data.quotes ?? []);
@@ -338,19 +462,52 @@ export function AccountingPageClient({
     } else {
       setError(data.message || 'Failed to load quotes');
     }
-  }, [quoteStatus, quoteClientId, quotePage]);
+  }, [api, quoteStatus, quoteClientId, quotePage]);
+
+  const loadSellerPayables = useCallback(async () => {
+    if (!showSellerPayouts) return;
+    const params = new URLSearchParams({
+      status: sellerPayableStatus,
+      limit: '300',
+    });
+    const res = await fetch(api(`/api/msp/parts-seller-payables?${params}`), { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success !== false) {
+      setSellerPayables(data.payables ?? []);
+      setSellerPayableTotals(
+        data.totals ?? { owed: 0, paidOut: 0, countOwed: 0, countPaidOut: 0 }
+      );
+    } else {
+      setError(data.message || 'Failed to load seller payables');
+    }
+  }, [api, showSellerPayouts, sellerPayableStatus]);
+
+  const loadCreditNotes = useCallback(async () => {
+    // Credit notes are CD marketplace profit docs — not shop/RRSP books.
+    if (apiBase.includes('/rrsp')) {
+      setCreditNotes([]);
+      return;
+    }
+    const res = await fetch(api('/api/msp/credit-notes?limit=50'), { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success !== false) {
+      setCreditNotes(data.creditNotes ?? []);
+    }
+  }, [api, apiBase]);
 
   const refresh = useCallback(async () => {
     setLoading('refresh');
     setError('');
     try {
-      await Promise.all([loadSummary(), loadInvoices(), loadQuotes()]);
+      const tasks = [loadSummary(), loadInvoices(), loadQuotes(), loadCreditNotes()];
+      if (showSellerPayouts) tasks.push(loadSellerPayables());
+      await Promise.all(tasks);
     } catch {
       setError('Failed to refresh accounting data');
     } finally {
       setLoading('');
     }
-  }, [loadSummary, loadInvoices, loadQuotes]);
+  }, [loadSummary, loadInvoices, loadQuotes, loadCreditNotes, loadSellerPayables, showSellerPayouts]);
 
   useEffect(() => {
     refresh();
@@ -363,6 +520,10 @@ export function AccountingPageClient({
   useEffect(() => {
     if (tab === 'quotes') loadQuotes();
   }, [tab, loadQuotes]);
+
+  useEffect(() => {
+    if (tab === 'seller-payouts' && showSellerPayouts) void loadSellerPayables();
+  }, [tab, showSellerPayouts, loadSellerPayables]);
 
   useEffect(() => {
     async function onQuoteSettings() {
@@ -402,7 +563,7 @@ export function AccountingPageClient({
     setLoading(`paid-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/invoices/${id}/mark-paid`, {
+      const res = await fetch(api(`/api/msp/invoices/${id}/mark-paid`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sendEmail }),
@@ -423,10 +584,10 @@ export function AccountingPageClient({
     setError('');
     try {
       const [invRes, payRes, emailRes, linksRes] = await Promise.all([
-        fetch(`/api/msp/invoices/${id}`),
-        fetch(`/api/msp/invoices/${id}/payments`),
-        fetch(`/api/msp/invoices/${id}/email-history`),
-        fetch(`/api/msp/invoices/${id}/links`),
+        fetch(api(`/api/msp/invoices/${id}`)),
+        fetch(api(`/api/msp/invoices/${id}/payments`)),
+        fetch(api(`/api/msp/invoices/${id}/email-history`)),
+        fetch(api(`/api/msp/invoices/${id}/links`)),
       ]);
       const invData = await invRes.json();
       const payData = await payRes.json();
@@ -470,7 +631,7 @@ export function AccountingPageClient({
     setLoading(`save-inv-${invoiceDetailId}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/invoices/${invoiceDetailId}`, {
+      const res = await fetch(api(`/api/msp/invoices/${invoiceDetailId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -504,7 +665,7 @@ export function AccountingPageClient({
     setLoading(`addpay-${invoiceDetailId}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/invoices/${invoiceDetailId}/payments`, {
+      const res = await fetch(api(`/api/msp/invoices/${invoiceDetailId}/payments`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -536,7 +697,7 @@ export function AccountingPageClient({
     setLoading(`share-${kind}-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/${kind === 'invoice' ? 'invoices' : 'quotes'}/${id}/share-link`, {
+      const res = await fetch(api(`/api/msp/${kind === 'invoice' ? 'invoices' : 'quotes'}/${id}/share-link`), {
         method: 'POST',
       });
       const data = await res.json();
@@ -555,7 +716,7 @@ export function AccountingPageClient({
     setLoading(`delpay-${paymentId}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/payments/${paymentId}`, { method: 'DELETE' });
+      const res = await fetch(api(`/api/msp/payments/${paymentId}`), { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Payment deleted');
@@ -574,7 +735,7 @@ export function AccountingPageClient({
     setLoading(`cancel-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/invoices/${id}`, {
+      const res = await fetch(api(`/api/msp/invoices/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled' }),
@@ -595,7 +756,7 @@ export function AccountingPageClient({
     setLoading(`delete-inv-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/invoices/${id}`, { method: 'DELETE' });
+      const res = await fetch(api(`/api/msp/invoices/${id}`), { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Invoice deleted');
@@ -615,8 +776,8 @@ export function AccountingPageClient({
     setError('');
     try {
       const [res, emailRes] = await Promise.all([
-        fetch(`/api/msp/quotes/${id}`),
-        fetch(`/api/msp/quotes/${id}/email-history`),
+        fetch(api(`/api/msp/quotes/${id}`)),
+        fetch(api(`/api/msp/quotes/${id}/email-history`)),
       ]);
       const data = await res.json();
       const emailData = await emailRes.json();
@@ -654,7 +815,7 @@ export function AccountingPageClient({
     setLoading(`save-quote-${quoteDetailId}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${quoteDetailId}`, {
+      const res = await fetch(api(`/api/msp/quotes/${quoteDetailId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -685,7 +846,7 @@ export function AccountingPageClient({
     setLoading(`reject-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${id}/reject`, {
+      const res = await fetch(api(`/api/msp/quotes/${id}/reject`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason || undefined }),
@@ -707,7 +868,7 @@ export function AccountingPageClient({
     setLoading(`expire-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${id}/expire`, { method: 'POST' });
+      const res = await fetch(api(`/api/msp/quotes/${id}/expire`), { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Quote expired');
@@ -721,7 +882,7 @@ export function AccountingPageClient({
   }
 
   async function loadQuoteSettings() {
-    const res = await fetch('/api/msp/quote-settings');
+    const res = await fetch(api('/api/msp/quote-settings'));
     const data = await res.json();
     if (res.ok) setQuoteSettings(data.settings);
   }
@@ -732,7 +893,7 @@ export function AccountingPageClient({
     setLoading('quote-settings');
     setError('');
     try {
-      const res = await fetch('/api/msp/quote-settings', {
+      const res = await fetch(api('/api/msp/quote-settings'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(quoteSettings),
@@ -753,7 +914,7 @@ export function AccountingPageClient({
     setLoading(`accept-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${id}/accept`, { method: 'POST' });
+      const res = await fetch(api(`/api/msp/quotes/${id}/accept`), { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Quote accepted');
@@ -770,7 +931,7 @@ export function AccountingPageClient({
     setLoading(`send-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${id}/send-email`, {
+      const res = await fetch(api(`/api/msp/quotes/${id}/send-email`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
@@ -792,7 +953,7 @@ export function AccountingPageClient({
     setLoading(`send-inv-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/invoices/${id}/send-email`, {
+      const res = await fetch(api(`/api/msp/invoices/${id}/send-email`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
@@ -813,7 +974,7 @@ export function AccountingPageClient({
     setLoading(`delete-${id}`);
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${id}`, { method: 'DELETE' });
+      const res = await fetch(api(`/api/msp/quotes/${id}`), { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Quote deleted');
@@ -830,7 +991,7 @@ export function AccountingPageClient({
     setLoading('convert');
     setError('');
     try {
-      const res = await fetch(`/api/msp/quotes/${convertQuoteId}/convert`, {
+      const res = await fetch(api(`/api/msp/quotes/${convertQuoteId}/convert`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dueDate: convertDueDate }),
@@ -870,7 +1031,7 @@ export function AccountingPageClient({
       const wantsEmail = form.get('sendNow') === 'on';
       const emailAfterCreate =
         wantsEmail && askToEmailClient('Email this quote to the client after it is created?');
-      const res = await fetch('/api/msp/quotes', {
+      const res = await fetch(api('/api/msp/quotes'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -888,7 +1049,7 @@ export function AccountingPageClient({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       if (emailAfterCreate && data.quote?.id) {
-        await fetch(`/api/msp/quotes/${data.quote.id}/send-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        await fetch(api(`/api/msp/quotes/${data.quote.id}/send-email`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       }
       setMessage('Quote created');
       setShowQuoteForm(false);
@@ -902,18 +1063,68 @@ export function AccountingPageClient({
     }
   }
 
+  async function markSellerPayablePaidOut(id: string) {
+    if (!window.confirm('Mark this seller payable as paid out?')) return;
+    setLoading(`payout-${id}`);
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch(api(`/api/msp/parts-seller-payables/${id}/mark-paid-out`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || 'Failed to mark paid out');
+      }
+      setMessage('Seller payable marked paid out');
+      await loadSellerPayables();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark paid out');
+    } finally {
+      setLoading('');
+    }
+  }
+
   const tabs: { id: Tab; label: string; icon: typeof Receipt }[] = [
     { id: 'overview', label: 'Overview', icon: Receipt },
     { id: 'invoices', label: 'Invoices', icon: FileText },
     { id: 'quotes', label: 'Quotes', icon: Send },
+    ...(showSellerPayouts
+      ? [{ id: 'seller-payouts' as const, label: 'Seller payouts', icon: Wallet }]
+      : []),
   ];
+
+  const sellerPayableGroups = (() => {
+    const map = new Map<string, { sellerId: string; sellerName: string; rows: SellerPayable[]; owed: number }>();
+    for (const row of sellerPayables) {
+      const key = row.sellerClientId;
+      const existing = map.get(key);
+      const sellerName = row.sellerName?.trim() || 'Unknown seller';
+      if (!existing) {
+        map.set(key, {
+          sellerId: key,
+          sellerName,
+          rows: [row],
+          owed: row.status === 'owed' ? row.sellerAmount : 0,
+        });
+      } else {
+        existing.rows.push(row);
+        if (row.status === 'owed') existing.owed += row.sellerAmount;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.owed - a.owed || a.sellerName.localeCompare(b.sellerName));
+  })();
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Accounting</h1>
-        <p className="mt-1 text-sm text-slate-500">MSP invoices, quotes, and financial overview</p>
-      </div>
+      {!hidePageHeader && (
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Accounting</h1>
+          <p className="mt-1 text-sm text-slate-500">MSP invoices, quotes, and financial overview</p>
+        </div>
+      )}
 
       {(error || message) && (
         <div className={`rounded-xl px-4 py-3 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
@@ -956,7 +1167,16 @@ export function AccountingPageClient({
             transactions={recentTransactions}
             onSelectInvoice={openInvoiceDetail}
             loading={loading.startsWith('inv-')}
+            pathPrefix={portalPathPrefix}
           />
+          {!apiBase.includes('/rrsp') && (
+            <CreditNotesCard
+              creditNotes={creditNotes}
+              invoices={invoices}
+              onSelectInvoice={openInvoiceDetail}
+              loading={loading.startsWith('inv-')}
+            />
+          )}
         </div>
       )}
 
@@ -981,18 +1201,29 @@ export function AccountingPageClient({
             empty="No invoices found"
             headers={['Invoice', 'Client', 'Amount', 'Due', 'Status', 'Actions']}
             rows={invoices.map((inv) => [
-              <InvoiceLink key={`inv-${inv.id}`} id={inv.id} label={inv.invoiceNumber} />,
+              <button
+                key={`inv-${inv.id}`}
+                type="button"
+                onClick={() => void openInvoiceDetail(inv.id)}
+                className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+              >
+                {inv.invoiceNumber}
+              </button>,
               <ClientLink
                 key={`client-${inv.id}`}
                 id={inv.clientId ?? inv.client?.id}
                 label={inv.client?.name ?? '—'}
                 className="font-medium text-slate-900 hover:text-indigo-700"
+                pathPrefix={portalPathPrefix}
               />,
               <InvoiceAmountCell
                 key={`amt-${inv.id}`}
                 amount={inv.amount}
                 paidAmount={inv.paidAmount}
                 currency={inv.currency}
+                creditNoteTotal={inv.creditNoteTotal}
+                creditNoteNumber={inv.creditNoteNumber}
+                creditNoteCount={inv.creditNoteCount}
               />,
               String(inv.dueDate).slice(0, 10),
               <StatusBadge key={inv.id} status={inv.status} colors={INVOICE_STATUS_COLORS} />,
@@ -1034,6 +1265,14 @@ export function AccountingPageClient({
             onPageChange={setInvoicePage}
             disabled={!!loading}
           />
+          {!apiBase.includes('/rrsp') && creditNotes.length > 0 && (
+            <CreditNotesCard
+              creditNotes={creditNotes}
+              invoices={invoices}
+              onSelectInvoice={openInvoiceDetail}
+              loading={loading.startsWith('inv-')}
+            />
+          )}
         </div>
       )}
 
@@ -1058,13 +1297,21 @@ export function AccountingPageClient({
             empty="No quotes found"
             headers={['Quote', 'Title', 'Client', 'Amount', 'Valid until', 'Status', 'Actions']}
             rows={quotes.map((q) => [
-              <QuoteLink key={`quote-${q.id}`} id={q.id} label={q.quoteNumber} />,
+              <button
+                key={`quote-${q.id}`}
+                type="button"
+                onClick={() => void openQuoteDetail(q.id)}
+                className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+              >
+                {q.quoteNumber}
+              </button>,
               q.title,
               <ClientLink
                 key={`client-${q.id}`}
                 id={q.clientId ?? q.client?.id}
                 label={q.client?.name ?? '—'}
                 className="font-medium text-slate-900 hover:text-indigo-700"
+                pathPrefix={portalPathPrefix}
               />,
               formatCurrency(q.amount),
               String(q.validUntil).slice(0, 10),
@@ -1120,6 +1367,190 @@ export function AccountingPageClient({
             onPageChange={setQuotePage}
             disabled={!!loading}
           />
+        </div>
+      )}
+
+      {tab === 'seller-payouts' && showSellerPayouts && (
+        <div className="space-y-6">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Total owed"
+              value={formatCurrency(sellerPayableTotals.owed)}
+              subtext={`${sellerPayableTotals.countOwed} open payables`}
+              icon={Wallet}
+              accent="bg-amber-50 text-amber-600"
+            />
+            <StatCard
+              label="Paid out"
+              value={formatCurrency(sellerPayableTotals.paidOut)}
+              subtext={`${sellerPayableTotals.countPaidOut} remitted`}
+              icon={CheckCircle2}
+              accent="bg-emerald-50 text-emerald-600"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-500">
+              Payout lines after buyers pay CD. <span className="font-medium text-slate-700">Payout total</span> is
+              what you remit to the seller (supplier cost). Listed shows what the buyer was charged for those lines.
+            </p>
+            <select
+              value={sellerPayableStatus}
+              onChange={(e) =>
+                setSellerPayableStatus(e.target.value as 'all' | 'owed' | 'paid_out')
+              }
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="owed">Owed</option>
+              <option value="paid_out">Paid out</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+
+          {loading === 'refresh' && !sellerPayables.length ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading seller payables…
+            </div>
+          ) : !sellerPayableGroups.length ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+              No seller payables{sellerPayableStatus !== 'all' ? ` with status “${sellerPayableStatus}”` : ''} yet.
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {sellerPayableGroups.map((group) => (
+                <section
+                  key={group.sellerId}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+                    <div>
+                      <ClientLink
+                        id={group.sellerId}
+                        label={group.sellerName}
+                        className="font-semibold text-slate-900 hover:text-indigo-700"
+                      />
+                      <p className="text-xs text-slate-500">
+                        {group.rows.length} payout line{group.rows.length === 1 ? '' : 's'}
+                        {group.owed > 0 ? ` · to remit ${formatCurrency(group.owed)}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">Status</th>
+                          <th className="px-4 py-2 font-medium">Payout total</th>
+                          <th className="px-4 py-2 font-medium">Listed (buyer)</th>
+                          <th className="px-4 py-2 font-medium">CD markup</th>
+                          <th className="px-4 py-2 font-medium">Buyer</th>
+                          <th className="px-4 py-2 font-medium">Buyer invoice</th>
+                          <th className="px-4 py-2 font-medium">Buyer paid</th>
+                          <th className="px-4 py-2 font-medium" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {group.rows.map((row) => {
+                          const payout = Number(row.payoutTotal ?? row.sellerAmount) || 0;
+                          const listed =
+                            Number(row.listedLineTotal) ||
+                            Math.round((payout + (Number(row.cdMarkupAmount) || 0)) * 100) / 100;
+                          return (
+                          <tr key={row.id}>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  row.status === 'owed'
+                                    ? 'bg-amber-50 text-amber-800'
+                                    : 'bg-emerald-50 text-emerald-800'
+                                }`}
+                              >
+                                {row.status === 'owed' ? 'Owed' : 'Paid out'}
+                              </span>
+                              {row.rrspInvoiceId && (
+                                <p className="mt-1 text-xs text-slate-400">Mirrored to shop books</p>
+                              )}
+                              {row.status === 'paid_out' && row.creditNoteNumber && (
+                                <p className="mt-1 text-xs font-medium text-emerald-700">
+                                  Profit {row.creditNoteNumber}
+                                  {row.markupPercent != null
+                                    ? ` · ${Number(row.markupPercent).toFixed(1)}%`
+                                    : ''}
+                                  {row.cdMarkupAmount > 0
+                                    ? ` (${formatCurrency(row.cdMarkupAmount)})`
+                                    : ''}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-base font-semibold text-amber-900">
+                                {formatCurrency(payout)}
+                              </p>
+                              <p className="text-xs text-slate-400">Remit to seller</p>
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">
+                              {formatCurrency(listed)}
+                              {row.buyerInvoiceAmount != null && (
+                                <p className="text-xs text-slate-400">
+                                  Invoice {formatCurrency(row.buyerInvoiceAmount)}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {formatCurrency(row.cdMarkupAmount)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.buyerClientId ? (
+                                <ClientLink
+                                  id={row.buyerClientId}
+                                  label={row.buyerName ?? 'Buyer'}
+                                  className="text-slate-800 hover:text-indigo-700"
+                                />
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => void openInvoiceDetail(row.buyerInvoiceId)}
+                                className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                              >
+                                {row.buyerInvoiceNumber || 'View invoice'}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {row.buyerPaidAt
+                                ? new Date(row.buyerPaidAt).toLocaleString()
+                                : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {row.status === 'owed' && (
+                                <button
+                                  type="button"
+                                  disabled={loading === `payout-${row.id}`}
+                                  onClick={() => void markSellerPayablePaidOut(row.id)}
+                                  className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+                                >
+                                  {loading === `payout-${row.id}` ? 'Saving…' : 'Mark paid out'}
+                                </button>
+                              )}
+                              {row.status === 'paid_out' && row.paidOutAt && (
+                                <span className="text-xs text-slate-400">
+                                  {new Date(row.paidOutAt).toLocaleString()}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1206,7 +1637,7 @@ export function AccountingPageClient({
                     total: (Number(item.quantity) || 1) * (Number(item.price) || 0),
                   }));
                 const amount = items.length ? sumItems(items) : Number(form.get('amount'));
-                const res = await fetch('/api/msp/invoices', {
+                const res = await fetch(api('/api/msp/invoices'), {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -1317,6 +1748,7 @@ export function AccountingPageClient({
           title={`Invoice ${invoiceDetail.invoiceNumber}`}
           wide
           onClose={() => {
+            clearDocumentDeepLink();
             setInvoiceDetailId(null);
             setInvoiceDetail(null);
             setInvoiceEditing(false);
@@ -1345,6 +1777,7 @@ export function AccountingPageClient({
                     id={invoiceDetail.clientId ?? invoiceDetail.client?.id}
                     label={invoiceDetail.client?.name ?? '—'}
                     className="font-semibold text-slate-900 hover:text-indigo-700"
+                    pathPrefix={portalPathPrefix}
                   />
                 </p>
               </div>
@@ -1357,6 +1790,14 @@ export function AccountingPageClient({
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Total</p>
                 <p className="mt-1 font-semibold text-slate-900">{formatCurrency(Number(invoiceDetail.amount), invoiceDetail.currency)}</p>
+                {invoiceDetail.creditNoteTotal != null && Number(invoiceDetail.creditNoteTotal) > 0 ? (
+                  <p className="mt-0.5 text-xs font-medium text-emerald-700">
+                    {invoiceDetail.creditNoteCount && invoiceDetail.creditNoteCount > 1
+                      ? `${invoiceDetail.creditNoteCount} credit notes · `
+                      : `${invoiceDetail.creditNoteNumber || 'Credit note'} · `}
+                    {formatCurrency(Number(invoiceDetail.creditNoteTotal), invoiceDetail.currency)}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Paid</p>
@@ -1543,6 +1984,7 @@ export function AccountingPageClient({
           title={`Quote ${quoteDetail.quoteNumber}`}
           wide
           onClose={() => {
+            clearDocumentDeepLink();
             setQuoteDetailId(null);
             setQuoteDetail(null);
             setQuoteEditing(false);
@@ -1562,7 +2004,7 @@ export function AccountingPageClient({
             {!quoteEditing ? (
               <>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><p className="text-xs uppercase text-slate-400">Client</p><p className="font-semibold"><ClientLink id={quoteDetail.clientId ?? quoteDetail.client?.id} label={quoteDetail.client?.name ?? '—'} className="font-semibold text-slate-900 hover:text-indigo-700" /></p></div>
+                  <div><p className="text-xs uppercase text-slate-400">Client</p><p className="font-semibold"><ClientLink id={quoteDetail.clientId ?? quoteDetail.client?.id} label={quoteDetail.client?.name ?? '—'} className="font-semibold text-slate-900 hover:text-indigo-700" pathPrefix={portalPathPrefix} /></p></div>
                   <div><p className="text-xs uppercase text-slate-400">Valid until</p><p className="font-semibold">{String(quoteDetail.validUntil).slice(0, 10)}</p></div>
                   <div><p className="text-xs uppercase text-slate-400">Title</p><p className="font-semibold">{quoteDetail.title}</p></div>
                   <div><p className="text-xs uppercase text-slate-400">Amount</p><p className="font-semibold">{formatCurrency(quoteDetail.amount, quoteDetail.currency)}</p></div>
@@ -1716,10 +2158,12 @@ function RecentTransactionsCard({
   transactions,
   onSelectInvoice,
   loading = false,
+  pathPrefix = '',
 }: {
   transactions: RecentFinancialTransaction[];
   onSelectInvoice: (invoiceId: string) => void;
   loading?: boolean;
+  pathPrefix?: string;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -1752,14 +2196,35 @@ function RecentTransactionsCard({
                       id={tx.clientId}
                       label={tx.clientName ?? '—'}
                       className="font-medium text-slate-900 hover:text-indigo-700"
+                      pathPrefix={pathPrefix}
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <InvoiceLink id={tx.invoiceId} label={tx.invoiceNumber} />
+                    <button
+                      type="button"
+                      onClick={() => onSelectInvoice(tx.invoiceId)}
+                      className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      {tx.invoiceNumber}
+                    </button>
                   </td>
-                  <td className="px-4 py-3 capitalize text-slate-600">{tx.paymentMethod}</td>
-                  <td className="px-4 py-3 text-slate-500">{tx.reference ?? '—'}</td>
-                  <td className="px-4 py-3 font-semibold text-slate-900">
+                  <td className="px-4 py-3 capitalize text-slate-600">
+                    {tx.kind === 'credit_note' || tx.paymentMethod === 'credit_note'
+                      ? 'Credit note'
+                      : tx.paymentMethod}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {tx.kind === 'credit_note' || tx.paymentMethod === 'credit_note'
+                      ? tx.creditNoteNumber || tx.reference || '—'
+                      : tx.reference ?? '—'}
+                  </td>
+                  <td
+                    className={`px-4 py-3 font-semibold ${
+                      tx.kind === 'credit_note' || tx.paymentMethod === 'credit_note'
+                        ? 'text-emerald-700'
+                        : 'text-slate-900'
+                    }`}
+                  >
                     {formatCurrency(tx.amount, tx.currency)}
                   </td>
                   <td className="px-4 py-3">
@@ -1780,6 +2245,104 @@ function RecentTransactionsCard({
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function CreditNotesCard({
+  creditNotes,
+  invoices,
+  onSelectInvoice,
+  loading = false,
+}: {
+  creditNotes: Array<{
+    id: string;
+    creditNumber: string;
+    invoiceId: string | null;
+    invoiceNumber?: string | null;
+    amount: number;
+    currency: string;
+    markupPercent: number | null;
+    description: string | null;
+    createdAt: string;
+  }>;
+  invoices: Invoice[];
+  onSelectInvoice: (invoiceId: string) => void;
+  loading?: boolean;
+}) {
+  if (!creditNotes.length) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Credit notes</p>
+        </div>
+        <p className="px-4 py-8 text-center text-sm text-slate-400">
+          No credit notes yet. Markup profit notes appear when seller payouts are marked paid out.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="border-b border-slate-100 px-4 py-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Credit notes</p>
+        <p className="mt-0.5 text-xs text-slate-400">
+          Marketplace markup profit recognized after seller payout
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/80">
+              <th className="px-4 py-3 font-semibold text-slate-600">Credit note</th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Amount</th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Markup</th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Linked invoice</th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Created</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {creditNotes.map((cn) => {
+              const linked = cn.invoiceId
+                ? invoices.find((inv) => inv.id === cn.invoiceId)
+                : undefined;
+              const invoiceLabel =
+                cn.invoiceNumber || linked?.invoiceNumber || 'View invoice';
+              return (
+                <tr key={cn.id} className="hover:bg-slate-50/50">
+                  <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-900">
+                    {cn.creditNumber}
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-emerald-700">
+                    {formatCurrency(Number(cn.amount), cn.currency || 'TTD')}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {cn.markupPercent != null ? `${Number(cn.markupPercent).toFixed(1)}%` : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {cn.invoiceId ? (
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => onSelectInvoice(cn.invoiceId!)}
+                        className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline disabled:opacity-60"
+                      >
+                        {invoiceLabel}
+                      </button>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {cn.createdAt ? new Date(cn.createdAt).toLocaleString() : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

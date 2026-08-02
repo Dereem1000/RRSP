@@ -25,6 +25,7 @@ function buildLicenseFeaturesForFeature(mspFeature: ActivationFeature): Record<s
     ecommerce_websites: false,
     auto_system: false,
     distribution_system: false,
+    medical_records_management: false,
     reporting_analytics: false,
     customer_management: false,
   };

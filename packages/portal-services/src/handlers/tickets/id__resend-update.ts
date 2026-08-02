@@ -11,8 +11,8 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { Ticket } from '@web/lib/db';
 import { canAccessTicket, userDisplayName } from '@web/lib/tickets';
+import { getTicketModel, getTicketCommentModel } from '@web/lib/tickets';
 import { resendTicketUpdateToClient } from '@web/lib/ticket-notifications';
 import { emitMiniCdEvent } from '@web/lib/mini-cd-events.server';
 
@@ -34,7 +34,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     requireRole(session, 'admin', 'technician');
 
     const { id } = ctx.params;
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }

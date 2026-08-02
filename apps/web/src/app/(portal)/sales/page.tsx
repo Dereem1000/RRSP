@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
-import { requireStaffUser } from '@/lib/session';
+import { redirect } from 'next/navigation';
+import { requirePortalUser, requireStaffUser } from '@/lib/session';
 import { Client } from '@/lib/db';
 import { CLIENT_PICKER_ATTRIBUTES, mapClientToPickerOption } from '@/lib/client-picker';
 import { listOpportunities, getPipelineStats, isSalesStagingClient } from '@/lib/sales';
@@ -13,7 +14,10 @@ function SalesLoading() {
   );
 }
 
+/** CD staff sales pipeline (not RRSP). */
 export default async function SalesPage() {
+  const { user } = await requirePortalUser();
+  if (user.role === 'client') redirect('/dashboard');
   await requireStaffUser();
 
   const [opportunities, stats, allClients] = await Promise.all([

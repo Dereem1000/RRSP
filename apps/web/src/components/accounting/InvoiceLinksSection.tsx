@@ -11,6 +11,8 @@ export type InvoiceLinkView = {
   linkedNumber: string;
   notes?: string | null;
   linkDate?: string;
+  amount?: number | null;
+  markupPercent?: number | null;
 };
 
 type LinkableEntity = {
@@ -105,10 +107,11 @@ export function InvoiceLinksSection({
     }
   }
 
-  function linkDocumentType(type: string): 'ticket' | 'invoice' | 'order' | 'quote' {
+  function linkDocumentType(type: string): 'ticket' | 'invoice' | 'order' | 'quote' | 'credit_note' {
     if (type === 'order') return 'order';
     if (type === 'invoice') return 'invoice';
     if (type === 'quote') return 'quote';
+    if (type === 'credit_note') return 'credit_note';
     return 'ticket';
   }
 
@@ -116,7 +119,7 @@ export function InvoiceLinksSection({
     <div className="rounded-xl border border-slate-200 p-4">
       <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         <Link2 className="h-3.5 w-3.5" />
-        Linked tickets & orders
+        Linked documents
       </p>
 
       {links.length > 0 ? (
@@ -126,8 +129,10 @@ export function InvoiceLinksSection({
               key={link.id}
               className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
             >
-              <span>
-                <span className="font-medium capitalize text-slate-900">{link.linkedType}</span>
+              <span className="min-w-0">
+                <span className="font-medium text-slate-900">
+                  {link.linkedType === 'credit_note' ? 'Credit note' : link.linkedType}
+                </span>
                 <span className="text-slate-500"> · </span>
                 <LinkedDocumentLink
                   type={linkDocumentType(link.linkedType)}
@@ -135,8 +140,27 @@ export function InvoiceLinksSection({
                   label={link.linkedNumber}
                   className="text-slate-700 hover:text-indigo-700"
                 />
+                {link.linkedType === 'credit_note' && (
+                  <span className="mt-0.5 block text-xs font-semibold text-emerald-700">
+                    {link.amount != null
+                      ? `TTD ${Number(link.amount).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      : null}
+                    {link.markupPercent != null
+                      ? `${link.amount != null ? ' · ' : ''}${Number(link.markupPercent).toFixed(1)}% markup profit`
+                      : null}
+                    {link.amount == null && link.markupPercent == null && link.notes
+                      ? link.notes
+                      : null}
+                  </span>
+                )}
+                {link.notes && link.linkedType !== 'credit_note' && (
+                  <span className="mt-0.5 block text-xs text-slate-400">{link.notes}</span>
+                )}
               </span>
-              {canEdit ? (
+              {canEdit && link.linkedType !== 'credit_note' ? (
                 <button
                   type="button"
                   title="Remove link"

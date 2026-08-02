@@ -1,11 +1,16 @@
 import { QueryTypes } from 'sequelize';
-import { getSequelize } from '@cd-v2/database';
+import { getOperationalSequelize, getRrspContext, ensureRrspDatabase } from '@/lib/rrsp-db';
 
 let linkedOrderColumnReady = false;
 
 export async function ensureCommentLinkedOrderColumn() {
+  const rrsp = getRrspContext();
+  if (rrsp) {
+    await ensureRrspDatabase(rrsp.mspClientId);
+    return;
+  }
   if (linkedOrderColumnReady) return;
-  const sequelize = getSequelize();
+  const sequelize = getOperationalSequelize();
   const cols = await sequelize.query<{ name: string }>(`PRAGMA table_info(ticket_comments)`, {
     type: QueryTypes.SELECT,
   });

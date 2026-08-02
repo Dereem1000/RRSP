@@ -1,12 +1,9 @@
 import { isBackupEnabled } from '@cd-v2/backup';
 import type { ApiContext, TokenPayload } from '@cd-v2/api-handlers';
 import { AuthError, requireRole, requireSession } from '@cd-v2/api-handlers';
-import { applyRequestGuardFromCtx } from './http-helpers';
 
 export async function requireBackupAdmin(ctx: ApiContext): Promise<TokenPayload> {
-  const guardRes = await applyRequestGuardFromCtx(ctx);
-  if (guardRes) throw new AuthError('Request blocked', guardRes.status);
-
+  // Bot / IDS / rate limits: Express `expressRequestGuard`.
   const session = requireSession(ctx);
   requireRole(session, 'admin');
   const enabled = await isBackupEnabled();

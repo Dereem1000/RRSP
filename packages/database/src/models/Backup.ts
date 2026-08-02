@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export type BackupType =
   | 'full'
@@ -104,7 +104,7 @@ Backup.init(
     updated_at: DataTypes.DATE,
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'backups',
     timestamps: true,
     createdAt: 'created_at',

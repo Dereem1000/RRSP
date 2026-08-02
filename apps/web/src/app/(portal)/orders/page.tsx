@@ -1,10 +1,10 @@
-import { redirect } from 'next/navigation';
 import { Client } from '@/lib/db';
 import { requirePortalUser } from '@/lib/session';
 import { CLIENT_PICKER_ATTRIBUTES, mapClientToPickerOption } from '@/lib/client-picker';
 import { ClientOrdersPageClient } from '@/components/orders/ClientOrdersPageClient';
 import { StaffOrdersPageClient } from '@/components/orders/StaffOrdersPageClient';
 
+/** Legacy CD orders (MSP client ↔ Computer Dynamics). */
 export default async function OrdersPage() {
   const { user } = await requirePortalUser();
 

@@ -13,7 +13,10 @@ export function getRequestHost(req: NextRequest): string | null {
   return req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() || req.headers.get('host');
 }
 
-export async function applyRequestGuard(req: NextRequest): Promise<NextResponse | null> {
+export async function applyRequestGuard(
+  req: NextRequest,
+  options?: { body?: string | null; honeypot?: string | null }
+): Promise<NextResponse | null> {
   const url = new URL(req.url);
   const guard = await guardRequest({
     ip: getClientIp(req),
@@ -21,7 +24,9 @@ export async function applyRequestGuard(req: NextRequest): Promise<NextResponse 
     method: req.method,
     userAgent: req.headers.get('user-agent'),
     acceptLanguage: req.headers.get('accept-language'),
-    query: url.search,
+    query: url.search.startsWith('?') ? url.search.slice(1) : url.search,
+    body: options?.body ?? null,
+    honeypot: options?.honeypot ?? null,
   });
   if (!guard.allow) {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { LocationHistoryEntry } from '@/lib/orders';
 import {
   ORDER_STATUS_COLORS,
@@ -209,9 +210,12 @@ export function OrderFormModal({
 }) {
   const canSubmit = !isNewOrder || canSubmitNewOrder(form, showCost, { allowSkipUsCost });
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/40 p-4">
+      <div className="flex min-h-full items-start justify-center py-4 sm:items-center">
+      <div className="max-h-[min(90dvh,90vh)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
@@ -257,7 +261,9 @@ export function OrderFormModal({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 

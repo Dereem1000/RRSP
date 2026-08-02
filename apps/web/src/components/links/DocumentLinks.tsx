@@ -8,21 +8,23 @@ type LinkProps = {
   id?: string | null;
   label: ReactNode;
   className?: string;
+  /** e.g. `/rrsp` to keep navigation inside shop portal */
+  pathPrefix?: string;
 };
 
-export function TicketLink({ id, label, className }: LinkProps) {
+export function TicketLink({ id, label, className, pathPrefix = '' }: LinkProps) {
   if (!id) return <span className={className}>{label}</span>;
   return (
-    <Link href={`/tickets/${id}`} className={className ?? monoLinkClass}>
+    <Link href={`${pathPrefix}/tickets/${id}`} className={className ?? monoLinkClass}>
       {label}
     </Link>
   );
 }
 
-export function ClientLink({ id, label, className }: LinkProps) {
+export function ClientLink({ id, label, className, pathPrefix = '' }: LinkProps) {
   if (!id) return <span className={className}>{label}</span>;
   return (
-    <Link href={`/clients/${id}`} className={className ?? docLinkClass}>
+    <Link href={`${pathPrefix}/clients/${id}`} className={className ?? docLinkClass}>
       {label}
     </Link>
   );
@@ -33,9 +35,13 @@ export function InvoiceLink({
   label,
   className,
   portal = 'staff',
+  pathPrefix = '',
 }: LinkProps & { portal?: 'staff' | 'client' }) {
   if (!id) return <span className={className}>{label}</span>;
-  const href = portal === 'client' ? `/billing?invoice=${id}` : `/accounting?invoice=${id}`;
+  const href =
+    portal === 'client'
+      ? `/billing?invoice=${id}`
+      : `${pathPrefix}/accounting?invoice=${id}`;
   return (
     <Link href={href} className={className ?? monoLinkClass}>
       {label}
@@ -48,9 +54,13 @@ export function QuoteLink({
   label,
   className,
   portal = 'staff',
+  pathPrefix = '',
 }: LinkProps & { portal?: 'staff' | 'client' }) {
   if (!id) return <span className={className}>{label}</span>;
-  const href = portal === 'client' ? `/billing?quote=${id}` : `/accounting?quote=${id}`;
+  const href =
+    portal === 'client'
+      ? `/billing?quote=${id}`
+      : `${pathPrefix}/accounting?quote=${id}`;
   return (
     <Link href={href} className={className ?? monoLinkClass}>
       {label}
@@ -73,11 +83,14 @@ export function LinkedDocumentLink({
   label,
   className,
 }: {
-  type: 'ticket' | 'invoice' | 'order' | 'quote';
+  type: 'ticket' | 'invoice' | 'order' | 'quote' | 'credit_note';
   id?: string | null;
   label: ReactNode;
   className?: string;
 }) {
+  if (type === 'credit_note') {
+    return <span className={className ?? monoLinkClass}>{label}</span>;
+  }
   if (type === 'ticket') return <TicketLink id={id} label={label} className={className} />;
   if (type === 'invoice') return <InvoiceLink id={id} label={label} className={className} />;
   if (type === 'quote') return <QuoteLink id={id} label={label} className={className} />;

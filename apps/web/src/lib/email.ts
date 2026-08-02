@@ -12,6 +12,12 @@ import {
 } from '@/lib/email-templates';
 import { notifyEmailSendFailure } from '@/lib/email-failure-notice';
 import { logEmailEntry, type EmailLogMeta } from '@/lib/email-log';
+import { getRrspContext } from '@/lib/rrsp-db';
+import {
+  getRrspEmailSettingsForClient,
+  rrspEmailIsReady,
+  type RrspEmailSettings,
+} from '@/lib/rrsp-branding';
 
 export { buildPortalUrl } from '@/lib/site-url';
 
@@ -80,6 +86,10 @@ export async function initializeEmail(): Promise<boolean> {
       secure: config.secure,
       auth: { user: config.user, pass: config.password },
       tls: { rejectUnauthorized: false },
+      // Avoid hanging portal API calls (and Next→Express proxy 503s) on bad SMTP.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     });
 
     await transporter.verify();
@@ -116,6 +126,148 @@ async function reportEmailFailure({
   await notifyEmailSendFailure({ to, subject, error, reason });
 }
 
+export type SendEmailWithConfigResult = { ok: true } | { ok: false; error: string };
+
+function smtpTransportOptions(
+  config: Pick<
+    EmailConfig | RrspEmailSettings,
+    'host' | 'port' | 'secure' | 'user' | 'password'
+  >
+) {
+  const port = Number(config.port) || 587;
+  // Critical: `secure: true` = TLS from the first byte (SMTPS, almost always port 465).
+  // Port 587/25 speak plain SMTP first, then upgrade with STARTTLS — using secure:true
+  // there causes OpenSSL "wrong version number".
+  const implicitTls = port === 465 || port === 8465;
+  const secure = implicitTls ? true : false;
+  return {
+    host: config.host,
+    port,
+    secure,
+    // On submission ports, still encrypt via STARTTLS when the shop asked for TLS
+    // or whenever we are on the standard submission port.
+    requireTLS: !secure && (Boolean(config.secure) || port === 587 || port === 2525),
+    auth: { user: config.user, pass: config.password },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  };
+}
+
+/** Send using an explicit SMTP config (e.g. RRSP shop outbound mail). */
+export async function sendEmailWithConfigDetailed(
+  config: Pick<
+    EmailConfig | RrspEmailSettings,
+    'enabled' | 'host' | 'port' | 'secure' | 'user' | 'password' | 'fromName' | 'fromEmail'
+  >,
+  {
+    to,
+    subject,
+    html,
+    attachments = [],
+    skipFailureNotice = false,
+    log,
+    /** When true, allow send even if `enabled` is false (profile test button). */
+    allowDisabled = false,
+  }: {
+    to: string;
+    subject: string;
+    html: string;
+    attachments?: Attachment[];
+    skipFailureNotice?: boolean;
+    log?: EmailLogMeta;
+    allowDisabled?: boolean;
+  }
+): Promise<SendEmailWithConfigResult> {
+  if ((!config.enabled && !allowDisabled) || !config.host || !config.user || !config.password) {
+    const error = 'Email service is disabled or missing required SMTP settings';
+    await logEmailEntry({
+      to,
+      subject,
+      status: 'failed',
+      errorMessage: error,
+      meta: log,
+    }).catch((err) => console.error('[EMAIL LOG]', err));
+    return { ok: false, error };
+  }
+
+  try {
+    const transport = nodemailer.createTransport(smtpTransportOptions(config));
+    try {
+      await transport.verify();
+    } catch (verifyError) {
+      let message =
+        verifyError instanceof Error
+          ? verifyError.message
+          : String(verifyError);
+      if (/wrong version number/i.test(message)) {
+        message =
+          'SMTP TLS mismatch: use port 587 without SSL (STARTTLS), or port 465 with SSL. ' +
+          `Current port ${Number(config.port) || 587} was opened with the wrong encryption mode.`;
+      }
+      const error = `SMTP connection failed: ${message}`;
+      console.error('[EMAIL] Verify failed:', verifyError);
+      await logEmailEntry({
+        to,
+        subject,
+        status: 'failed',
+        errorMessage: error,
+        meta: log,
+      }).catch((err) => console.error('[EMAIL LOG]', err));
+      return { ok: false, error };
+    }
+
+    const fromEmail = config.fromEmail || config.user;
+    const fromName = config.fromName || fromEmail;
+    const result = await transport.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject,
+      html,
+      attachments,
+    });
+    console.log(`[EMAIL] Sent to ${to}: ${result.messageId}`);
+    await logEmailEntry({ to, subject, status: 'sent', meta: log }).catch((err) =>
+      console.error('[EMAIL LOG]', err)
+    );
+    return { ok: true };
+  } catch (error) {
+    console.error('[EMAIL] Send failed:', error);
+    if (!skipFailureNotice && !subject.startsWith('[TEST]')) {
+      await notifyEmailSendFailure({ to, subject, error, reason: 'send' });
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    await logEmailEntry({
+      to,
+      subject,
+      status: 'failed',
+      errorMessage: message,
+      meta: log,
+    }).catch((err) => console.error('[EMAIL LOG]', err));
+    return { ok: false, error: message };
+  }
+}
+
+export async function sendEmailWithConfig(
+  config: Pick<
+    EmailConfig | RrspEmailSettings,
+    'enabled' | 'host' | 'port' | 'secure' | 'user' | 'password' | 'fromName' | 'fromEmail'
+  >,
+  options: {
+    to: string;
+    subject: string;
+    html: string;
+    attachments?: Attachment[];
+    skipFailureNotice?: boolean;
+    log?: EmailLogMeta;
+    allowDisabled?: boolean;
+  }
+): Promise<boolean> {
+  const result = await sendEmailWithConfigDetailed(config, options);
+  return result.ok;
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -131,6 +283,21 @@ export async function sendEmail({
   skipFailureNotice?: boolean;
   log?: EmailLogMeta;
 }): Promise<boolean> {
+  const rrsp = getRrspContext();
+  if (rrsp?.mspClientId) {
+    const rrspEmail = await getRrspEmailSettingsForClient(rrsp.mspClientId);
+    if (rrspEmail && rrspEmailIsReady(rrspEmail)) {
+      return sendEmailWithConfig(rrspEmail, {
+        to,
+        subject,
+        html,
+        attachments,
+        skipFailureNotice,
+        log,
+      });
+    }
+  }
+
   if (!isConfigured) {
     const ready = await initializeEmail();
     if (!ready) {

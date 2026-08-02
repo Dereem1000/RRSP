@@ -5,12 +5,17 @@ export const ACTIVATION_FEATURES = [
   'ecommerce',
   'auto',
   'distribution',
+  'medical',
   'crm',
+  'rrsp',
 ] as const;
 
 export type ActivationFeature = (typeof ACTIVATION_FEATURES)[number];
 
-export const ACTIVATION_FEATURE_LABELS: Record<ActivationFeature, { title: string; description: string }> = {
+export const ACTIVATION_FEATURE_LABELS: Record<
+  ActivationFeature,
+  { title: string; description: string; mode?: 'online' }
+> = {
   pos: {
     title: 'Point of Sale Systems',
     description: 'Custom POS for retail, restaurants, and service providers.',
@@ -35,9 +40,18 @@ export const ACTIVATION_FEATURE_LABELS: Record<ActivationFeature, { title: strin
     title: 'Distribution System',
     description: 'Inventory, orders, and supply chain optimization.',
   },
+  medical: {
+    title: 'Medical Records Management',
+    description: 'Secure patient charts, visit history, and prescriptions for clinics and private practices.',
+  },
   crm: {
     title: 'Event Sponsor CRM',
     description: 'Sponsor management, communications, and event CRM workflows.',
+  },
+  rrsp: {
+    title: 'Repair Report Service Platform (RRSP)',
+    description: 'Online repair-shop portal with tickets, orders, parts, sales, clients, and accounting.',
+    mode: 'online',
   },
 };
 
@@ -49,7 +63,9 @@ export const FEATURE_TO_LICENSE_KEY: Record<ActivationFeature, string> = {
   ecommerce: 'ecommerce_websites',
   auto: 'auto_system',
   distribution: 'distribution_system',
+  medical: 'medical_records_management',
   crm: 'customer_management',
+  rrsp: 'rrsp_online',
 };
 
 export const MSP_SERVICE_LEVELS = ['basic', 'standard', 'premium', 'enterprise', 'per-job'] as const;

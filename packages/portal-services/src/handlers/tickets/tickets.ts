@@ -12,7 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { Op } from 'sequelize';
-import { Client, Ticket, User } from '@web/lib/db';
+import { Client as MspClient, User } from '@web/lib/db';
 import {
   generateTicketId,
   generateTicketNumber,
@@ -21,6 +21,9 @@ import {
   resolveTechnicianName,
   serializeTicket,
   userDisplayName,
+  getTicketModel,
+  getShopClientModel,
+  isRrspDbActive,
 } from '@web/lib/tickets';
 import { getTicketNotificationSettings } from '@web/lib/settings';
 import { notifyTicketCreated } from '@web/lib/ticket-notifications';
@@ -71,12 +74,22 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
       });
     }
 
+    const Ticket = getTicketModel();
+    const Client = getShopClientModel();
+    const include: object[] = [
+      { model: Client, as: 'client', attributes: ['id', 'name', 'companyName', 'email', 'phone'] },
+    ];
+    if (!isRrspDbActive()) {
+      include.push({
+        model: User,
+        as: 'assignee',
+        attributes: ['id', 'username', 'firstName', 'lastName'],
+      });
+    }
+
     const tickets = await Ticket.findAll({
       where,
-      include: [
-        { model: Client, as: 'client', attributes: ['id', 'name', 'companyName', 'email', 'phone'] },
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'firstName', 'lastName'] },
-      ],
+      include,
       order: [['lastUpdated', 'DESC']],
       limit: 300,
     });
@@ -96,7 +109,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     requireRole(session, 'admin', 'technician', 'client');
 
     const ticketSettings = await getTicketNotificationSettings();
-    if (session.role === 'client' && !ticketSettings.clientCanCreateTickets) {
+    if (session.role === 'client' && !isRrspDbActive() && !ticketSettings.clientCanCreateTickets) {
       return { status: 403, body: { success: false, message: 'Client ticket creation is disabled' } };
     }
 
@@ -112,8 +125,8 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     let clientName = body.clientName?.trim();
     let clientContactNumber = body.clientContactNumber?.trim();
 
-    if (session.role === 'client') {
-      const linkedClient = await Client.findOne({ where: { userId: session.id } });
+    if (session.role === 'client' && !isRrspDbActive()) {
+      const linkedClient = await MspClient.findOne({ where: { userId: session.id } });
       if (!linkedClient) {
         return { status: 400, body: { success: false, message: 'No client account linked' } };
       }
@@ -123,6 +136,13 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       clientId = linkedClient.id;
       clientName = linkedClient.name;
       clientContactNumber = linkedClient.phone ?? clientContactNumber;
+    }
+
+    if (session.role === 'client' && isRrspDbActive()) {
+      if (!clientId) {
+        return { status: 400, body: { success: false, message: 'Please select a customer' } };
+      }
+      // Shop operator creating a repair ticket for a shop customer.
     }
 
     const resolved = await resolveClientForTicket({ clientId, clientName, clientContactNumber });
@@ -138,6 +158,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     const technician = await resolveTechnicianName(assignedTo, body.technician);
     const now = new Date().toISOString();
     const creator = await User.findByPk(session.id);
+    const Ticket = getTicketModel();
 
     const ticket = await Ticket.create({
       id: generateTicketId(),
@@ -160,50 +181,38 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       dateCreated: now,
       lastUpdated: now,
       isActive: 1,
-      clientId,
+      clientId: clientId ?? null,
       createdBy: session.id,
       assignedTo,
       hasUnreadClientComments: false,
-      attachments: body.attachments || [],
-      tags: body.tags || [],
-      resolutionNotes: null,
-      estimatedHours: null,
-      actualHours: null,
-      estimatedCost: null,
-      actualCost: null,
+      attachments: [],
+      tags: body.tags ?? [],
     });
 
-    const full = await Ticket.findByPk(ticket.id, {
-      include: [{ model: Client, as: 'client', attributes: ['id', 'name', 'companyName', 'email', 'phone'] }],
-    });
-
-    await notifyTicketCreated(full ?? ticket, userDisplayName(creator ?? { username: session.username ?? 'User' }));
-
-    const serialized = serializeTicket(full ?? ticket);
-    emitMiniCdEvent(session, {
-      type: 'ticket.created',
-      summary: `Created ticket #${serialized.ticketNumber} for ${serialized.clientName}: ${String(serialized.issue).slice(0, 80)}`,
-      entityType: 'ticket',
-      entityId: String(serialized.id),
-      href: `/tickets/${serialized.id}`,
-      clientId: serialized.clientId ? String(serialized.clientId) : undefined,
-      clientName: serialized.clientName ? String(serialized.clientName) : undefined,
-      actorName: userDisplayName(creator ?? { username: session.username ?? 'User' }),
-    });
-
-    if (clientId) {
-      try {
-        await incrementClientUsage(clientId, 'supportTickets', 1);
-      } catch {
-        // Non-blocking — ticket creation succeeds even if usage update fails
-      }
+    if (clientId && !isRrspDbActive()) {
+      await incrementClientUsage(clientId).catch(() => undefined);
     }
 
-    return { status: 201, body: {
-        success: true,
-        ticket: serializeTicket(full ?? ticket),
-        message: `Ticket created by ${userDisplayName(creator ?? { username: session.username ?? 'User' })}`,
-      } };
+    if (!isRrspDbActive()) {
+      const creatorName = userDisplayName(creator || { username: session.username });
+      await notifyTicketCreated(ticket, creatorName).catch(() => undefined);
+      const serialized = serializeTicket(ticket);
+      emitMiniCdEvent(session, {
+        type: 'ticket.created',
+        summary: `Created ticket #${serialized.ticketNumber} for ${serialized.clientName}`,
+        entityType: 'ticket',
+        entityId: String(serialized.id),
+        href: `/tickets/${serialized.id}`,
+        clientId: serialized.clientId ? String(serialized.clientId) : undefined,
+        clientName: serialized.clientName ? String(serialized.clientName) : undefined,
+        actorName: creatorName,
+      });
+    }
+
+    return {
+      status: 201,
+      body: { success: true, ticket: serializeTicket(ticket) },
+    };
   } catch (error) {
     if (error instanceof Error && error.message === 'Client not found') {
       return { status: 400, body: { success: false, message: error.message } };

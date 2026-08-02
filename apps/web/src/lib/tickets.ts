@@ -1,13 +1,19 @@
 import { Op } from 'sequelize';
 import {
-  Client,
-  Ticket,
-  TicketComment,
+  Client as MspClient,
+  Ticket as CdTicket,
   User,
 } from '@cd-v2/database';
 import type { TokenPayload } from '@/lib/jwt';
 import { normalizeStoredPhone } from '@/lib/phone-utils';
 import { ensureCommentLinkedOrderColumn } from '@/lib/ticket-schema';
+import {
+  getRrspContext,
+  getShopClientModel,
+  getTicketCommentModel,
+  getTicketModel,
+  isRrspDbActive,
+} from '@/lib/rrsp-db';
 
 export type SessionUser = TokenPayload & {
   firstName?: string;
@@ -21,7 +27,11 @@ export async function getTicketScopeWhere(
   const where: Record<string, unknown> = { isActive: 1 };
 
   if (session.role === 'client') {
-    const client = await Client.findOne({ where: { userId: session.id } });
+    if (isRrspDbActive()) {
+      // Entire RRSP DB belongs to this shop — no MSP clientId filter.
+      return { where, denied: false };
+    }
+    const client = await MspClient.findOne({ where: { userId: session.id } });
     if (!client) return { where, denied: true };
     where.clientId = client.id;
     return { where, denied: false };
@@ -30,24 +40,36 @@ export async function getTicketScopeWhere(
   return { where, denied: false };
 }
 
-export async function canAccessTicket(ticket: Ticket, session: SessionUser): Promise<boolean> {
+export async function canAccessTicket(
+  ticket: { clientId?: string | null },
+  session: SessionUser
+): Promise<boolean> {
   if (session.role === 'admin' || session.role === 'technician') return true;
   if (session.role !== 'client') return false;
-  const client = await Client.findOne({ where: { userId: session.id } });
+  if (isRrspDbActive()) return true;
+  const client = await MspClient.findOne({ where: { userId: session.id } });
   return Boolean(client && ticket.clientId === client.id);
 }
 
-export async function getTicketById(id: string) {
-  return Ticket.findByPk(id, {
-    include: [
-      { model: Client, as: 'client', attributes: ['id', 'name', 'companyName', 'email', 'phone'] },
+export async function getTicketById(id: string): Promise<CdTicket | null> {
+  const Ticket = getTicketModel();
+  const Client = getShopClientModel();
+  const include: object[] = [
+    { model: Client, as: 'client', attributes: ['id', 'name', 'companyName', 'email', 'phone'] },
+  ];
+  if (!isRrspDbActive()) {
+    include.push(
       { model: User, as: 'assignee', attributes: ['id', 'username', 'firstName', 'lastName'] },
-      { model: User, as: 'creator', attributes: ['id', 'username', 'firstName', 'lastName'] },
-    ],
-  });
+      { model: User, as: 'creator', attributes: ['id', 'username', 'firstName', 'lastName'] }
+    );
+  }
+  const ticket = await Ticket.findByPk(id, { include });
+  return (ticket as CdTicket | null) ?? null;
 }
 
-export function serializeTicket(ticket: Ticket) {
+export function serializeTicket(ticket: {
+  toJSON: () => Record<string, unknown>;
+}) {
   const json = ticket.toJSON() as unknown as Record<string, unknown> & {
     assignedTo?: number | null;
     technician?: string;
@@ -88,6 +110,7 @@ export async function resolveClientForTicket(body: {
   clientName?: string;
   clientContactNumber?: string;
 }): Promise<{ clientId: string | null; clientName: string; clientContactNumber: string | null }> {
+  const Client = getShopClientModel();
   let clientId = body.clientId ?? null;
   let clientName = body.clientName?.trim() || 'Unknown Client';
   let clientContactNumber = normalizeStoredPhone(body.clientContactNumber?.trim() || null);
@@ -95,8 +118,9 @@ export async function resolveClientForTicket(body: {
   if (clientId) {
     const client = await Client.findByPk(clientId);
     if (!client) throw new Error('Client not found');
-    clientName = client.name || client.companyName || clientName;
-    clientContactNumber = client.phone ?? clientContactNumber;
+    const row = client as unknown as { name?: string; companyName?: string; phone?: string | null };
+    clientName = row.name || row.companyName || clientName;
+    clientContactNumber = row.phone ?? clientContactNumber;
     return { clientId, clientName, clientContactNumber };
   }
 
@@ -107,9 +131,10 @@ export async function resolveClientForTicket(body: {
       },
     });
     if (client) {
-      clientId = client.id;
-      clientName = client.name || client.companyName || clientName;
-      clientContactNumber = client.phone ?? clientContactNumber;
+      const row = client as unknown as { id: string; name?: string; companyName?: string; phone?: string | null };
+      clientId = row.id;
+      clientName = row.name || row.companyName || clientName;
+      clientContactNumber = row.phone ?? clientContactNumber;
       return { clientId, clientName, clientContactNumber };
     }
   }
@@ -126,9 +151,10 @@ export async function resolveClientForTicket(body: {
         },
       });
       if (client) {
-        clientId = client.id;
-        clientName = client.name || client.companyName || clientName;
-        clientContactNumber = client.phone ?? clientContactNumber;
+        const row = client as unknown as { id: string; name?: string; companyName?: string; phone?: string | null };
+        clientId = row.id;
+        clientName = row.name || row.companyName || clientName;
+        clientContactNumber = row.phone ?? clientContactNumber;
       }
     }
   }
@@ -143,8 +169,22 @@ export async function resolveTechnicianName(assignedTo?: number | null, fallback
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.username;
 }
 
-export async function getTicketComments(ticketId: string, includeInternal: boolean) {
+export type TicketCommentRow = {
+  id: string;
+  comment: string;
+  commentType: string;
+  authorName: string;
+  timestamp: string;
+  isInternal: number;
+  linkedOrderId?: string | null;
+};
+
+export async function getTicketComments(
+  ticketId: string,
+  includeInternal: boolean
+): Promise<TicketCommentRow[]> {
   await ensureCommentLinkedOrderColumn();
+  const TicketComment = getTicketCommentModel();
   const comments = await TicketComment.findAll({
     where: {
       ticketId,
@@ -153,7 +193,18 @@ export async function getTicketComments(ticketId: string, includeInternal: boole
     },
     order: [['timestamp', 'DESC']],
   });
-  return comments;
+  return comments.map((row) => {
+    const c = row as unknown as TicketCommentRow;
+    return {
+      id: c.id,
+      comment: c.comment,
+      commentType: c.commentType,
+      authorName: c.authorName,
+      timestamp: c.timestamp,
+      isInternal: Number(c.isInternal) || 0,
+      linkedOrderId: c.linkedOrderId ?? null,
+    };
+  });
 }
 
 export function userDisplayName(user: {
@@ -163,3 +214,6 @@ export function userDisplayName(user: {
 }) {
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.username || 'User';
 }
+
+/** Re-export for handlers that need the active Ticket model. */
+export { getTicketModel, getTicketCommentModel, getShopClientModel, getRrspContext, isRrspDbActive } from '@/lib/rrsp-db';

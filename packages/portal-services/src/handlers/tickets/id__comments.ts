@@ -11,7 +11,7 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { Ticket, TicketComment, User } from '@web/lib/db';
+import { User } from '@web/lib/db';
 import {
   canAccessTicket,
   generateCommentId,
@@ -19,6 +19,7 @@ import {
   getTicketComments,
   userDisplayName,
 } from '@web/lib/tickets';
+import { getTicketModel, getTicketCommentModel } from '@web/lib/tickets';
 import { Client } from '@web/lib/db';
 import { notifyTicketComment, notifyTicketStatusChange } from '@web/lib/ticket-notifications';
 
@@ -40,7 +41,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
     requireRole(session, 'admin', 'technician', 'client');
 
     const { id } = ctx.params;
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }
@@ -94,7 +95,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       return { status: 400, body: { success: false, message: 'Comment is required' } };
     }
 
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }
@@ -108,7 +109,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     const isInternal = session.role !== 'client' && Boolean(body.isInternal);
     const now = new Date().toISOString();
 
-    const comment = await TicketComment.create({
+    const comment = await getTicketCommentModel().create({
       id: generateCommentId(),
       ticketId: id,
       comment: commentText,

@@ -8,6 +8,7 @@ import {
   FlaskConical,
   Loader2,
   Mail,
+  Package,
   Plug,
   RefreshCw,
   Save,
@@ -41,6 +42,10 @@ type GeneralSettings = {
   maintenanceMessage: string;
   systemVersion: string;
   demoMode: boolean;
+};
+
+type PartsCatalogSettings = {
+  markupPercent: number;
 };
 
 const inputClass =
@@ -94,6 +99,7 @@ export function SettingsPageClient() {
   const [error, setError] = useState('');
   const [tickets, setTickets] = useState<TicketSettings | null>(null);
   const [general, setGeneral] = useState<GeneralSettings | null>(null);
+  const [partsCatalog, setPartsCatalog] = useState<PartsCatalogSettings | null>(null);
 
   async function load() {
     setLoading(true);
@@ -104,6 +110,7 @@ export function SettingsPageClient() {
       if (!res.ok) throw new Error(data.message || 'Failed to load settings');
       setTickets(data.tickets);
       setGeneral(data.general);
+      setPartsCatalog(data.partsCatalog ?? { markupPercent: 15 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
@@ -125,13 +132,18 @@ export function SettingsPageClient() {
     router.replace(`/settings?tab=${next}`, { scroll: false });
   }
 
-  async function saveSection(section: 'tickets' | 'general', e: FormEvent) {
+  async function saveSection(section: 'tickets' | 'general' | 'partsCatalog', e: FormEvent) {
     e.preventDefault();
     setSaving(section);
     setMessage('');
     setError('');
     try {
-      const body = section === 'tickets' ? { tickets } : { general };
+      const body =
+        section === 'tickets'
+          ? { tickets }
+          : section === 'general'
+            ? { general }
+            : { partsCatalog };
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -144,7 +156,9 @@ export function SettingsPageClient() {
           ? 'Demo mode off — live database restored from snapshot.'
           : section === 'general' && general?.demoMode === true
             ? 'Demo mode on — snapshot saved. Test freely; turn demo mode off to restore live data.'
-            : 'Settings saved'
+            : section === 'partsCatalog'
+              ? 'Parts catalog settings saved'
+              : 'Settings saved'
       );
       if (section === 'general') await load();
       if (section === 'general') {
@@ -158,7 +172,7 @@ export function SettingsPageClient() {
     }
   }
 
-  const systemReady = !loading && tickets && general;
+  const systemReady = !loading && tickets && general && partsCatalog;
 
   return (
     <div className="space-y-6">
@@ -342,6 +356,56 @@ export function SettingsPageClient() {
           >
             {saving === 'tickets' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save ticket settings
+          </button>
+        </form>
+
+        <form
+          onSubmit={(e) => saveSection('partsCatalog', e)}
+          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div className="mb-4 flex items-center gap-2">
+            <Package className="h-5 w-5 text-indigo-600" />
+            <h2 className="font-semibold text-slate-900">Parts catalog</h2>
+          </div>
+          <p className="mb-4 text-sm text-slate-500">
+            Businesses enter their own unit price. The platform adds this markup for the marketplace
+            listed price buyers see. Buyers do not see the markup percentage.
+          </p>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">Platform markup (%)</span>
+            <input
+              type="number"
+              min="0"
+              max="1000"
+              step="0.01"
+              value={partsCatalog.markupPercent}
+              onChange={(e) =>
+                setPartsCatalog({
+                  ...partsCatalog,
+                  markupPercent: Number(e.target.value),
+                })
+              }
+              className={inputClass}
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              Example: business lists $100 with {partsCatalog.markupPercent}% markup → buyers see{' '}
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(
+                Math.round(100 * (1 + (Number(partsCatalog.markupPercent) || 0) / 100))
+              )}
+            </span>
+          </label>
+          <button
+            type="submit"
+            disabled={saving === 'partsCatalog'}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {saving === 'partsCatalog' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save parts catalog settings
           </button>
         </form>
 

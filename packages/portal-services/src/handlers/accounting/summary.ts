@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isRrspDbActive } from '@web/lib/rrsp-db';
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import {
   requireSession,
@@ -28,7 +29,7 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    if (session.role === 'client') { if (!isRrspDbActive()) return { status: 403, body: { success: false, message: 'Access denied' } }; } else { requireRole(session, 'admin', 'technician'); }
     const [summary, recentTransactions] = await Promise.all([
       getAccountingSummary(),
       getRecentFinancialTransactions(8),

@@ -12,8 +12,9 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { Op } from 'sequelize';
-import { Ticket, Client } from '@web/lib/db';
+import { Client } from '@web/lib/db';
 import { OPEN_STATUSES, RESOLVED_STATUSES, IN_PROGRESS_STATUSES } from '@web/lib/ticket-constants';
+import { getTicketModel, isRrspDbActive } from '@web/lib/tickets';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -33,24 +34,26 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
     const where: Record<string, unknown> = { isActive: 1 };
 
     if (session.role === 'client') {
-      const client = await Client.findOne({ where: { userId: session.id } });
-      if (!client) {
-        return { status: 200, body: {
-          success: true,
-          stats: { total: 0, open: 0, resolved: 0, inProgress: 0, pending: 0 },
-        } };
+      if (!isRrspDbActive()) {
+        const client = await Client.findOne({ where: { userId: session.id } });
+        if (!client) {
+          return { status: 200, body: {
+            success: true,
+            stats: { total: 0, open: 0, resolved: 0, inProgress: 0, pending: 0 },
+          } };
+        }
+        where.clientId = client.id;
       }
-      where.clientId = client.id;
     } else if (session.role === 'technician') {
       where.assignedTo = session.id;
     }
 
     const [total, open, resolved, inProgress, pending] = await Promise.all([
-      Ticket.count({ where }),
-      Ticket.count({ where: { ...where, status: { [Op.in]: OPEN_STATUSES } } }),
-      Ticket.count({ where: { ...where, status: { [Op.in]: RESOLVED_STATUSES } } }),
-      Ticket.count({ where: { ...where, status: { [Op.in]: IN_PROGRESS_STATUSES } } }),
-      Ticket.count({ where: { ...where, status: 'Pending' } }),
+      getTicketModel().count({ where }),
+      getTicketModel().count({ where: { ...where, status: { [Op.in]: OPEN_STATUSES } } }),
+      getTicketModel().count({ where: { ...where, status: { [Op.in]: RESOLVED_STATUSES } } }),
+      getTicketModel().count({ where: { ...where, status: { [Op.in]: IN_PROGRESS_STATUSES } } }),
+      getTicketModel().count({ where: { ...where, status: 'Pending' } }),
     ]);
 
     return { status: 200, body: {

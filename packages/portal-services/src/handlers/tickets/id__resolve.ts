@@ -11,8 +11,8 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { Ticket } from '@web/lib/db';
 import { generateCommentId, getTicketById, serializeTicket, userDisplayName } from '@web/lib/tickets';
+import { getTicketModel, getTicketCommentModel } from '@web/lib/tickets';
 import { emitMiniCdEvent } from '@web/lib/mini-cd-events.server';
 import { notifyTicketResolved } from '@web/lib/ticket-notifications';
 import { TicketComment } from '@web/lib/db';
@@ -42,7 +42,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       return { status: 400, body: { success: false, message: 'Resolution notes are required' } };
     }
 
-    const ticket = await Ticket.findByPk(id);
+    const ticket = await getTicketModel().findByPk(id);
     if (!ticket) {
       return { status: 404, body: { success: false, message: 'Ticket not found' } };
     }
@@ -50,7 +50,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     const now = new Date().toISOString();
     const authorName = userDisplayName({ username: session.username });
 
-    await TicketComment.create({
+    await getTicketCommentModel().create({
       id: generateCommentId(),
       ticketId: id,
       comment: resolution,

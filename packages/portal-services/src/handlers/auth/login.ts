@@ -16,7 +16,7 @@ import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { logSecurityEvent, verifyPublicCaptchaDetailed } from '@cd-v2/security';
 import { User, SystemConfig, publicUser } from '@web/lib/db';
-import { applyRequestGuardFromCtx, getClientIpFromCtx, getRequestHostFromCtx } from '../../http-helpers';
+import { getClientIpFromCtx, getRequestHostFromCtx } from '../../http-helpers';
 
 async function logLoginAttempt(
   outcome: 'success' | 'blocked',
@@ -55,8 +55,7 @@ async function isProductInstallerRequest(ctx: ApiContext): Promise<boolean> {
 
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   const ip = getClientIpFromCtx(ctx);
-  const guardRes = await applyRequestGuardFromCtx(ctx);
-  if (guardRes) return guardRes;
+  // Bot / IDS / rate limits: Express `expressRequestGuard` (avoid double rate-limit).
 
   const body = ctx.body as Record<string, unknown>;
   const { username, password, turnstileToken, captchaToken, website } = body;
@@ -119,6 +118,17 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       await user.updateLastLogin();
       const token = signToken({ id: user.id, role: user.role, clearance: user.securityClearance });
       await logLoginAttempt('success', ip, username, user.id);
+      if (user.role === 'admin') {
+        await logSecurityEvent({
+          eventType: 'admin_login',
+          severity: user.securityClearance === 'S-CLS1' ? 'high' : 'medium',
+          description: `Admin login (temp password): ${username} (${user.securityClearance})`,
+          userId: user.id,
+          outcome: 'success',
+          ipAddress: ip,
+          details: { role: user.role, clearance: user.securityClearance, tempPassword: true },
+        });
+      }
       return { status: 200, body: {
         success: true,
         user: publicUser(user),
@@ -141,6 +151,18 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     await user.resetFailedLoginAttempts();
     await user.updateLastLogin();
     await logLoginAttempt('success', ip, username, user.id);
+
+    if (user.role === 'admin') {
+      await logSecurityEvent({
+        eventType: 'admin_login',
+        severity: user.securityClearance === 'S-CLS1' ? 'high' : 'medium',
+        description: `Admin login: ${username} (${user.securityClearance})`,
+        userId: user.id,
+        outcome: 'success',
+        ipAddress: ip,
+        details: { role: user.role, clearance: user.securityClearance },
+      });
+    }
 
     const token = signToken({ id: user.id, role: user.role, clearance: user.securityClearance });
     return { status: 200, body: { success: true, user: publicUser(user) }, cookies: [{ name: COOKIE_NAME, value: token, httpOnly: true, sameSite: 'lax', path: '/', maxAge: SESSION_COOKIE_MAX_AGE_MS }] };

@@ -13,6 +13,7 @@ function AccountingLoading() {
   );
 }
 
+/** CD staff accounting (not RRSP shop books). */
 export default async function AccountingPage() {
   const { user } = await requirePortalUser();
   if (user.role === 'client') redirect('/dashboard');
@@ -27,6 +28,7 @@ export default async function AccountingPage() {
       <AccountingPageClient
         isAdmin={user.role === 'admin'}
         clients={clients.map((c) => mapClientToPickerOption(c))}
+        showSellerPayouts
       />
     </Suspense>
   );

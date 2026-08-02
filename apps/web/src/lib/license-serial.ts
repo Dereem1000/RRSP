@@ -8,7 +8,9 @@ const MSP_FEATURE_LONG_CODES: Record<ActivationFeature, string> = {
   ecommerce: 'ECOMMERCE',
   auto: 'AUTOSYSTEM',
   distribution: 'DISTRIBUTION',
+  medical: 'MEDICALRECORDS',
   crm: 'EVENTSPONSORCRM',
+  rrsp: 'RRSPONLINE',
 };
 
 const LICENSE_KEY_TO_CODE: Record<string, string> = {
@@ -18,7 +20,9 @@ const LICENSE_KEY_TO_CODE: Record<string, string> = {
   ecommerce_websites: 'ECOMMERCE',
   auto_system: 'AUTOSYSTEM',
   distribution_system: 'DISTRIBUTION',
+  medical_records_management: 'MEDICALRECORDS',
   customer_management: 'EVENTSPONSORCRM',
+  rrsp_online: 'RRSPONLINE',
 };
 
 const MIN_CLIENT_REF_LEN = 16;

@@ -8,6 +8,7 @@ import { ClientFormFields, formDataToClientPayload } from './ClientFormFields';
 import { ClientDetailNav } from './ClientDetailNav';
 import { ClientUsagePanel } from './ClientUsagePanel';
 import { ClientRelatedPanel } from './ClientRelatedPanel';
+import { ClientSellerPayablesPanel } from './ClientSellerPayablesPanel';
 import { SERVICE_LEVEL_COLORS, STATUS_COLORS, type UsageInfo } from '@/lib/client-constants';
 
 type Technician = { id: number; firstName: string; lastName: string };
@@ -74,6 +75,7 @@ export function ClientDetailClient({
 }) {
   const router = useRouter();
   const isAdmin = userRole === 'admin';
+  const canManagePayables = userRole === 'admin' || userRole === 'technician';
 
   const [client, setClient] = useState(initial);
   const [billing, setBilling] = useState(initialBilling);
@@ -346,6 +348,8 @@ export function ClientDetailClient({
           )}
         </section>
       </div>
+
+      <ClientSellerPayablesPanel clientId={client.id} canManage={canManagePayables} />
 
       <ClientUsagePanel
         clientId={client.id}

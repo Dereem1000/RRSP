@@ -12,7 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { Client } from '@web/lib/db';
-import { getRecentNotices } from '@web/lib/notices';
+import { getRecentNotices, noticeScopeFromTags } from '@web/lib/notices';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -51,6 +51,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
         category: n.category,
         isPinned: n.isPinned,
         publishAt: n.publishAt,
+        scope: noticeScopeFromTags(n.tags, n.category),
       })),
     } };
   } catch (error) {

@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { Client } from '@/lib/db';
 import { requirePortalUser } from '@/lib/session';
 import { serializeClient } from '@/lib/clients';
@@ -7,12 +8,10 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { ClientsPageClient } from '@/components/clients/ClientsPageClient';
 import { Building2, CheckCircle2, PauseCircle, Clock } from 'lucide-react';
 
+/** CD staff MSP clients list (not RRSP shop customers). */
 export default async function ClientsPage() {
   const { user } = await requirePortalUser();
-  if (user.role === 'client') {
-    const { redirect } = await import('next/navigation');
-    redirect('/tickets');
-  }
+  if (user.role === 'client') redirect('/tickets');
 
   const allClients = await Client.findAll({ order: [['created_at', 'DESC']] });
   const clients = allClients.filter((c) => !isSalesStagingClient(c.contractDetails));

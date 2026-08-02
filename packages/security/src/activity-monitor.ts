@@ -1,14 +1,15 @@
 import { Op } from 'sequelize';
 import { SecurityEvent } from '@cd-v2/database';
+import {
+  ACTIVITY_WINDOW_MS,
+  EVENT_BURST_THRESHOLD,
+  FAILED_LOGIN_THRESHOLD,
+} from './activity-thresholds';
 import { logSecurityEvent } from './events';
 import { ORDER_BY_CREATED_DESC, whereCreatedSince } from './sequelize-time';
 
-const FAILED_LOGIN_THRESHOLD = 5;
-const EVENT_BURST_THRESHOLD = 15;
-const WINDOW_MS = 5 * 60 * 1000;
-
 export async function runActivityMonitor(): Promise<{ alerts: number }> {
-  const since = new Date(Date.now() - WINDOW_MS);
+  const since = new Date(Date.now() - ACTIVITY_WINDOW_MS);
   let alerts = 0;
 
   const recent = await SecurityEvent.findAll({

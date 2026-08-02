@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import { QueryTypes } from 'sequelize';
-import { getSequelize } from '@cd-v2/database';
 import { DEFAULT_OFFICE_LOCATION, ORDER_STATUSES, SHIPPING_STAGES } from '@/lib/order-constants';
 import { ensureClientMirroredForOrders } from '@/lib/clients';
 import { ensureOrderSerialColumn } from '@/lib/order-schema';
+import { getOperationalSequelize as getSequelize } from '@/lib/rrsp-db';
 
 export type LocationUpdateSource = 'manual' | 'email' | 'system';
 export type OrderRow = {

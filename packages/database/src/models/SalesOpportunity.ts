@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export type SalesStage =
   | 'cold_prospect'
@@ -9,7 +9,7 @@ export type SalesStage =
   | 'won'
   | 'lost';
 
-export type SalesProduct = 'document' | 'auto' | 'distribution' | 'ecommerce';
+export type SalesProduct = 'document' | 'auto' | 'distribution' | 'ecommerce' | 'medical';
 
 export type SalesDealType = 'subscription' | 'standalone';
 
@@ -96,7 +96,7 @@ SalesOpportunity.init(
     phone: { type: DataTypes.STRING(30), allowNull: true },
     address: { type: DataTypes.TEXT, allowNull: true },
     product: {
-      type: DataTypes.ENUM('document', 'auto', 'distribution', 'ecommerce'),
+      type: DataTypes.ENUM('document', 'auto', 'distribution', 'ecommerce', 'medical'),
       allowNull: false,
     },
     stage: {
@@ -147,7 +147,7 @@ SalesOpportunity.init(
     lostAt: { type: DataTypes.DATE, allowNull: true, field: 'lost_at' },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'sales_opportunities',
     timestamps: true,
     createdAt: 'created_at',

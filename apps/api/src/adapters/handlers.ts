@@ -3,7 +3,6 @@ import {
   getTokenFromContext,
   verifyToken,
   type ApiContext,
-  type TokenPayload,
 } from '@cd-v2/api-handlers';
 
 function buildFormDataFromRequest(req: Request): FormData | undefined {
@@ -89,6 +88,78 @@ export async function runDispatcher(
 ) {
   const token = getTokenFromContext(buildApiContext(req));
   const session = token ? verifyToken(token) : null;
-  const result = await dispatch(buildApiContext(req, session));
-  return result;
+  let ctx = buildApiContext(req, session);
+
+  const rawUrl = ctx.urlPath || req.originalUrl || req.path || '';
+  const isRrspApi =
+    rawUrl.includes('/api/rrsp/') ||
+    ctx.path === '/rrsp' ||
+    ctx.path.startsWith('/rrsp/');
+
+  if (isRrspApi) {
+    const strippedPath = ctx.path.replace(/^\/rrsp(?=\/|$)/, '') || '/';
+    const strippedUrl = rawUrl.replace('/api/rrsp/', '/api/').replace('/rrsp/', '/');
+    ctx = {
+      ...ctx,
+      path: strippedPath.startsWith('/') ? strippedPath : `/${strippedPath}`,
+      urlPath: strippedUrl,
+    };
+  }
+
+  if (isRrspApi && session) {
+    const { getClientRrspAccess } = await import('@web/lib/rrsp-access');
+    const { isRrspModuleApiPath, isCdOnlyApiPath, runWithRrspDb } = await import('@web/lib/rrsp-db');
+
+    const modulePath =
+      isRrspModuleApiPath(ctx.urlPath) || isRrspModuleApiPath(ctx.path);
+    const cdOnly = isCdOnlyApiPath(ctx.urlPath) || isCdOnlyApiPath(ctx.path);
+
+    // Parts/auth/billing stay on CD even when proxied under /api/rrsp/*
+    if (!modulePath || cdOnly) {
+      // Accounting under /api/rrsp must never hit CD — refuse rather than leak.
+      const { isRrspAccountingApiPath } = await import('@web/lib/rrsp-db');
+      if (isRrspAccountingApiPath(ctx.urlPath) || isRrspAccountingApiPath(ctx.path)) {
+        return {
+          status: 403,
+          body: { success: false, message: 'Shop accounting requires an RRSP shop database context' },
+        };
+      }
+      return dispatch(ctx);
+    }
+
+    if (session.role === 'client') {
+      const access = await getClientRrspAccess(session.id);
+      if (access.enabled && access.mspClientId) {
+        return runWithRrspDb(access.mspClientId, () => dispatch(ctx));
+      }
+      return {
+        status: 403,
+        body: { success: false, message: 'RRSP license required' },
+      };
+    }
+
+    // Staff should not read shop DBs via /api/rrsp in this phase.
+    return {
+      status: 403,
+      body: {
+        success: false,
+        message: 'Shop modules via /api/rrsp are only available to RRSP client users',
+      },
+    };
+  }
+
+  // Client Shop POS may hit /api/pos (or miss dispatcher wrap). Attach RRSP DB when licensed.
+  if (session?.role === 'client') {
+    const { isRrspDbActive, runWithRrspDb } = await import('@web/lib/rrsp-db');
+    const pathHint = `${ctx.path} ${ctx.urlPath || ''} ${rawUrl}`;
+    if (!isRrspDbActive() && pathHint.includes('/pos')) {
+      const { getClientRrspAccess } = await import('@web/lib/rrsp-access');
+      const access = await getClientRrspAccess(session.id);
+      if (access.enabled && access.mspClientId) {
+        return runWithRrspDb(access.mspClientId, () => dispatch(ctx));
+      }
+    }
+  }
+
+  return dispatch(ctx);
 }

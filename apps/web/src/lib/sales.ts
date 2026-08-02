@@ -1,9 +1,7 @@
+import type { Model } from 'sequelize';
 import { Op } from 'sequelize';
 import {
-  Client,
-  SalesOpportunity,
   ensureSalesSchema,
-  getSequelize,
   type SalesDealType,
   type SalesProduct,
   type SalesStage,
@@ -26,6 +24,87 @@ import { getActivationFeatures } from '@/lib/license-constants';
 import { syncClientToLicenseSystem } from '@/lib/license-sync';
 import { normalizeStoredPhone } from '@/lib/phone-utils';
 import { createCalendarEvent, formatScheduledLabel } from '@/lib/calendar';
+import {
+  ensureRrspDatabase,
+  getOperationalSequelize,
+  getRrspContext,
+  getSalesOpportunityModel,
+  getShopClientModel,
+  isRrspDbActive,
+} from '@/lib/rrsp-db';
+
+type OppModel = Model & {
+  id: string;
+  stage: string;
+  product: SalesProduct;
+  clientId?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  companyName: string;
+  contactName: string;
+  pitchNotes?: string | null;
+  demoNotes?: string | null;
+  scopeNotes?: string | null;
+  dealType?: SalesDealType | null;
+  monthlyRate?: number | null;
+  projectValue?: number | null;
+  depositAmount?: number | null;
+  createdBy?: number | null;
+  communications?: unknown;
+  updated_at?: string | Date | null;
+  updatedAt?: string | Date | null;
+  update: (values: Record<string, unknown>) => Promise<unknown>;
+  reload: () => Promise<unknown>;
+};
+
+type ShopClientModel = Model & {
+  id: string;
+  name?: string;
+  companyName?: string | null;
+  email?: string;
+  phone?: string | null;
+  address?: string | null;
+  contactPerson?: string | null;
+  monthlyRate?: number;
+  features?: unknown;
+  status?: string;
+  isActive?: boolean;
+  serviceLevel?: string | null;
+  servicePlanData?: unknown;
+  startDate?: string | Date | null;
+  contractStartDate?: string | Date | null;
+  contractDetails?: Record<string, unknown>;
+  update: (values: Record<string, unknown>) => Promise<unknown>;
+  reload: () => Promise<unknown>;
+};
+
+async function ensureSalesSchemaForContext() {
+  const rrsp = getRrspContext();
+  if (rrsp) {
+    await ensureRrspDatabase(rrsp.mspClientId);
+    return;
+  }
+  await ensureSalesSchema();
+}
+
+function SalesOpportunity() {
+  return getSalesOpportunityModel() as unknown as {
+    findByPk: (id: string, options?: object) => Promise<OppModel | null>;
+    findOne: (options?: object) => Promise<OppModel | null>;
+    findAll: (options?: object) => Promise<OppModel[]>;
+    create: (values: Record<string, unknown>) => Promise<OppModel>;
+    count: (options?: object) => Promise<number>;
+  };
+}
+
+function Client() {
+  return getShopClientModel() as unknown as {
+    findByPk: (id: string, options?: object) => Promise<ShopClientModel | null>;
+    findOne: (options?: object) => Promise<ShopClientModel | null>;
+    create: (values: Record<string, unknown>) => Promise<ShopClientModel>;
+  };
+}
 
 export type CommunicationEntry = {
   at: string;
@@ -40,7 +119,7 @@ export function isSalesStagingClient(contractDetails: unknown): boolean {
   return Boolean((contractDetails as Record<string, unknown>).isSalesStaging);
 }
 
-export function serializeOpportunity(opp: SalesOpportunity) {
+export function serializeOpportunity(opp: { toJSON: () => Record<string, unknown> }) {
   const json = opp.toJSON() as unknown as Record<string, unknown>;
   if (json.monthlyRate != null) json.monthlyRate = Number(json.monthlyRate);
   if (json.projectValue != null) json.projectValue = Number(json.projectValue);
@@ -62,7 +141,7 @@ export async function listOpportunities(filters?: {
   stage?: SalesStage | 'active' | 'closed';
   product?: SalesProduct;
 }) {
-  await ensureSalesSchema();
+  await ensureSalesSchemaForContext();
   const where: Record<string, unknown> = {};
 
   if (filters?.stage === 'active') {
@@ -77,7 +156,7 @@ export async function listOpportunities(filters?: {
 
   if (filters?.product) where.product = filters.product;
 
-  const rows = await SalesOpportunity.findAll({
+  const rows = await SalesOpportunity().findAll({
     where,
     order: [['updated_at', 'DESC']],
   });
@@ -85,8 +164,8 @@ export async function listOpportunities(filters?: {
 }
 
 export async function getOpportunityById(id: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   return opp ? serializeOpportunity(opp) : null;
 }
 
@@ -101,8 +180,8 @@ export async function createOpportunity(input: {
   clientId?: string | null;
   createdBy: number;
 }) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.create({
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().create({
     companyName: input.companyName.trim(),
     contactName: input.contactName.trim(),
     email: input.email?.trim() || null,
@@ -144,8 +223,8 @@ export async function updateOpportunity(
     clientId: string | null;
   }>
 ) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage === 'won' || opp.stage === 'lost') {
     throw new Error('Closed opportunities cannot be edited');
@@ -160,7 +239,7 @@ export async function updateOpportunity(
   await opp.reload();
 
   if (rest.email !== undefined && rest.email?.trim()) {
-    const match = await Client.findOne({ where: { email: rest.email.trim() } });
+    const match = await Client().findOne({ where: { email: rest.email.trim() } });
     if (match) {
       await applyOpportunityClientLink(opp, match);
       await opp.reload();
@@ -178,7 +257,7 @@ export async function updateOpportunity(
 }
 
 function appendCommunication(
-  opp: SalesOpportunity,
+  opp: OppModel,
   type: string,
   summary: string,
   extra?: Pick<CommunicationEntry, 'scheduledAt' | 'calendarEventId'>
@@ -197,7 +276,7 @@ function mergeProductFeatures(clientFeatures: unknown, product: SalesProduct) {
   return Array.from(set);
 }
 
-async function applyOpportunityClientLink(opp: SalesOpportunity, client: Client) {
+async function applyOpportunityClientLink(opp: OppModel, client: ShopClientModel) {
   const mergedFeatures = mergeProductFeatures(client.features, opp.product);
   const contractDetails = {
     ...((client.contractDetails as Record<string, unknown>) ?? {}),
@@ -224,14 +303,14 @@ async function applyOpportunityClientLink(opp: SalesOpportunity, client: Client)
 }
 
 export async function linkClientToOpportunity(opportunityId: string, clientId: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(opportunityId);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(opportunityId);
   if (!opp) throw new Error('Opportunity not found');
   if (opp.stage === 'won' || opp.stage === 'lost') {
     throw new Error('Closed opportunities cannot be relinked');
   }
 
-  const client = await Client.findByPk(clientId);
+  const client = await Client().findByPk(clientId);
   if (!client) throw new Error('Client not found');
 
   await applyOpportunityClientLink(opp, client);
@@ -239,9 +318,9 @@ export async function linkClientToOpportunity(opportunityId: string, clientId: s
   return serializeOpportunity(opp);
 }
 
-async function ensureStagingClient(opp: SalesOpportunity) {
+async function ensureStagingClient(opp: OppModel) {
   if (opp.clientId) {
-    const linked = await Client.findByPk(opp.clientId);
+    const linked = await Client().findByPk(opp.clientId);
     if (linked) {
       await applyOpportunityClientLink(opp, linked);
       return linked;
@@ -253,7 +332,7 @@ async function ensureStagingClient(opp: SalesOpportunity) {
     throw new Error('Add an email or link an existing client before sending a proposal');
   }
 
-  const existingByEmail = await Client.findOne({ where: { email: email! } });
+  const existingByEmail = await Client().findOne({ where: { email: email! } });
   if (existingByEmail) {
     await applyOpportunityClientLink(opp, existingByEmail);
     return existingByEmail;
@@ -264,7 +343,7 @@ async function ensureStagingClient(opp: SalesOpportunity) {
   }
 
   const feature = PRODUCT_TO_FEATURE[opp.product];
-  const client = await Client.create({
+  const client = await Client().create({
     name: opp.contactName,
     companyName: opp.companyName,
     email,
@@ -303,8 +382,8 @@ export async function advanceOpportunity(
     createdBy?: number;
   }
 ) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage === 'won' || opp.stage === 'lost') {
     throw new Error('This opportunity is already closed');
@@ -439,8 +518,8 @@ export async function logOpportunityInteraction(
   id: string,
   payload: { channel: string; notes?: string; scheduledAt?: string; createdBy?: number }
 ) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage !== 'contact_made') {
     throw new Error('Interactions can only be logged while in Contact Made');
@@ -484,14 +563,14 @@ export async function logOpportunityInteraction(
 }
 
 export async function deferColdProspect(id: string, reason?: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage !== 'cold_prospect') {
     throw new Error('Only cold prospects can be moved to the bottom of the queue');
   }
 
-  const oldest = await SalesOpportunity.findOne({
+  const oldest = await SalesOpportunity().findOne({
     where: {
       stage: 'cold_prospect',
       id: { [Op.ne]: id },
@@ -509,7 +588,7 @@ export async function deferColdProspect(id: string, reason?: string) {
     communications: appendCommunication(opp, 'defer', summary),
   });
 
-  await getSequelize().query('UPDATE sales_opportunities SET updated_at = :updatedAt WHERE id = :id', {
+  await getOperationalSequelize().query('UPDATE sales_opportunities SET updated_at = :updatedAt WHERE id = :id', {
     replacements: { updatedAt: deferredAt.toISOString(), id },
   });
 
@@ -518,19 +597,19 @@ export async function deferColdProspect(id: string, reason?: string) {
 }
 
 export async function revertOpportunityStage(id: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage === 'won' || opp.stage === 'lost') {
     throw new Error('Closed opportunities cannot be moved back in the pipeline');
   }
 
-  const prior = previousStage(opp.stage);
+  const prior = previousStage(opp.stage as SalesStage);
   if (!prior) throw new Error('Already at the first pipeline stage');
 
   await opp.update({
     stage: prior,
-    ...revertFieldsForStage(opp.stage),
+    ...revertFieldsForStage(opp.stage as SalesStage),
     communications: appendCommunication(
       opp,
       'revert',
@@ -542,8 +621,8 @@ export async function revertOpportunityStage(id: string) {
 }
 
 export async function reopenOpportunity(id: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage !== 'lost') {
     throw new Error('Only archived opportunities can be reopened');
@@ -559,15 +638,15 @@ export async function reopenOpportunity(id: string) {
   return serializeOpportunity(opp);
 }
 
-async function detachOpportunityFromClient(client: Client) {
+async function detachOpportunityFromClient(client: ShopClientModel) {
   const contractDetails = { ...((client.contractDetails as Record<string, unknown>) ?? {}) };
   delete contractDetails.salesOpportunityId;
   await client.update({ contractDetails });
 }
 
 export async function deleteOpportunity(id: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage === 'won') {
     throw new Error('Won deals cannot be deleted — manage the client record instead');
@@ -577,7 +656,7 @@ export async function deleteOpportunity(id: string) {
   await opp.destroy();
 
   if (clientId) {
-    const client = await Client.findByPk(clientId);
+    const client = await Client().findByPk(clientId);
     if (client) {
       if (isSalesStagingClient(client.contractDetails)) {
         await client.destroy();
@@ -591,8 +670,8 @@ export async function deleteOpportunity(id: string) {
 }
 
 export async function markOpportunityLost(id: string, lostReason: string) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage === 'won') throw new Error('Won deals cannot be marked lost');
 
@@ -604,7 +683,7 @@ export async function markOpportunityLost(id: string, lostReason: string) {
   });
 
   if (opp.clientId) {
-    const client = await Client.findByPk(opp.clientId);
+    const client = await Client().findByPk(opp.clientId);
     if (client && isSalesStagingClient(client.contractDetails)) {
       await client.update({ status: 'inactive', isActive: false });
     }
@@ -617,8 +696,8 @@ export async function convertOpportunityToClient(
   id: string,
   options: { syncLicenses?: boolean; createPortalAccount?: boolean } = {}
 ) {
-  await ensureSalesSchema();
-  const opp = await SalesOpportunity.findByPk(id);
+  await ensureSalesSchemaForContext();
+  const opp = await SalesOpportunity().findByPk(id);
   if (!opp) return null;
   if (opp.stage !== 'proposal_sent') {
     throw new Error('Only opportunities with a sent proposal can be converted');
@@ -672,8 +751,8 @@ export async function convertOpportunityToClient(
   });
 
   let licenseSync: { success: boolean; message?: string } | undefined;
-  if (options.syncLicenses !== false) {
-    licenseSync = await syncClientToLicenseSystem(client);
+  if (options.syncLicenses !== false && !isRrspDbActive()) {
+    licenseSync = await syncClientToLicenseSystem(client as never);
   }
 
   return {
@@ -684,8 +763,8 @@ export async function convertOpportunityToClient(
 }
 
 export async function getPipelineStats() {
-  await ensureSalesSchema();
-  const all = await SalesOpportunity.findAll({ attributes: ['stage', 'product'] });
+  await ensureSalesSchemaForContext();
+  const all = await SalesOpportunity().findAll({ attributes: ['stage', 'product'] });
   const byStage: Record<string, number> = {};
   const byProduct: Record<string, number> = {};
   for (const row of all) {
@@ -705,8 +784,8 @@ export async function getPipelineStats() {
 }
 
 export async function getSalesStagingClientIds(): Promise<string[]> {
-  await ensureSalesSchema();
-  const opps = await SalesOpportunity.findAll({
+  await ensureSalesSchemaForContext();
+  const opps = await SalesOpportunity().findAll({
     where: { stage: { [Op.notIn]: ['won'] } },
     attributes: ['clientId'],
   });

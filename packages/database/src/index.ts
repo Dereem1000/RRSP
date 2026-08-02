@@ -1,5 +1,5 @@
 import type { Sequelize } from 'sequelize';
-import { getSequelize, setSequelizeRecreateHook } from './connection';
+import { getSequelize, setSequelizeRecreateHook, setSequelizeClosedHook } from './connection';
 import { User } from './models/User';
 import { Client } from './models/Client';
 import { Ticket } from './models/Ticket';
@@ -41,6 +41,9 @@ export const models = {
   CalendarEvent,
 };
 
+const dbUnavailableMessage =
+  'Database temporarily unavailable during demo mode switch. Retry shortly.';
+
 function rebindModelsToSequelize(db: Sequelize) {
   for (const model of Object.values(models)) {
     Object.defineProperty(model, 'sequelize', { value: db, configurable: true });
@@ -48,10 +51,32 @@ function rebindModelsToSequelize(db: Sequelize) {
   }
 }
 
-setSequelizeRecreateHook(rebindModelsToSequelize);
-rebindModelsToSequelize(getSequelize());
+function detachModelsFromSequelize() {
+  for (const model of Object.values(models)) {
+    Object.defineProperty(model, 'sequelize', {
+      configurable: true,
+      get() {
+        // Auto-heal after a pause: reopen + rebind instead of staying broken forever.
+        try {
+          return getSequelize();
+        } catch {
+          throw new Error(dbUnavailableMessage);
+        }
+      },
+    });
+  }
+}
 
-export { getSequelize, getDatabasePath, getLiveDatabasePath, getMonorepoRoot, testConnection, closeConnection, reopenConnection, setSequelizeRecreateHook } from './connection';
+setSequelizeRecreateHook(rebindModelsToSequelize);
+setSequelizeClosedHook(detachModelsFromSequelize);
+try {
+  rebindModelsToSequelize(getSequelize());
+} catch {
+  // Import during an active pause (Turbopack reload) — heal on first model access.
+  detachModelsFromSequelize();
+}
+
+export { getSequelize, getSequelizeForModelInit, getDatabasePath, getLiveDatabasePath, getDemoWorkingPath, getMonorepoRoot, testConnection, closeConnection, closeConnectionForFileReplace, beginCrossProcessDbPause, clearDbPauseLock, clearStaleDbPauseLock, waitForDbAvailable, isDbPauseRequested, getDbPauseLockPath, getActiveDatabasePointerPath, setActiveDatabaseFileName, releaseConnectionIfPaused, reopenConnection, setSequelizeRecreateHook, setSequelizeClosedHook } from './connection';
 export { ensureSalesSchema } from './ensure-sales-schema';
 export { ensureCalendarSchema } from './ensure-calendar-schema';
 export { ensureEmailLogSchema } from './ensure-email-log-schema';

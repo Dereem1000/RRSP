@@ -5,6 +5,8 @@ import type { TokenPayload } from '@/lib/jwt';
 import { applyRequestGuard } from '@/lib/with-security';
 
 export async function requireBackupAdmin(req: NextRequest): Promise<TokenPayload> {
+  // When this helper is used on Express-proxied routes, request-guard already ran.
+  // Keep a lightweight guard for any Next-only backup entry points.
   const guardRes = await applyRequestGuard(req);
   if (guardRes) throw new AuthError('Request blocked', guardRes.status);
 

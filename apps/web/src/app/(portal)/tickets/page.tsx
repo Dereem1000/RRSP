@@ -9,6 +9,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { TicketsPageClient } from '@/components/tickets/TicketsPageClient';
 import { Ticket, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
+/** Legacy CD support tickets (MSP client ↔ Computer Dynamics). */
 export default async function TicketsPage() {
   const { user } = await requirePortalUser();
   const { where, denied } = await getTicketScopeWhere(user);
@@ -51,7 +52,7 @@ export default async function TicketsPage() {
   const heading = user.role === 'client' ? 'My tickets' : 'Tickets';
   const description =
     user.role === 'client'
-      ? 'Track your support requests'
+      ? 'Track your support requests with Computer Dynamics'
       : 'Create, assign, and manage service tickets';
 
   return (

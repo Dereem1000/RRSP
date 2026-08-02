@@ -149,6 +149,14 @@ export async function activateEmergencyOverride(input: {
     'security'
   );
 
+  // Local bot probes often block ::1 — clear loopback so bypass is usable immediately.
+  try {
+    const { purgeLoopbackBlockedIps } = await import('./http-guard');
+    await purgeLoopbackBlockedIps();
+  } catch {
+    /* optional */
+  }
+
   await logSecurityEvent({
     eventType: 'emergency_override',
     severity: 'medium',

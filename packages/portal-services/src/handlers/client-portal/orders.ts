@@ -13,6 +13,7 @@ import {
 
 import { getPortalClient } from '@web/lib/client-portal-billing';
 import { listOrders } from '@web/lib/orders';
+import { isRrspDbActive } from '@web/lib/rrsp-db';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -47,7 +48,8 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
     const result = await listOrders({
       page,
       limit,
-      clientId: client.id,
+      // RRSP DB is shop-scoped — list all shop orders; legacy CD scopes to MSP client id.
+      clientId: isRrspDbActive() ? undefined : client.id,
       status: status && status !== 'all' ? status : undefined,
       shippingStage: shippingStage && shippingStage !== 'all' ? shippingStage : undefined,
       includeCost: false,

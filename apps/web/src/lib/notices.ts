@@ -1,5 +1,6 @@
 import { NoticeBoard, SystemConfig } from '@cd-v2/database';
 import { Op } from 'sequelize';
+import { getRrspContext } from '@/lib/rrsp-db';
 
 const SYSTEM_AUTHOR_ID = 1;
 
@@ -43,7 +44,26 @@ const templates: Record<string, NoticeTemplate> = {
 };
 
 function fillTemplate(template: string, data: Record<string, string>) {
-  return template.replace(/\{(\w+)\}/g, (_, key) => data[key] ?? '');
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    const raw = data[key];
+    if (raw == null) return '';
+    // Guard against accidental Sequelize models / objects in notice data.
+    if (typeof raw !== 'string') {
+      const text = String(raw);
+      if (text.startsWith('[object ')) return '';
+      return text;
+    }
+    if (raw.startsWith('[object ')) return '';
+    return raw;
+  });
+}
+
+export function noticeScopeFromTags(tags: unknown, category?: string): 'shop' | 'support' {
+  const list = Array.isArray(tags) ? tags.map(String) : [];
+  if (list.includes('scope:shop') || list.includes('parts-catalog') || category === 'parts') {
+    return 'shop';
+  }
+  return 'support';
 }
 
 export async function isNoticeEnabled(type: 'create' | 'assign' | 'status') {
@@ -70,8 +90,12 @@ export async function createAutomatedNotice(
   const template = templates[noticeType];
   if (!template) return null;
 
+  const rrsp = getRrspContext();
   const tags: string[] = ['automated', noticeType];
-  if (options.clientId) tags.push(`client:${options.clientId}`);
+  // Shop DB activity → tag the MSP client so the licensed portal user sees it.
+  const noticeClientId = rrsp?.mspClientId ?? options.clientId ?? null;
+  if (noticeClientId) tags.push(`client:${noticeClientId}`);
+  tags.push(rrsp ? 'scope:shop' : 'scope:support');
 
   try {
     return await NoticeBoard.create({
@@ -106,6 +130,7 @@ export async function getRecentNotices(
     if (role === 'client') {
       if (!scope?.clientId) return [];
 
+      // One feed: support (CD) + shop (parts / RRSP-tagged) notices for this MSP client.
       return await NoticeBoard.findAll({
         where: {
           isActive: true,

@@ -3,6 +3,9 @@ import { dispatch as dispatch_accounting_summary } from './handlers/accounting/s
 import { dispatch as dispatch_auth_login } from './handlers/auth/login';
 import { dispatch as dispatch_auth_logout } from './handlers/auth/logout';
 import { dispatch as dispatch_auth_me } from './handlers/auth/me';
+import { dispatch as dispatch_auth_profile } from './handlers/auth/profile';
+import { dispatch as dispatch_auth_profile_rrsp } from './handlers/auth/profile-rrsp';
+import { dispatch as dispatch_auth_geocode } from './handlers/auth/geocode';
 import { dispatch as dispatch_backup_id } from './handlers/backup/id';
 import { dispatch as dispatch_backup_id__download } from './handlers/backup/id__download';
 import { dispatch as dispatch_backup_id__restore } from './handlers/backup/id__restore';
@@ -31,6 +34,7 @@ import { dispatch as dispatch_client_portal_quotes__id__print } from './handlers
 import { dispatch as dispatch_clients_clients } from './handlers/clients/clients';
 import { dispatch as dispatch_clients_id } from './handlers/clients/id';
 import { dispatch as dispatch_clients_id__billing } from './handlers/clients/id__billing';
+import { dispatch as dispatch_clients_id__parts_seller_payables } from './handlers/clients/id__parts-seller-payables';
 import { dispatch as dispatch_clients_id__contract } from './handlers/clients/id__contract';
 import { dispatch as dispatch_clients_id__related } from './handlers/clients/id__related';
 import { dispatch as dispatch_clients_id__resend_welcome } from './handlers/clients/id__resend-welcome';
@@ -70,6 +74,8 @@ import { dispatch as dispatch_mini_external_systems__system_logs__push_kit_updat
 import { dispatch as dispatch_mini_system_logs__path } from './handlers/mini/system_logs__path';
 import { dispatch as dispatch_mini_library } from './handlers/mini/library';
 import { dispatch as dispatch_mini_status } from './handlers/mini/status';
+import { dispatch as dispatch_mini_web_browser } from './handlers/mini/web_browser';
+import { dispatch as dispatch_mini_web_browser__path } from './handlers/mini/web_browser__path';
 import { dispatch as dispatch_msp_active_licenses } from './handlers/msp/active-licenses';
 import { dispatch as dispatch_msp_client_email_policy } from './handlers/msp/client-email-policy';
 import { dispatch as dispatch_msp_clients } from './handlers/msp/clients';
@@ -84,6 +90,7 @@ import { dispatch as dispatch_msp_invoices__id__send_email } from './handlers/ms
 import { dispatch as dispatch_msp_invoices__id__share_link } from './handlers/msp/invoices__id__share-link';
 import { dispatch as dispatch_msp_invoices__id__links } from './handlers/msp/invoices__id__links';
 import { dispatch as dispatch_msp_invoices__id__links__linkId } from './handlers/msp/invoices__id__links__linkId';
+import { dispatch as dispatch_msp_credit_notes } from './handlers/msp/credit-notes';
 import { dispatch as dispatch_msp_license_serials__lock } from './handlers/msp/license-serials__lock';
 import { dispatch as dispatch_msp_license_serials__unlock } from './handlers/msp/license-serials__unlock';
 import { dispatch as dispatch_msp_license_status } from './handlers/msp/license-status';
@@ -100,7 +107,28 @@ import { dispatch as dispatch_msp_orders__email_monitoring__config } from './han
 import { dispatch as dispatch_msp_orders__receive_lookup } from './handlers/msp/orders__receive-lookup';
 import { dispatch as dispatch_msp_orders__search_linked_entities } from './handlers/msp/orders__search-linked-entities';
 import { dispatch as dispatch_msp_overview } from './handlers/msp/overview';
+import { dispatch as dispatch_msp_parts_catalog } from './handlers/msp/parts-catalog';
+import { dispatch as dispatch_msp_parts_catalog__activity } from './handlers/msp/parts-catalog__activity';
+import { dispatch as dispatch_msp_parts_catalog__listings } from './handlers/msp/parts-catalog__listings';
+import { dispatch as dispatch_msp_parts_catalog__listings__id } from './handlers/msp/parts-catalog__listings__id';
+import { dispatch as dispatch_msp_parts_catalog__packages__id__accept_quote } from './handlers/msp/parts-catalog__packages__id__accept-quote';
+import { dispatch as dispatch_msp_parts_catalog__packages__id__mark_cash_paid } from './handlers/msp/parts-catalog__packages__id__mark-cash-paid';
+import { dispatch as dispatch_msp_parts_catalog__packages__id__pay } from './handlers/msp/parts-catalog__packages__id__pay';
+import { dispatch as dispatch_msp_parts_catalog__packages__id__request_cod } from './handlers/msp/parts-catalog__packages__id__request-cod';
+import { dispatch as dispatch_msp_parts_catalog__requests } from './handlers/msp/parts-catalog__requests';
+import { dispatch as dispatch_msp_parts_seller_payables } from './handlers/msp/parts-seller-payables';
+import { dispatch as dispatch_msp_parts_seller_payables__id__mark_paid_out } from './handlers/msp/parts-seller-payables__id__mark-paid-out';
+import { dispatch as dispatch_msp_parts_catalog__requests__cancel } from './handlers/msp/parts-catalog__requests__cancel';
+import { dispatch as dispatch_msp_parts_catalog__requests__delivery_fee } from './handlers/msp/parts-catalog__requests__delivery-fee';
+import { dispatch as dispatch_msp_parts_catalog__requests__fulfill } from './handlers/msp/parts-catalog__requests__fulfill';
+import { dispatch as dispatch_msp_parts_catalog__requests__fulfill_preview } from './handlers/msp/parts-catalog__requests__fulfill-preview';
+import { dispatch as dispatch_msp_parts_catalog__requests__pickup } from './handlers/msp/parts-catalog__requests__pickup';
+import { dispatch as dispatch_msp_parts_catalog__requests__receive } from './handlers/msp/parts-catalog__requests__receive';
+import { dispatch as dispatch_msp_parts_catalog__requests__route } from './handlers/msp/parts-catalog__requests__route';
 import { dispatch as dispatch_msp_payments__id } from './handlers/msp/payments__id';
+import { dispatch as dispatch_pos_products } from './handlers/pos/products';
+import { dispatch as dispatch_pos_products__id } from './handlers/pos/products__id';
+import { dispatch as dispatch_pos_sales } from './handlers/pos/sales';
 import { dispatch as dispatch_msp_project_guard__license_action } from './handlers/msp/project-guard__license-action';
 import { dispatch as dispatch_msp_quote_settings } from './handlers/msp/quote-settings';
 import { dispatch as dispatch_msp_quotes } from './handlers/msp/quotes';
@@ -169,6 +197,13 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/auth/login', handler: dispatch_auth_login },
   { method: 'POST', pattern: '/auth/logout', handler: dispatch_auth_logout },
   { method: 'GET', pattern: '/auth/me', handler: dispatch_auth_me },
+  { method: 'GET', pattern: '/auth/profile', handler: dispatch_auth_profile },
+  { method: 'PUT', pattern: '/auth/profile', handler: dispatch_auth_profile },
+  { method: 'POST', pattern: '/auth/profile', handler: dispatch_auth_profile },
+  { method: 'GET', pattern: '/auth/profile/rrsp', handler: dispatch_auth_profile_rrsp },
+  { method: 'PUT', pattern: '/auth/profile/rrsp', handler: dispatch_auth_profile_rrsp },
+  { method: 'POST', pattern: '/auth/profile/rrsp', handler: dispatch_auth_profile_rrsp },
+  { method: 'POST', pattern: '/auth/geocode', handler: dispatch_auth_geocode },
   { method: 'GET', pattern: '/backup/:id', handler: dispatch_backup_id },
   { method: 'DELETE', pattern: '/backup/:id', handler: dispatch_backup_id },
   { method: 'GET', pattern: '/backup/:id/download', handler: dispatch_backup_id__download },
@@ -205,6 +240,7 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'PUT', pattern: '/clients/:id', handler: dispatch_clients_id },
   { method: 'DELETE', pattern: '/clients/:id', handler: dispatch_clients_id },
   { method: 'GET', pattern: '/clients/:id/billing', handler: dispatch_clients_id__billing },
+  { method: 'GET', pattern: '/clients/:id/parts-seller-payables', handler: dispatch_clients_id__parts_seller_payables },
   { method: 'POST', pattern: '/clients/:id/contract', handler: dispatch_clients_id__contract },
   { method: 'GET', pattern: '/clients/:id/related', handler: dispatch_clients_id__related },
   { method: 'POST', pattern: '/clients/:id/resend-welcome', handler: dispatch_clients_id__resend_welcome },
@@ -245,6 +281,7 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/mini/external-systems/system-logs/forget', handler: dispatch_mini_external_systems__system_logs__forget },
   { method: 'POST', pattern: '/mini/external-systems/system-logs/connection-settings', handler: dispatch_mini_external_systems__system_logs__connection_settings },
   { method: 'POST', pattern: '/mini/external-systems/system-logs/push-kit-update', handler: dispatch_mini_external_systems__system_logs__push_kit_update },
+  { method: 'GET', pattern: '/mini/external-systems/web-browser', handler: dispatch_mini_web_browser },
   { method: 'GET', pattern: '/mini/library', handler: dispatch_mini_library },
   { method: 'GET', pattern: '/mini/status', handler: dispatch_mini_status },
   { method: 'GET', pattern: '/msp/active-licenses', handler: dispatch_msp_active_licenses },
@@ -266,6 +303,7 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'GET', pattern: '/msp/invoices/:id/links', handler: dispatch_msp_invoices__id__links },
   { method: 'POST', pattern: '/msp/invoices/:id/links', handler: dispatch_msp_invoices__id__links },
   { method: 'DELETE', pattern: '/msp/invoices/:id/links/:linkId', handler: dispatch_msp_invoices__id__links__linkId },
+  { method: 'GET', pattern: '/msp/credit-notes', handler: dispatch_msp_credit_notes },
   { method: 'POST', pattern: '/msp/license-serials/lock', handler: dispatch_msp_license_serials__lock },
   { method: 'POST', pattern: '/msp/license-serials/unlock', handler: dispatch_msp_license_serials__unlock },
   { method: 'GET', pattern: '/msp/license-status', handler: dispatch_msp_license_status },
@@ -287,7 +325,32 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'DELETE', pattern: '/msp/orders/:id/links/:linkId', handler: dispatch_msp_orders__id__links__linkId },
   { method: 'POST', pattern: '/msp/orders/:id/receive-at-office', handler: dispatch_msp_orders__id__receive_at_office },
   { method: 'GET', pattern: '/msp/overview', handler: dispatch_msp_overview },
+  { method: 'GET', pattern: '/msp/parts-catalog', handler: dispatch_msp_parts_catalog },
+  { method: 'GET', pattern: '/msp/parts-catalog/activity', handler: dispatch_msp_parts_catalog__activity },
+  { method: 'POST', pattern: '/msp/parts-catalog/listings', handler: dispatch_msp_parts_catalog__listings },
+  { method: 'PUT', pattern: '/msp/parts-catalog/listings/:id', handler: dispatch_msp_parts_catalog__listings__id },
+  { method: 'DELETE', pattern: '/msp/parts-catalog/listings/:id', handler: dispatch_msp_parts_catalog__listings__id },
+  { method: 'POST', pattern: '/msp/parts-catalog/packages/:id/accept-quote', handler: dispatch_msp_parts_catalog__packages__id__accept_quote },
+  { method: 'POST', pattern: '/msp/parts-catalog/packages/:id/mark-cash-paid', handler: dispatch_msp_parts_catalog__packages__id__mark_cash_paid },
+  { method: 'POST', pattern: '/msp/parts-catalog/packages/:id/pay', handler: dispatch_msp_parts_catalog__packages__id__pay },
+  { method: 'POST', pattern: '/msp/parts-catalog/packages/:id/request-cod', handler: dispatch_msp_parts_catalog__packages__id__request_cod },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests', handler: dispatch_msp_parts_catalog__requests },
+  { method: 'GET', pattern: '/msp/parts-seller-payables', handler: dispatch_msp_parts_seller_payables },
+  { method: 'POST', pattern: '/msp/parts-seller-payables/:id/mark-paid-out', handler: dispatch_msp_parts_seller_payables__id__mark_paid_out },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/cancel', handler: dispatch_msp_parts_catalog__requests__cancel },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/delivery-fee', handler: dispatch_msp_parts_catalog__requests__delivery_fee },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/fulfill', handler: dispatch_msp_parts_catalog__requests__fulfill },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/fulfill-preview', handler: dispatch_msp_parts_catalog__requests__fulfill_preview },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/pickup', handler: dispatch_msp_parts_catalog__requests__pickup },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/receive', handler: dispatch_msp_parts_catalog__requests__receive },
+  { method: 'POST', pattern: '/msp/parts-catalog/requests/route', handler: dispatch_msp_parts_catalog__requests__route },
   { method: 'DELETE', pattern: '/msp/payments/:id', handler: dispatch_msp_payments__id },
+  { method: 'GET', pattern: '/pos/products', handler: dispatch_pos_products },
+  { method: 'POST', pattern: '/pos/products', handler: dispatch_pos_products },
+  { method: 'PUT', pattern: '/pos/products/:id', handler: dispatch_pos_products__id },
+  { method: 'POST', pattern: '/pos/products/:id', handler: dispatch_pos_products__id },
+  { method: 'DELETE', pattern: '/pos/products/:id', handler: dispatch_pos_products__id },
+  { method: 'POST', pattern: '/pos/sales', handler: dispatch_pos_sales },
   { method: 'POST', pattern: '/msp/project-guard/license-action', handler: dispatch_msp_project_guard__license_action },
   { method: 'GET', pattern: '/msp/quote-settings', handler: dispatch_msp_quote_settings },
   { method: 'PUT', pattern: '/msp/quote-settings', handler: dispatch_msp_quote_settings },
@@ -375,8 +438,10 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/mini/external-systems/system-logs/:path*', handler: dispatch_mini_system_logs__path },
   { method: 'GET', pattern: '/mini/external-systems/project-guard/:path*', handler: dispatch_mini_project_guard__path },
   { method: 'POST', pattern: '/mini/external-systems/project-guard/:path*', handler: dispatch_mini_project_guard__path },
+  { method: 'GET', pattern: '/mini/external-systems/web-browser/:path*', handler: dispatch_mini_web_browser__path },
+  { method: 'POST', pattern: '/mini/external-systems/web-browser/:path*', handler: dispatch_mini_web_browser__path },
 ];
 
 export const dispatchAll = createDispatcher(portalRoutes);
 
-export const domainNames = ["accounting","auth","backup","calendar","client-portal","clients","dashboard","developer-toolbox","emergency","health","license","mini","msp","notices","payments","public","sales","settings","system","tickets","users"] as const;
+export const domainNames = ["accounting","auth","backup","calendar","client-portal","clients","dashboard","developer-toolbox","emergency","health","license","mini","msp","notices","payments","pos","public","sales","settings","system","tickets","users"] as const;

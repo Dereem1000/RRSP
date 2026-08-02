@@ -80,12 +80,12 @@ function resolvePublicLogoPath(logoPath: string): string {
 
 /** Embed the configured company logo inline so email clients don't need to fetch localhost URLs. */
 export async function prepareEmailLogo(logo: string | undefined | null): Promise<EmailLogoResult> {
-  const fallback = readPublicFile('logo.svg');
-
+  // Empty/missing logo → no image (templates show company name text). Do not inject the CD mark.
   if (!logo?.trim()) {
-    return fallback ?? { imgSrc: null };
+    return { imgSrc: null };
   }
 
+  const fallback = readPublicFile('logo.svg');
   const trimmed = logo.trim();
 
   const rasterMatch = trimmed.match(RASTER_DATA_URL);
@@ -103,7 +103,7 @@ export async function prepareEmailLogo(logo: string | undefined | null): Promise
     if (buffer?.length) {
       return cidAttachment(buffer, 'image/svg+xml', 'logo.svg');
     }
-    return fallback ?? { imgSrc: null };
+    return { imgSrc: null };
   }
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
@@ -124,9 +124,9 @@ export async function prepareEmailLogo(logo: string | undefined | null): Promise
         }
       }
     } catch {
-      // use public fallback below
+      // fall through
     }
-    return fallback ?? { imgSrc: null };
+    return { imgSrc: null };
   }
 
   if (trimmed.startsWith('/')) {

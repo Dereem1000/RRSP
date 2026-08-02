@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit } from '../connection';
 
 export interface EmergencyOverrideAttributes {
   id: string;
@@ -70,7 +70,7 @@ EmergencyOverride.init(
     updated_at: DataTypes.DATE,
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'emergency_overrides',
     timestamps: true,
     createdAt: 'created_at',

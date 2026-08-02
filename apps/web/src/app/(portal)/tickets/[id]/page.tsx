@@ -80,7 +80,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
   return (
     <TicketDetailClient
       ticket={serializeTicket(ticket) as Parameters<typeof TicketDetailClient>[0]['ticket']}
-      comments={comments.map((c: { id: string; comment: string; commentType: string; authorName: string; timestamp: string; isInternal: number; linkedOrderId?: string | null }) => ({
+      comments={comments.map((c) => ({
         id: c.id,
         comment: c.comment,
         commentType: c.commentType,

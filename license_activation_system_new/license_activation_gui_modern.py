@@ -767,6 +767,7 @@ class ModernLicenseGUI:
             'auto': 'Auto System',
             'distribution': 'Distribution System',
             'crm': 'Event Sponsor CRM',
+            'rrsp': 'Repair Report Service Platform (RRSP)',
         }
         portal_labels = set()
         for token in portal_features:

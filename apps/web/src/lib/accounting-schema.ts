@@ -1,9 +1,14 @@
 import { QueryTypes } from 'sequelize';
-import { getSequelize } from '@cd-v2/database';
+import { getOperationalSequelize as getSequelize, getRrspContext, ensureRrspDatabase } from '@/lib/rrsp-db';
 
 let invoiceLinksReady = false;
 
 export async function ensureInvoiceLinksTable() {
+  const rrsp = getRrspContext();
+  if (rrsp) {
+    await ensureRrspDatabase(rrsp.mspClientId);
+    return;
+  }
   if (invoiceLinksReady) return;
   const sequelize = getSequelize();
   const tables = await sequelize.query<{ name: string }>(

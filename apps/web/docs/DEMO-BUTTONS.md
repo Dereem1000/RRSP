@@ -21,6 +21,7 @@ Marketing pages show an **Open Live Demo** button (injected by `public/js/multis
 | Page | Slug |
 |------|------|
 | `document-management.html` | `lawfirm` |
+| `medical-records-system.html` | `medical-records` |
 | `restaurant-management-learn-more.html` | `repair-restaurant` |
 | `pos-system-learn-more.html` | `pos-2026-05-27-demo` |
 | `auto-system.html` | `autom-jsd-management` |

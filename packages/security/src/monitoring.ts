@@ -488,6 +488,14 @@ export async function runMonitorCycle(): Promise<void> {
     await refreshEmergencyState();
     const bypassActive = await isEmergencyBypassActive();
 
+    // Never keep localhost in the permanent block list (local bot probes).
+    try {
+      const { purgeLoopbackBlockedIps } = await import('./http-guard');
+      await purgeLoopbackBlockedIps();
+    } catch {
+      /* optional */
+    }
+
     if (!bypassActive) {
       const baselines = await ensureFileBaselines();
       await runFileIntegrityPass(baselines);

@@ -31,6 +31,7 @@ export function getProtectedFilePaths(): string[] {
     'packages/database/src/models/SystemConfig.ts',
     'packages/database/src/models/EmergencyOverride.ts',
     'packages/database/src/models/SecurityEvent.ts',
+    'packages/database/src/protected-paths.ts',
 
     // Security package (worker + domain logic)
     'packages/security/package.json',
@@ -40,29 +41,40 @@ export function getProtectedFilePaths(): string[] {
     'packages/security/src/emergency.ts',
     'packages/security/src/auth.ts',
     'packages/security/src/events.ts',
+    'packages/security/src/alerts.ts',
     'packages/security/src/protected-files.ts',
     'packages/security/src/activity-monitor.ts',
+    'packages/security/src/activity-thresholds.ts',
     'packages/security/src/intrusion-scan.ts',
     'packages/security/src/features.ts',
     'packages/security/src/sequelize-time.ts',
     'packages/security/src/file-repair.ts',
     'packages/security/src/http-guard.ts',
 
+    // API edge (global request guard)
+    'apps/api/src/index.ts',
+    'apps/api/src/middleware/request-guard.ts',
+    'apps/api/src/adapters/handlers.ts',
+
     // Portal auth + middleware
     'apps/web/src/lib/auth.ts',
     'apps/web/src/lib/jwt.ts',
+    'apps/web/src/lib/blocked-ips-mirror.ts',
     'apps/web/src/middleware.ts',
+    'apps/web/src/lib/with-security.ts',
+    'apps/web/src/lib/license-validate-guard.ts',
 
-    // Security API surface
-    'apps/web/src/app/api/security/platform-status/route.ts',
-    'apps/web/src/app/api/security/toggle/route.ts',
-    'apps/web/src/app/api/security/emergency-override/route.ts',
-    'apps/web/src/app/api/security/emergency-override/disable/route.ts',
-    'apps/web/src/app/api/security/emergency-status/route.ts',
-    'apps/web/src/app/api/security/auth-code/route.ts',
-    'apps/web/src/app/api/security/file-integrity/route.ts',
-    'apps/web/src/app/api/security/events/route.ts',
-    'apps/web/src/app/api/emergency/overrides/route.ts',
+    // Security / emergency API surface (catch-all Next proxies + real handlers)
+    'apps/web/src/app/api/security/[[...path]]/route.ts',
+    'apps/web/src/app/api/emergency/[[...path]]/route.ts',
+    'apps/web/src/lib/create-api-proxy-route.ts',
+    'packages/api-handlers/src/index.ts',
+    'packages/api-handlers/src/handlers/security.ts',
+    'packages/portal-services/src/handlers/emergency/overrides.ts',
+    'packages/portal-services/src/handlers/emergency/overrides__id.ts',
+    'packages/portal-services/src/handlers/emergency/overrides__id__deactivate.ts',
+    'packages/portal-services/src/handlers/auth/login.ts',
+    'packages/portal-services/src/handlers/users/id.ts',
 
     // Licensing
     ...getLicenseProtectedFilePaths(),
@@ -73,7 +85,6 @@ export function getProtectedFilePaths(): string[] {
 export function getBackupOnlyPaths(): string[] {
   return [
     'packages/database/src/models/Backup.ts',
-    'packages/database/src/protected-paths.ts',
     'packages/backup/package.json',
     'packages/backup/src/create.ts',
     'packages/backup/src/restore.ts',

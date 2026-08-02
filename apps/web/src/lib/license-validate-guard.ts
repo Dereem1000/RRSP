@@ -26,7 +26,8 @@ export async function guardLicenseValidateRequest(
     method: 'POST',
     userAgent: req.headers.get('user-agent'),
     acceptLanguage: req.headers.get('accept-language'),
-    query: url.search,
+    query: url.search.startsWith('?') ? url.search.slice(1) : url.search,
+    body: bodyText,
     honeypot,
   });
   if (!guard.allow) {
@@ -135,6 +136,7 @@ export async function guardLicenseValidateRequestFromCtx(
         return [[key, String(value)]];
       })
     ).toString(),
+    body: bodyText,
     honeypot,
   });
   if (!guard.allow) {

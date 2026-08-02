@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import { getSequelize } from '../connection';
+import { getSequelizeForModelInit, isDbPauseRequested } from '../connection';
 import { setDemoModeCache } from '../demo-mode';
 
 export interface SystemConfigAttributes {
@@ -60,6 +60,10 @@ export class SystemConfig
       if (message.includes('no such table')) {
         return defaultValue;
       }
+      // Background readers (health/email monitors) should not explode mid demo toggle.
+      if (message.includes('temporarily unavailable during demo mode switch')) {
+        return defaultValue;
+      }
       throw error;
     }
   }
@@ -70,6 +74,11 @@ export class SystemConfig
     type: SystemConfigAttributes['type'] = 'string',
     category = 'general'
   ) {
+    // Skip non-critical writes while demo sandbox is swapping DB files.
+    if (isDbPauseRequested()) {
+      return null;
+    }
+
     const stringValue = type === 'json' || type === 'array' ? JSON.stringify(value) : String(value);
     const [config, created] = await SystemConfig.findOrCreate({
       where: { key },
@@ -125,7 +134,7 @@ SystemConfig.init(
     isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: 'is_active' },
   },
   {
-    sequelize: getSequelize(),
+    sequelize: getSequelizeForModelInit(),
     tableName: 'system_configs',
     underscored: true,
   }

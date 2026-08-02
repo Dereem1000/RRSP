@@ -50,6 +50,14 @@ export type GeneralSettings = {
   demoMode: boolean;
 };
 
+/** Platform fee added on top of each business's listed parts price (marketplace buyers see the marked-up price). */
+export type PartsCatalogSettings = {
+  /** Percent markup applied to supplier unit prices for marketplace display and buyer requests. Default 15. */
+  markupPercent: number;
+};
+
+export const DEFAULT_PARTS_CATALOG_MARKUP_PERCENT = 15;
+
 export async function getEmailSettings(): Promise<EmailSettings> {
   const [
     enabled,
@@ -207,6 +215,16 @@ export const getGeneralSettings = cache(async (): Promise<GeneralSettings> => {
 export async function saveGeneralSettings(config: Partial<GeneralSettings>) {
   if (config.demoMode === true && !isDemoSandboxActive()) {
     await enableDemoSandbox();
+    // POS catalog + walk-in customer for staff counter demos.
+    try {
+      const { seedCdPosDemoData } = await import('@/lib/pos-demo');
+      await seedCdPosDemoData();
+    } catch (err) {
+      console.warn(
+        '[CD DEMO] POS seed skipped:',
+        err instanceof Error ? err.message : err
+      );
+    }
   } else if (config.demoMode === false && isDemoSandboxActive()) {
     await disableDemoSandbox();
   }
@@ -221,4 +239,32 @@ export async function saveGeneralSettings(config: Partial<GeneralSettings>) {
   if (config.maintenanceMessage !== undefined) {
     await SystemConfig.setConfig('maintenance_message', config.maintenanceMessage, 'string', 'general');
   }
+}
+
+export async function getPartsCatalogSettings(): Promise<PartsCatalogSettings> {
+  const raw = await SystemConfig.getConfig<number>(
+    'parts_catalog_markup_percent',
+    DEFAULT_PARTS_CATALOG_MARKUP_PERCENT
+  );
+  const markupPercent = Number(raw);
+  if (!Number.isFinite(markupPercent) || markupPercent < 0) {
+    return { markupPercent: DEFAULT_PARTS_CATALOG_MARKUP_PERCENT };
+  }
+  return {
+    markupPercent: Math.min(1000, markupPercent),
+  };
+}
+
+export async function savePartsCatalogSettings(config: Partial<PartsCatalogSettings>) {
+  if (config.markupPercent === undefined) return;
+  const markupPercent = Number(config.markupPercent);
+  if (!Number.isFinite(markupPercent) || markupPercent < 0 || markupPercent > 1000) {
+    throw new Error('Parts catalog markup must be a number between 0 and 1000');
+  }
+  await SystemConfig.setConfig(
+    'parts_catalog_markup_percent',
+    Math.round(markupPercent * 100) / 100,
+    'number',
+    'parts_catalog'
+  );
 }

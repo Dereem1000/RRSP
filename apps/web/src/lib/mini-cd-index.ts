@@ -1,6 +1,6 @@
 import { Client, Ticket } from '@cd-v2/database';
 import type { TokenPayload } from '@/lib/jwt';
-import { listMspInvoices, listQuotes, listInvoicesForClient } from '@/lib/accounting';
+import { listMspInvoices, listQuotes } from '@/lib/accounting';
 import { listCalendarEvents } from '@/lib/calendar';
 import { CD_PORTAL_PAGES, CD_SETTINGS_SECTIONS } from '@/lib/mini-cd-catalog';
 import { listOpportunities } from '@/lib/sales';
@@ -120,9 +120,7 @@ async function fetchAllInvoices(clientId?: string) {
   const all: Awaited<ReturnType<typeof listMspInvoices>>['invoices'] = [];
   let page = 1;
   while (all.length < MAX_ENTITY_ROWS) {
-    const batch = clientId
-      ? await listInvoicesForClient(clientId, { page, limit: PAGE_SIZE })
-      : await listMspInvoices({ page, limit: PAGE_SIZE });
+    const batch = await listMspInvoices({ page, limit: PAGE_SIZE, clientId });
     all.push(...batch.invoices);
     if (page >= batch.pagination.pages || batch.invoices.length === 0) break;
     page += 1;

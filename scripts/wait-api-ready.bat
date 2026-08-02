@@ -20,9 +20,9 @@ if !WAIT_SEC! geq %MAX_WAIT% goto fail
 goto wait_listen
 
 :wait_health
-echo  Port %PORT% listening — waiting for http://127.0.0.1:%PORT%/api/health/live ...
+echo  Port %PORT% listening — waiting for http://127.0.0.1:%PORT%/api/health/live ^(status=live^) ...
 :wait_health_loop
-curl.exe -s -o nul -m !CURL_TIMEOUT! http://127.0.0.1:%PORT%/api/health/live >nul 2>&1
+curl.exe -s -m !CURL_TIMEOUT! http://127.0.0.1:%PORT%/api/health/live | findstr /C:"\"status\":\"live\"" >nul 2>&1
 if not errorlevel 1 exit /b 0
 timeout /t 4 /nobreak >nul
 set /a WAIT_SEC+=4
@@ -32,8 +32,8 @@ goto wait_health_loop
 :fail_slow
 netstat -ano 2>nul | findstr /R /C:":%PORT% .*LISTENING" >nul 2>&1
 if not errorlevel 1 (
-  echo  WARNING: Express API is listening on port %PORT% but /api/health/live was slow.
-  echo           First startup can take several minutes while handlers load.
+  echo  WARNING: Express API is listening on port %PORT% but routes were not ready ^(status=live^) in time.
+  echo           First startup can take several minutes while handlers load — portal proxy will retry.
   exit /b 0
 )
 :fail
