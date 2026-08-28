@@ -13,6 +13,7 @@ import {
 
 import { acknowledgeAlerts, applyToolbox, clearSlot, DeveloperToolboxError, getToolboxState } from '@web/lib/developer-toolbox/store';
 import { runHealthChecks } from '@web/lib/developer-toolbox/health';
+import { DEV_SLOT_IDS } from '@web/lib/developer-toolbox/constants';
 import type { DevSlotId } from '@web/lib/developer-toolbox/types';
 import { requireToolboxAdmin } from './auth';
 
@@ -33,7 +34,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     requireToolboxAdmin(ctx);
     const { id } = ctx.params;
     const slotId = id as DevSlotId;
-    if (!['dev1', 'dev2', 'dev3'].includes(slotId)) {
+    if (!DEV_SLOT_IDS.includes(slotId)) {
       return { status: 400, body: { success: false, message: 'Invalid slot' } };
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
@@ -12,14 +12,28 @@ type LoginFormProps = {
   demoPortalUrl?: string | null;
 };
 
+type DemoStaffHint = {
+  username: string;
+  roleLabel: string;
+  modules: string;
+};
+
 export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnPath = resolveReturnPath(searchParams?.get('returnUrl'));
+  const demoParam = searchParams?.get('demo')?.trim().toLowerCase() ?? '';
+  const autostart = searchParams?.get('autostart') === '1';
+  const returnPath = resolveReturnPath(
+    searchParams?.get('returnUrl') ?? (demoParam === 'rrms' ? '/rrsp' : null)
+  );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLabel, setDemoLabel] = useState<string | null>(null);
+  const [demoStaffHint, setDemoStaffHint] = useState<DemoStaffHint[]>([]);
+  const [demoReady, setDemoReady] = useState(!demoParam);
+  const autostartAttempted = useRef(false);
   const captchaRef = useRef<{ getToken: () => string; reset: () => void; required: boolean }>({
     getToken: () => '',
     reset: () => {},
@@ -33,8 +47,7 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
     []
   );
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function performLogin() {
     setError('');
     setLoading(true);
     try {
@@ -46,7 +59,12 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, captchaToken }),
+        body: JSON.stringify({
+          username,
+          password,
+          captchaToken,
+          demoProduct: demoParam || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
@@ -59,6 +77,48 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
       setLoading(false);
     }
   }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    await performLogin();
+  }
+
+  useEffect(() => {
+    if (!demoParam) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/public/demo-login?product=${encodeURIComponent(demoParam)}`, {
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        if (cancelled || !res.ok || !data.success) return;
+        setUsername(String(data.username || ''));
+        setPassword(String(data.password || ''));
+        setDemoLabel(String(data.label || 'Live demo'));
+        setDemoStaffHint(Array.isArray(data.staffLogins) ? data.staffLogins : []);
+      } catch {
+        /* manual login still works */
+      } finally {
+        if (!cancelled) setDemoReady(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [demoParam]);
+
+  useEffect(() => {
+    if (!autostart || !demoReady || !demoParam || !username || !password) return;
+    if (autostartAttempted.current) return;
+    if (loading) return;
+    if (captchaRef.current.required) return;
+
+    autostartAttempted.current = true;
+    performLogin();
+  }, [autostart, demoReady, demoParam, username, password, loading]);
 
   return (
     <div className="flex min-h-screen">
@@ -101,6 +161,26 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
             Employee or customer — sign in with your portal credentials.
           </p>
 
+          {demoLabel ? (
+            <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              <p className="font-semibold">{demoLabel} — live demo</p>
+              <p className="mt-1 text-sky-800/90">
+                Credentials are filled in below. Shop demo mode turns on automatically when you sign
+                in.
+              </p>
+              {demoStaffHint.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-xs text-sky-800/85">
+                  {demoStaffHint.map((staff) => (
+                    <li key={staff.username}>
+                      <span className="font-medium">{staff.roleLabel}:</span> {staff.username}
+                      <span className="text-sky-700/80"> ({staff.modules})</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-slate-700">
@@ -141,7 +221,7 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (demoParam && !demoReady)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-cd-900 py-3 text-sm font-semibold text-white shadow-lg shadow-cd-900/20 transition hover:bg-cd-800 disabled:opacity-60"
             >
               {loading ? (

@@ -81,6 +81,10 @@ type ProjectGuardDeployment = {
   policy_review_state?: string;
   policy_review_error?: string | null;
   policy_sync_note?: string;
+  policy_preset?: string | null;
+  policy_preset_label?: string | null;
+  policy_preset_source?: string | null;
+  suggested_policy_preset?: string | null;
   agent_runtime_state?: string;
   agent_runtime_label?: string;
   attestation_state?: string;
@@ -283,15 +287,49 @@ function statusTone(status: string): string {
 }
 
 function suggestedPresetName(deployment: ProjectGuardDeployment): string {
+  const stored = String(deployment.policy_preset || '').trim();
+  if (stored) return stored;
+  const suggested = String(deployment.suggested_policy_preset || '').trim();
+  if (suggested) return suggested;
+
   const systemKey = String(
     deployment.mini_integration_identity?.system_key || deployment.license_kit?.system_key || '',
   ).toLowerCase();
   const productCode = String(deployment.license_kit?.product_code || '').toLowerCase();
   const label = `${deployment.project_name || ''} ${deployment.mini_integration_identity?.system_name || ''}`.toLowerCase();
+  if (
+    systemKey === 'lawfirm' ||
+    systemKey === 'lawfirm-system' ||
+    systemKey === 'zenlaw' ||
+    productCode === 'lawfirm' ||
+    label.includes('law firm') ||
+    label.includes('lawfirm') ||
+    label.includes('zenlaw')
+  ) {
+    return 'lawfirm-system';
+  }
+  if (systemKey === 'autom' || systemKey === 'autom-system' || label.includes('autom')) {
+    return 'autom-system';
+  }
   if (systemKey === 'pos' || systemKey === 'pos-system' || productCode === 'pos' || label.includes('pos')) {
     return 'pos-system';
   }
   return 'mini-integrated-app';
+}
+
+function policyPresetSourceLabel(source: string | null | undefined): string {
+  switch (String(source || '').trim().toLowerCase()) {
+    case 'stored':
+      return 'saved on deployment';
+    case 'inferred':
+      return 'inferred from writable paths';
+    case 'identity':
+      return 'from system identity';
+    case 'custom':
+      return 'custom policy';
+    default:
+      return '';
+  }
 }
 
 async function guardAction<T>(action: string, body: Record<string, unknown> = {}): Promise<T> {
@@ -1450,10 +1488,23 @@ export function MiniProjectGuardTab() {
                     {policyPresets.length > 0 ? (
                       <div>
                         <label className="text-xs font-medium text-slate-500">Policy preset</label>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          Choose a Mini rule set, then apply it. For CRM and other Mini-integrated apps use{' '}
-                          <span className="font-medium">Mini Integrated App</span>. Remote deployments propose and
-                          approve on the connected system automatically.
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                          <span className="font-medium text-slate-500">Current preset: </span>
+                          <span className="font-semibold text-slate-900">
+                            {deployment.policy_preset_label || 'Custom / not set'}
+                          </span>
+                          {deployment.policy_preset_source ? (
+                            <span className="text-slate-500">
+                              {' '}
+                              ({policyPresetSourceLabel(deployment.policy_preset_source)})
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Choose a Mini rule set to stage a new proposal. For CRM and other generic Mini-integrated apps
+                          use <span className="font-medium">Mini Integrated App</span>; Law Firm installs should use{' '}
+                          <span className="font-medium">Law Firm System</span>. Remote deployments propose and approve on
+                          the connected system automatically.
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <select

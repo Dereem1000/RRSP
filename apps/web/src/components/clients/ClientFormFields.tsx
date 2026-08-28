@@ -59,6 +59,7 @@ export function ClientFormFields({
   showContract = false,
   showPortalOption = false,
   showActivationFeatures = true,
+  shopMode = false,
   technicians = [],
 }: {
   defaults?: Record<string, string | number | boolean | string[] | null | undefined | Record<string, unknown>>;
@@ -67,6 +68,8 @@ export function ClientFormFields({
   showContract?: boolean;
   showPortalOption?: boolean;
   showActivationFeatures?: boolean;
+  /** RRSP shop end-customer — no CD MSP plans or activation features. */
+  shopMode?: boolean;
   technicians?: Array<{ id: number; firstName: string; lastName: string }>;
 }) {
   const wide = layout === 'wide';
@@ -158,30 +161,34 @@ export function ClientFormFields({
       </Field>
 
       <div className={row}>
-        <Field label="Service level">
-          <select
-            name="serviceLevel"
-            value={serviceLevel}
-            onChange={(e) => setServiceLevel(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">No plan</option>
-            {SERVICE_LEVELS.map((s) => (
-              <option key={s} value={s}>
-                {SERVICE_PLANS[s].name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Support tier">
-          <select name="supportTier" defaultValue={String(defaults.supportTier ?? 'silver')} className={inputClass}>
-            {SUPPORT_TIERS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {!shopMode && (
+          <>
+            <Field label="Service level">
+              <select
+                name="serviceLevel"
+                value={serviceLevel}
+                onChange={(e) => setServiceLevel(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">No plan</option>
+                {SERVICE_LEVELS.map((s) => (
+                  <option key={s} value={s}>
+                    {SERVICE_PLANS[s].name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Support tier">
+              <select name="supportTier" defaultValue={String(defaults.supportTier ?? 'silver')} className={inputClass}>
+                {SUPPORT_TIERS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        )}
         <Field label="Status">
           <select name="status" defaultValue={String(defaults.status ?? 'active')} className={inputClass}>
             {CLIENT_STATUSES.map((s) => (
@@ -191,7 +198,7 @@ export function ClientFormFields({
             ))}
           </select>
         </Field>
-        {hasPlan && (
+        {!shopMode && hasPlan && (
           <Field label={isPerJob ? 'Rate per job (TTD)' : 'Monthly rate (TTD)'}>
             <input
               type="number"
@@ -208,7 +215,7 @@ export function ClientFormFields({
         )}
       </div>
 
-      {selectedPlan && (
+      {!shopMode && selectedPlan && (
         <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
           <p className="text-sm font-semibold text-indigo-900">{selectedPlan.name}</p>
           {isRecurring && selectedPlan.price != null && (
@@ -337,7 +344,7 @@ export function ClientFormFields({
         </div>
       )}
 
-      {showActivationFeatures && (
+      {showActivationFeatures && !shopMode && (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Activation features (license systems)
@@ -451,7 +458,26 @@ function Field({
   );
 }
 
-export function formDataToClientPayload(form: FormData, extra: Record<string, unknown> = {}) {
+export function formDataToClientPayload(
+  form: FormData,
+  extra: Record<string, unknown> = {},
+  options?: { shopMode?: boolean },
+) {
+  if (options?.shopMode) {
+    return {
+      name: form.get('name') as string,
+      companyName: (form.get('companyName') as string) || undefined,
+      email: form.get('email') as string,
+      phone: normalizeStoredPhone((form.get('phone') as string) || undefined),
+      address: (form.get('address') as string) || undefined,
+      contactPerson: (form.get('contactPerson') as string) || undefined,
+      status: form.get('status') as string,
+      priorityLevel: form.get('priorityLevel') as string,
+      notes: (form.get('notes') as string) || undefined,
+      ...extra,
+    };
+  }
+
   const serviceLevel = (form.get('serviceLevel') as string) || null;
   const usageFields = [
     'onsiteVisitsUsed',

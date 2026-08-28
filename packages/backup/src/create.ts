@@ -4,6 +4,13 @@ import path from 'path';
 import type { BackupType } from '@cd-v2/database';
 import { getMonorepoRoot } from '@cd-v2/database';
 import {
+  includesCriticalAppPaths,
+  includesDatabase,
+  includesLicenseDb,
+  includesUploads,
+  resolveBackupKind,
+} from './backup-types';
+import {
   generateBackupName,
   getBackupDir,
   getUploadsDir,
@@ -11,6 +18,7 @@ import {
   getLicenseDbPath,
   resolveDbPath,
 } from './paths';
+import { appendSystemDataArchive, appendSystemRepoArchive } from './system-archive';
 import { calculateChecksum, verifyBackupZip } from './verify';
 
 export type CreateBackupResult = {
@@ -25,6 +33,7 @@ export async function createBackupZip(
   backupType: BackupType,
   destPath?: string
 ): Promise<CreateBackupResult> {
+  const kind = resolveBackupKind(backupType);
   const backupName = destPath ? path.basename(destPath) : generateBackupName(backupType);
   const filePath = destPath ?? path.join(getBackupDir(), backupName);
   const repoRoot = getMonorepoRoot();
@@ -59,53 +68,50 @@ export async function createBackupZip(
     try {
       const metadata = {
         timestamp: new Date().toISOString(),
-        version: '2.0',
+        version: '2.1',
         type: 'v2_backup',
         backupType,
+        backupKind: kind,
         platform: 'computer-dynamics-v2',
       };
       archive.append(JSON.stringify(metadata, null, 2), { name: 'backup-metadata.json' });
 
       const dbPath = resolveDbPath();
       const licenseDb = getLicenseDbPath();
-      if (
-        backupType === 'license' ||
-        backupType === 'full' ||
-        backupType === 'manual' ||
-        backupType === 'auto'
-      ) {
+
+      if (includesLicenseDb(kind)) {
         if (fs.existsSync(licenseDb)) {
           const st = fs.statSync(licenseDb);
           originalSize += st.size;
           archive.file(licenseDb, { name: 'license_system.db' });
-        } else if (backupType === 'license') {
+        } else if (kind === 'license') {
           reject(new Error('License database file not found'));
           return;
         }
       }
 
-      if (backupType === 'database' || backupType === 'full' || backupType === 'manual' || backupType === 'auto') {
+      if (includesDatabase(kind)) {
         if (fs.existsSync(dbPath)) {
           const st = fs.statSync(dbPath);
           originalSize += st.size;
           archive.file(dbPath, { name: 'database.db' });
-        } else if (backupType === 'database') {
+        } else if (kind === 'database') {
           reject(new Error('Database file not found'));
           return;
         }
       }
 
       const uploads = getUploadsDir();
-      if (backupType === 'files' || backupType === 'full' || backupType === 'manual' || backupType === 'auto') {
+      if (includesUploads(kind)) {
         if (fs.existsSync(uploads)) {
           archive.directory(uploads, 'uploads');
-        } else if (backupType === 'files') {
+        } else if (kind === 'files') {
           reject(new Error('Uploads directory not found'));
           return;
         }
       }
 
-      if (backupType === 'full' || backupType === 'manual' || backupType === 'auto') {
+      if (includesCriticalAppPaths(kind)) {
         for (const rel of getV2CriticalPaths()) {
           const abs = path.join(repoRoot, rel);
           if (fs.existsSync(abs)) {
@@ -116,6 +122,11 @@ export async function createBackupZip(
             }
           }
         }
+      }
+
+      if (kind === 'system') {
+        appendSystemDataArchive(archive, repoRoot);
+        appendSystemRepoArchive(archive, repoRoot);
       }
 
       archive.finalize();

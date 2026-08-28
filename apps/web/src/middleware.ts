@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isIpBlockedSync } from '@/lib/blocked-ips-mirror';
+import { abortIfClientDisconnected } from '@/lib/middleware-request-guards';
 import { isSafeReturnPath, resolveReturnPath } from '@/lib/safe-return-url';
 
 const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/health', '/api/public'];
@@ -25,6 +26,9 @@ function clientIp(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
+  const aborted = abortIfClientDisconnected(request);
+  if (aborted) return aborted;
+
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith('/api/')) {

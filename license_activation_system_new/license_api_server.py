@@ -87,6 +87,12 @@ SYSTEM_TYPE_TO_FEATURE_KEY = {
     'distribution_system': 'distribution_system',
     'rrsp': 'rrsp_online',
     'rrsp_online': 'rrsp_online',
+    'lawfirm': 'document_management',
+    'lawfirm_management': 'document_management',
+    'medical': 'medical_records_management',
+    'medicalrecords': 'medical_records_management',
+    'medical_records': 'medical_records_management',
+    'medical_records_management': 'medical_records_management',
 }
 
 

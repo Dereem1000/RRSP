@@ -10,6 +10,7 @@ import {
   Wrench,
   TrendingUp,
   Globe,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const services = [
@@ -27,6 +28,14 @@ const services = [
       'Broken Screens no Problem, broken Charge port hope isnt lost, All Major brands, We can fix it!',
     href: '/mobile-repair.html',
     cta: 'Request Technician',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Repair Report Management System',
+    description:
+      'RRMS — branded repair shop portal with modular tickets, parts marketplace, accounting, and counter POS.',
+    href: '/rrms-learn-more.html',
+    cta: 'Learn More',
   },
   {
     icon: Server,

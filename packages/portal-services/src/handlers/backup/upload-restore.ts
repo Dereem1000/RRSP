@@ -13,7 +13,7 @@ import {
 
 import fs from 'fs';
 import path from 'path';
-import { getBackupDir, restoreFromUpload } from '@cd-v2/backup';
+import { getBackupDir, restoreFromUpload, type RestoreType } from '@cd-v2/backup';
 import { validateEmergencyAuthorization } from '@cd-v2/security';
 import {
   authErrorResponse,
@@ -50,7 +50,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
 
     requireCls1ForFullRestore(session, restoreType, overwrite);
 
-    if (restoreType === 'full' || restoreType === 'license') {
+    if (restoreType === 'full' || restoreType === 'standard' || restoreType === 'system' || restoreType === 'license') {
       if (!authorization) {
         return { status: 400, body: { success: false, message: 'Authorization required for full restore' } };
       }
@@ -70,11 +70,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     fs.writeFileSync(tempPath, buf);
 
     try {
-      await restoreFromUpload(
-        tempPath,
-        restoreType as 'full' | 'database' | 'files',
-        overwrite
-      );
+      await restoreFromUpload(tempPath, restoreType as RestoreType, overwrite);
     } finally {
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     }

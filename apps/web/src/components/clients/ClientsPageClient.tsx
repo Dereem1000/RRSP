@@ -61,16 +61,23 @@ export function ClientsPageClient({
   clients,
   licenseMap = {},
   userRole,
+  pathPrefix = '',
+  shopOperator = false,
+  showLicenseColumn = true,
 }: {
   clients: ClientRow[];
   licenseMap?: Record<string, ClientLicenseBadge>;
   userRole: string;
+  pathPrefix?: string;
+  shopOperator?: boolean;
+  /** CD MSP clients only — hidden for RRSP shop customers */
+  showLicenseColumn?: boolean;
 }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [serviceFilter, setServiceFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'admin' || shopOperator;
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -154,14 +161,16 @@ export function ClientsPageClient({
               <th className="px-4 py-3.5 font-semibold text-slate-600">Plan</th>
               <th className="hidden px-4 py-3.5 font-semibold text-slate-600 lg:table-cell">Support</th>
               <th className="px-4 py-3.5 font-semibold text-slate-600">Status</th>
-              <th className="hidden px-4 py-3.5 font-semibold text-slate-600 lg:table-cell">License</th>
+              {showLicenseColumn && (
+                <th className="hidden px-4 py-3.5 font-semibold text-slate-600 lg:table-cell">License</th>
+              )}
               <th className="hidden px-4 py-3.5 font-semibold text-slate-600 sm:table-cell">Rate</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-slate-400">
+                <td colSpan={showLicenseColumn ? 8 : 7} className="px-5 py-12 text-center text-slate-400">
                   No clients found
                 </td>
               </tr>
@@ -169,7 +178,7 @@ export function ClientsPageClient({
               filtered.map((c) => (
                 <tr key={c.id} className="transition hover:bg-slate-50/50">
                   <td className="px-4 py-4">
-                    <Link href={`/clients/${c.id}`} className="font-medium text-indigo-600 hover:text-indigo-800">
+                    <Link href={`${pathPrefix}/clients/${c.id}`} className="font-medium text-indigo-600 hover:text-indigo-800">
                       {c.name}
                     </Link>
                     {c.companyName && !sameContactLabel(c.companyName, c.name) && (
@@ -199,21 +208,23 @@ export function ClientsPageClient({
                       {c.status}
                     </span>
                   </td>
-                  <td className="hidden px-4 py-4 lg:table-cell">
-                    {(() => {
-                      const badge = licenseMap[c.id];
-                      if (!badge || badge.status === 'N/A') {
-                        return <span className="text-xs text-slate-400">{badge?.label ?? '—'}</span>;
-                      }
-                      return (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${LICENSE_BADGE_COLORS[badge.status]}`}
-                        >
-                          {badge.label}
-                        </span>
-                      );
-                    })()}
-                  </td>
+                  {showLicenseColumn && (
+                    <td className="hidden px-4 py-4 lg:table-cell">
+                      {(() => {
+                        const badge = licenseMap[c.id];
+                        if (!badge || badge.status === 'N/A') {
+                          return <span className="text-xs text-slate-400">{badge?.label ?? '—'}</span>;
+                        }
+                        return (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${LICENSE_BADGE_COLORS[badge.status]}`}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                  )}
                   <td className="hidden px-4 py-4 text-slate-600 sm:table-cell">
                     {c.monthlyRate && c.monthlyRate > 0 ? `TTD ${c.monthlyRate}` : '—'}
                   </td>
@@ -224,7 +235,13 @@ export function ClientsPageClient({
         </table>
       </div>
 
-      {showCreate && <CreateClientModal onClose={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CreateClientModal
+          onClose={() => setShowCreate(false)}
+          pathPrefix={pathPrefix}
+          shopMode={shopOperator}
+        />
+      )}
     </div>
   );
 }

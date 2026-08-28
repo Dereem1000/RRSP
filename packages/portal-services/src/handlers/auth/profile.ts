@@ -63,6 +63,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
     const client = await loadLinkedClient(session.id);
     const rrsp =
       session.role === 'client' ? await getClientRrspAccess(session.id) : null;
+    const isShopOwner = Boolean(rrsp?.isShopOwner) || Boolean(client);
 
     return {
       status: 200,
@@ -76,6 +77,9 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
         client: await serializeLinkedClient(client),
         rrspNeedsContact: Boolean(rrsp?.needsContact),
         rrspLicensed: Boolean(rrsp?.featureEnabled && rrsp?.licenseActive),
+        isShopOwner,
+        isShopStaff: Boolean(rrsp?.isShopStaff),
+        portalDisplayRole: rrsp?.portalDisplayRole ?? null,
         missingContactFields: rrsp?.missingContactFields ?? [],
       },
     };

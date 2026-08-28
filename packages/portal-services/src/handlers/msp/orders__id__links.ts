@@ -12,6 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { addOrderLink, listOrderLinks } from '@web/lib/orders';
+import { requireStaffOrRrspShopOperator } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -28,7 +29,7 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    requireStaffOrRrspShopOperator(session, 'read');
 
     const { id } = ctx.params;
     const links = await listOrderLinks(id);
@@ -41,7 +42,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin');
+    requireStaffOrRrspShopOperator(session, 'write');
 
     const { id } = ctx.params;
     const body = ctx.body as Record<string, unknown>;

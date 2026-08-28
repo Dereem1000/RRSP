@@ -49,6 +49,9 @@ class MSPClientIntegration:
         'crm': 'customer_management',
         'customer': 'customer_management',
         'rrsp': 'rrsp_online',
+        'lawfirm': 'document_management',
+        'medical': 'medical_records_management',
+        'medicalrecords': 'medical_records_management',
         'inventory': 'inventory_management',
         'analytics': 'reporting_analytics',
         'multi_location': 'multi_location',
@@ -63,6 +66,7 @@ class MSPClientIntegration:
         'distribution_system': 'distribution',
         'customer_management': 'crm',
         'rrsp_online': 'rrsp',
+        'medical_records_management': 'medical',
     }
 
     GUI_LABEL_TO_LICENSE_KEY = {
@@ -77,12 +81,14 @@ class MSPClientIntegration:
         'Customer Management': 'customer_management',
         'Event Sponsor CRM': 'customer_management',
         'Repair Report Service Platform (RRSP)': 'rrsp_online',
+        'Medical Records Management': 'medical_records_management',
         'RRSP': 'rrsp_online',
         'Multi-Location Support': 'multi_location',
     }
 
     ACTIVATION_FEATURES = frozenset({
         'pos', 'restaurant', 'document', 'ecommerce', 'auto', 'distribution', 'crm', 'rrsp',
+        'medical',
     })
     
     def __init__(self):
@@ -331,6 +337,7 @@ class MSPClientIntegration:
             'reporting_analytics': license_feature_key == 'reporting_analytics',
             'customer_management': license_feature_key == 'customer_management',
             'rrsp_online': license_feature_key == 'rrsp_online',
+            'medical_records_management': license_feature_key == 'medical_records_management',
         }
 
     def sync_msp_client_to_license_system(self, client: Dict) -> Dict:
@@ -802,6 +809,7 @@ class MSPClientIntegration:
                                 'reporting_analytics': False,
                                 'customer_management': False,
                                 'rrsp_online': False,
+                                'medical_records_management': False,
                             }
                             for feature in selected_features:
                                 feature_key = self.GUI_LABEL_TO_LICENSE_KEY.get(feature)

@@ -14,7 +14,7 @@ import {
 import { processOrderShipmentUpdate } from '@web/lib/order-email-monitoring-run';
 import { markOrderReceivedAtOffice } from '@web/lib/orders';
 import { getClientEmailPolicy } from '@web/lib/settings';
-import { getRequestPublicOriginFromCtx } from '../../http-helpers';
+import { getRequestPublicOriginFromCtx, requireStaffOrRrspShopOperator } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -31,7 +31,7 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    requireStaffOrRrspShopOperator(session, 'read');
 
     const { id } = ctx.params;
     const body = (ctx.body ?? {}) as Record<string, unknown>;

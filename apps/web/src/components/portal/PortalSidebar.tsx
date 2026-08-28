@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
   Pencil,
   Pin,
+  Settings,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
 import { PortalPriceCalculator } from '@/components/portal/PortalPriceCalculator';
@@ -125,16 +126,25 @@ export function PortalSidebar({
   onWidthChange,
   miniDockActive = false,
   rrspAccess = null,
+  clientPlatformLicenses = false,
   partsIncomingBadge = 0,
   onOpenProfile,
   onEditLogo,
   shopLogoUrl = null,
   shopLogoAlt,
 }: {
-  user: { firstName: string; lastName: string; role: string; securityClearance: string };
+  user: { id: number; firstName: string; lastName: string; role: string; securityClearance: string };
   onWidthChange: (px: number) => void;
   miniDockActive?: boolean;
-  rrspAccess?: { featureEnabled?: boolean; enabled: boolean; modules: string[] } | null;
+  rrspAccess?: {
+    featureEnabled?: boolean;
+    enabled: boolean;
+    modules: string[];
+    isShopOwner?: boolean;
+    isShopStaff?: boolean;
+    portalDisplayRole?: string;
+  } | null;
+  clientPlatformLicenses?: boolean;
   partsIncomingBadge?: number;
   onOpenProfile?: () => void;
   /** Opens profile Business info tab (RRSP logo edit). */
@@ -145,7 +155,10 @@ export function PortalSidebar({
   const sidebarNav = getPortalNavForRole(user.role, {
     miniDockActive,
     rrsp: rrspAccess,
+    clientPlatformLicenses,
   });
+  const portalHomeHref =
+    rrspAccess?.isShopStaff && rrspAccess.enabled ? '/rrsp' : '/dashboard';
   const pathname = usePathname();
   const router = useRouter();
   const showCalculatorTool = user.role === 'admin' || user.role === 'technician';
@@ -255,17 +268,21 @@ export function PortalSidebar({
 
   return (
     <aside
-      style={{ width: sidebarPx }}
-      className={`portal-sidebar fixed inset-y-0 left-0 z-[70] flex flex-col bg-cd-950 text-white shadow-2xl ${
+      className={`portal-sidebar fixed left-0 z-[70] flex flex-col bg-cd-950 text-white shadow-2xl ${
         hydrated ? 'transition-[width] duration-200 ease-out' : ''
       }`}
+      style={{
+        width: sidebarPx,
+        top: 'var(--demo-banner-height, 0px)',
+        height: 'calc(100dvh - var(--demo-banner-height, 0px))',
+      }}
     >
       <div className="border-b border-white/10 px-3 py-4">
         {!effectivelyCollapsed ? (
           <>
             <div className="relative px-1">
               <BrandLogo
-                href="/dashboard"
+                href={portalHomeHref}
                 size="xl"
                 src={shopLogoUrl}
                 alt={shopLogoAlt || 'Portal logo'}
@@ -402,29 +419,45 @@ export function PortalSidebar({
           <button
             type="button"
             onClick={onOpenProfile}
-            title="Open your profile"
-            className="mb-3 w-full rounded-xl bg-white/5 px-3 py-2.5 text-left transition hover:bg-white/10"
+            title="Profile & settings"
+            className="mb-3 flex w-full items-center gap-2 rounded-xl bg-white/5 px-3 py-2.5 text-left transition hover:bg-white/10"
           >
-            <p className="text-sm font-medium">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="text-xs capitalize text-slate-400">
-              {user.role} · {user.securityClearance}
-              {pinned && !calculatorOpen && (
-                <span className="ml-1 text-cd-400">· pinned</span>
-              )}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                {user.firstName} {user.lastName}
+              </p>
+              <p className="text-xs capitalize text-slate-400">
+                {rrspAccess?.portalDisplayRole ?? user.role}
+                {(user.role === 'admin' || user.role === 'technician') &&
+                  !rrspAccess?.isShopOwner &&
+                  !rrspAccess?.isShopStaff && (
+                    <>
+                      {' '}
+                      · {user.securityClearance}
+                    </>
+                  )}
+                {pinned && !calculatorOpen && (
+                  <span className="ml-1 text-cd-400">· pinned</span>
+                )}
+              </p>
+            </div>
+            <Settings className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
           </button>
         ) : (
           <button
             type="button"
             onClick={onOpenProfile}
             className="mb-3 flex w-full justify-center"
-            title={`${user.firstName} ${user.lastName} — open profile`}
+            title={`${user.firstName} ${user.lastName} — profile & settings`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cd-500/30 text-xs font-bold text-cd-200 ring-1 ring-white/10 transition hover:bg-cd-500/45">
-              {user.firstName.charAt(0)}
-              {user.lastName.charAt(0)}
+            <div className="relative">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cd-500/30 text-xs font-bold text-cd-200 ring-1 ring-white/10 transition hover:bg-cd-500/45">
+                {user.firstName.charAt(0)}
+                {user.lastName.charAt(0)}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-800 ring-1 ring-white/20">
+                <Settings className="h-2.5 w-2.5 text-slate-300" aria-hidden />
+              </span>
             </div>
           </button>
         )}

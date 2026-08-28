@@ -1027,10 +1027,10 @@
                         <p>Complete IT management solutions for businesses. We remotely manage your IT infrastructure and end-user systems with comprehensive support packages.</p>
                         <p style="margin-top: 16px; font-size: 1rem; opacity: 0.9;"><i class="fas fa-shield-alt" style="margin-right: 8px;"></i>24/7 Monitoring • Proactive Support • Cost-Effective Solutions</p>
                         <div style="margin-top: 30px;">
-                            <button class="btn-request-quote" id="requestQuoteBtn">
-                                <i class="fas fa-file-invoice"></i>
-                                Request Quote
-                            </button>
+                            <a href="https://wa.me/18683168851?text=Hi! I'm interested in MSP Services. Can I get a custom quote?" class="btn-request-quote" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+                                <i class="fab fa-whatsapp"></i>
+                                Get Quote
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -1470,7 +1470,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const requestQuoteBtn = document.getElementById('requestQuoteBtn');
             const packageBtns = document.querySelectorAll('.package-btn');
             const mobileMenuToggle = document.getElementById('mobileMenuToggle');
             const mobileMenu = document.getElementById('mobileMenu');
@@ -1542,32 +1541,17 @@
             // Update active nav on scroll
             window.addEventListener('scroll', updateActiveNav);
 
-            // Request Quote button functionality
-            requestQuoteBtn.addEventListener('click', function() {
-                // Scroll to packages section
-                const packagesSection = document.querySelector('#packages');
-                if (packagesSection) {
-                    const headerHeight = document.querySelector('.header').offsetHeight;
-                    const targetPosition = packagesSection.offsetTop - headerHeight - 20;
-                    
-                    window.scrollTo({
-                        top: targetPosition,
-                        behavior: 'smooth'
-                    });
-                }
-            });
-
-            // Package button functionality
+            // Package buttons open WhatsApp with a tailored quote message
             packageBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const packageName = this.closest('.package-card').querySelector('.package-name').textContent;
-                    
-                    // You can implement quote request functionality here
-                    alert(`Quote requested for ${packageName} package. We'll contact you soon!`);
+                    const packageName = this.closest('.package-card').querySelector('.package-name').textContent.trim();
+                    const text = encodeURIComponent(`Hi! I'm interested in MSP ${packageName}. Can I get a custom quote?`);
+                    window.open(`https://wa.me/18683168851?text=${text}`, '_blank', 'noopener,noreferrer');
                 });
             });
         });
     </script>
     <script src="/js/marketing-image-editor.js?v=20260721b" defer></script>
+    <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
 </body>
 </html>

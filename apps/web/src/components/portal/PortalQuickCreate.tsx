@@ -186,6 +186,8 @@ export function PortalQuickCreate({
           technicians={technicians}
           clientMode={false}
           canAddClient={isStaff || isShopOperator}
+          shopMode={isShopOperator}
+          pathPrefix={isShopOperator ? '/rrsp' : ''}
           onClose={() => setShowTicket(false)}
         />
       )}

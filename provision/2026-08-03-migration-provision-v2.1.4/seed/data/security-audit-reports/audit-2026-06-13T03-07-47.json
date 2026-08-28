@@ -1,0 +1,111 @@
+{
+  "reportId": "audit-2026-06-13T03-07-47",
+  "generatedAt": "2026-06-13T03:07:47.551Z",
+  "hostname": "Desktop-Dereem",
+  "environment": "production",
+  "baseUrl": null,
+  "system": {
+    "name": "Computer Dynamics System v2",
+    "version": "2.1.0",
+    "root": "F:\\Computer Dynamics System v2"
+  },
+  "summary": {
+    "critical": 1,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "info": 0,
+    "total": 2,
+    "score": 63,
+    "checksRun": 7,
+    "checksPassed": 5,
+    "checksFailed": 1,
+    "checksSkipped": 1
+  },
+  "overallStatus": "critical",
+  "findings": [
+    {
+      "id": "FIND-0001",
+      "severity": "critical",
+      "category": "database",
+      "title": "Elevated threat level: critical",
+      "description": "security_threat_level is \"critical\" — review recent security_events and resolve underlying issues.",
+      "remediation": "Open Settings → Security, review events, and remediate file integrity or intrusion alerts.",
+      "evidence": null,
+      "checkId": "database-security-threat-level",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0002",
+      "severity": "high",
+      "category": "database",
+      "title": "Recent security events: file_integrity",
+      "description": "3 active \"file_integrity\" event(s) in the last 24 hours.",
+      "remediation": "Review Settings → Security events and remediate root cause.",
+      "evidence": {
+        "eventType": "file_integrity",
+        "count24h": 3
+      },
+      "checkId": "database-security-events-file_integrity",
+      "status": "open"
+    }
+  ],
+  "checks": [
+    {
+      "id": "secrets",
+      "name": "Secrets & credential hygiene",
+      "status": "passed",
+      "detail": "No secret blockers",
+      "at": "2026-06-13T03:07:41.511Z"
+    },
+    {
+      "id": "production-config",
+      "name": "Production configuration hardening",
+      "status": "passed",
+      "detail": "Config looks production-ready",
+      "at": "2026-06-13T03:07:41.513Z"
+    },
+    {
+      "id": "database-security",
+      "name": "Database security posture",
+      "status": "failed",
+      "detail": "2 issue(s)",
+      "at": "2026-06-13T03:07:41.854Z"
+    },
+    {
+      "id": "dependencies",
+      "name": "npm dependency vulnerabilities",
+      "status": "passed",
+      "detail": "npm audit clean (0 total advisories)",
+      "at": "2026-06-13T03:07:47.384Z"
+    },
+    {
+      "id": "filesystem",
+      "name": "Filesystem & source hygiene",
+      "status": "passed",
+      "detail": "No filesystem issues",
+      "at": "2026-06-13T03:07:47.546Z"
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure & deployment",
+      "status": "passed",
+      "detail": "Infrastructure checks OK",
+      "at": "2026-06-13T03:07:47.549Z"
+    },
+    {
+      "id": "live-probes",
+      "name": "Live endpoint probes",
+      "status": "skipped",
+      "detail": "--skip-live",
+      "at": "2026-06-13T03:07:47.551Z"
+    }
+  ],
+  "meta": {
+    "strictMode": false,
+    "skipLive": true,
+    "skipDeps": false,
+    "startedAt": "2026-06-13T03:07:40.324Z",
+    "completedAt": "2026-06-13T03:07:47.551Z"
+  }
+}

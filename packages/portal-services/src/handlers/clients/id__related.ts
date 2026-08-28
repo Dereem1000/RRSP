@@ -12,6 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { Client } from '@web/lib/db';
+import { getShopClientModel, isRrspDbActive } from '@web/lib/rrsp-db';
 import {
   getClientActivities,
   getClientInvoices,
@@ -34,10 +35,17 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    if (session.role === 'client') {
+      if (!isRrspDbActive()) {
+        return { status: 403, body: { success: false, message: 'Access denied' } };
+      }
+    } else {
+      requireRole(session, 'admin', 'technician');
+    }
 
     const { id } = ctx.params;
-    const client = await Client.findByPk(id);
+    const ClientModel = isRrspDbActive() ? getShopClientModel() : Client;
+    const client = await ClientModel.findByPk(id);
     if (!client) {
       return { status: 404, body: { success: false, message: 'Client not found' } };
     }

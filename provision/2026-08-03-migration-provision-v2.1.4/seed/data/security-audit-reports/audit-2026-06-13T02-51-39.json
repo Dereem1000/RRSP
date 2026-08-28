@@ -1,0 +1,85 @@
+{
+  "reportId": "audit-2026-06-13T02-51-39",
+  "generatedAt": "2026-06-13T02:51:39.814Z",
+  "hostname": "Desktop-Dereem",
+  "environment": "production",
+  "baseUrl": null,
+  "system": {
+    "name": "Computer Dynamics System v2",
+    "version": "2.1.0",
+    "root": "F:\\Computer Dynamics System v2"
+  },
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "info": 0,
+    "total": 0,
+    "score": 100,
+    "checksRun": 7,
+    "checksPassed": 6,
+    "checksFailed": 0,
+    "checksSkipped": 1
+  },
+  "overallStatus": "pass",
+  "findings": [],
+  "checks": [
+    {
+      "id": "secrets",
+      "name": "Secrets & credential hygiene",
+      "status": "passed",
+      "detail": "No secret blockers",
+      "at": "2026-06-13T02:51:32.063Z"
+    },
+    {
+      "id": "production-config",
+      "name": "Production configuration hardening",
+      "status": "passed",
+      "detail": "Config looks production-ready",
+      "at": "2026-06-13T02:51:32.066Z"
+    },
+    {
+      "id": "database-security",
+      "name": "Database security posture",
+      "status": "passed",
+      "detail": "DB security config OK",
+      "at": "2026-06-13T02:51:32.405Z"
+    },
+    {
+      "id": "dependencies",
+      "name": "npm dependency vulnerabilities",
+      "status": "passed",
+      "detail": "npm audit clean (0 total advisories)",
+      "at": "2026-06-13T02:51:39.616Z"
+    },
+    {
+      "id": "filesystem",
+      "name": "Filesystem & source hygiene",
+      "status": "passed",
+      "detail": "No filesystem issues",
+      "at": "2026-06-13T02:51:39.803Z"
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure & deployment",
+      "status": "passed",
+      "detail": "Infrastructure checks OK",
+      "at": "2026-06-13T02:51:39.810Z"
+    },
+    {
+      "id": "live-probes",
+      "name": "Live endpoint probes",
+      "status": "skipped",
+      "detail": "no AUDIT_BASE_URL",
+      "at": "2026-06-13T02:51:39.813Z"
+    }
+  ],
+  "meta": {
+    "strictMode": false,
+    "skipLive": false,
+    "skipDeps": false,
+    "startedAt": "2026-06-13T02:51:30.881Z",
+    "completedAt": "2026-06-13T02:51:39.814Z"
+  }
+}

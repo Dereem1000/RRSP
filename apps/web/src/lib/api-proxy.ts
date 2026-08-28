@@ -41,6 +41,14 @@ function isTransientProxyError(error: unknown): boolean {
   );
 }
 
+function isClientAbortError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === 'ECONNRESET' || code === 'ABORT_ERR') return true;
+  const message = errorMessage(error).toLowerCase();
+  return error.name === 'AbortError' || message.includes('aborted') || message.includes('econnreset');
+}
+
 async function isApiStartingResponse(response: Response): Promise<boolean> {
   if (response.status !== 503) return false;
   try {
@@ -86,6 +94,10 @@ async function fetchExpressApi(target: string, baseInit: RequestInit): Promise<R
 }
 
 export async function proxyToExpressApi(req: NextRequest, pathSegments: string[]): Promise<NextResponse> {
+  if (req.signal.aborted) {
+    return new NextResponse(null, { status: 499 });
+  }
+
   const pathname = pathSegments.map(encodeURIComponent).join('/');
   const target = `${API_ORIGIN}/api/${pathname}${req.nextUrl.search}`;
 
@@ -146,7 +158,31 @@ export async function proxyToExpressApi(req: NextRequest, pathSegments: string[]
     if (rawSetCookie) responseHeaders.append('set-cookie', rawSetCookie);
   }
 
-  return new NextResponse(upstream.body, {
+  // Buffer upstream bodies instead of streaming through Next.js. Piping upstream.body to the
+  // browser can throw uncaught ECONNRESET when the client navigates away during long Mini ops.
+  let bodyBytes: ArrayBuffer;
+  try {
+    bodyBytes = await upstream.arrayBuffer();
+  } catch (error) {
+    if (req.signal.aborted || isClientAbortError(error)) {
+      return new NextResponse(null, { status: 499 });
+    }
+    const message = errorMessage(error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Express API response interrupted (${API_ORIGIN}): ${message}`,
+        message,
+      },
+      { status: 502 },
+    );
+  }
+
+  if (req.signal.aborted) {
+    return new NextResponse(null, { status: 499 });
+  }
+
+  return new NextResponse(bodyBytes, {
     status: upstream.status,
     statusText: upstream.statusText,
     headers: responseHeaders,

@@ -1,0 +1,32 @@
+{
+  "settings": {
+    "base_domain": "https://www.computerdynamicstt.com",
+    "host": "localhost",
+    "url_path_prefix": "/demo",
+    "flask_script_name_mode": "never",
+    "manager_port": 5674,
+    "demo_port_range_start": 8100,
+    "demo_port_range_end": 8990,
+    "port_block_step": 10,
+    "website_public_dir": "",
+    "ngrok_bat_name": "start-ngrok.bat",
+    "ngrok_inspector_port_start": 4040
+  },
+  "systems": [],
+  "mini": {
+    "mini_base_url": "https://mini.example.com",
+    "company_name": "",
+    "public_base_url": "https://www.example.com",
+    "mini_connection_id": "",
+    "mini_connection_token": "",
+    "mini_connection_status": "",
+    "mini_api_token": "",
+    "mini_auto_update_enabled": false,
+    "mini_last_update_check_at": "",
+    "mini_last_update_error": "",
+    "mini_last_sync_error": "",
+    "bind_public": false,
+    "applied_updates": [],
+    "integration_kit_version": ""
+  }
+}

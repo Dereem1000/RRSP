@@ -104,6 +104,11 @@ export async function loadHealth(): Promise<Record<DevSlotId, DevSlotHealth>> {
     dev1: emptyHealth(),
     dev2: emptyHealth(),
     dev3: emptyHealth(),
+    dev4: emptyHealth(),
+    dev5: emptyHealth(),
+    dev6: emptyHealth(),
+    dev7: emptyHealth(),
+    dev8: emptyHealth(),
   };
   if (!stored) return defaults;
   for (const id of DEV_SLOT_IDS) {

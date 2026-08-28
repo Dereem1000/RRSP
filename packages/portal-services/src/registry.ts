@@ -5,6 +5,7 @@ import { dispatch as dispatch_auth_logout } from './handlers/auth/logout';
 import { dispatch as dispatch_auth_me } from './handlers/auth/me';
 import { dispatch as dispatch_auth_profile } from './handlers/auth/profile';
 import { dispatch as dispatch_auth_profile_rrsp } from './handlers/auth/profile-rrsp';
+import { dispatch as dispatch_auth_profile_rrsp_staff } from './handlers/auth/profile-rrsp-staff';
 import { dispatch as dispatch_auth_geocode } from './handlers/auth/geocode';
 import { dispatch as dispatch_backup_id } from './handlers/backup/id';
 import { dispatch as dispatch_backup_id__download } from './handlers/backup/id__download';
@@ -31,6 +32,7 @@ import { dispatch as dispatch_client_portal_quotes__id } from './handlers/client
 import { dispatch as dispatch_client_portal_quotes__id__accept } from './handlers/client-portal/quotes__id__accept';
 import { dispatch as dispatch_client_portal_quotes__id__decline } from './handlers/client-portal/quotes__id__decline';
 import { dispatch as dispatch_client_portal_quotes__id__print } from './handlers/client-portal/quotes__id__print';
+import { dispatch as dispatch_client_portal_deliverables } from './handlers/client-portal/deliverables';
 import { dispatch as dispatch_clients_clients } from './handlers/clients/clients';
 import { dispatch as dispatch_clients_id } from './handlers/clients/id';
 import { dispatch as dispatch_clients_id__billing } from './handlers/clients/id__billing';
@@ -96,6 +98,10 @@ import { dispatch as dispatch_msp_license_serials__unlock } from './handlers/msp
 import { dispatch as dispatch_msp_license_status } from './handlers/msp/license-status';
 import { dispatch as dispatch_msp_license_status__clientId } from './handlers/msp/license-status__clientId';
 import { dispatch as dispatch_msp_management_systems } from './handlers/msp/management-systems';
+import { dispatch as dispatch_msp_management_systems__product_config } from './handlers/msp/management-systems__product-config';
+import { dispatch as dispatch_msp_management_systems__engagements } from './handlers/msp/management-systems__engagements';
+import { dispatch as dispatch_msp_management_systems__deliverable } from './handlers/msp/management-systems__deliverable';
+import { dispatch as dispatch_msp_management_systems__gate_checklist } from './handlers/msp/management-systems__gate-checklist';
 import { dispatch as dispatch_msp_orders } from './handlers/msp/orders';
 import { dispatch as dispatch_msp_orders__id } from './handlers/msp/orders__id';
 import { dispatch as dispatch_msp_orders__id__links } from './handlers/msp/orders__id__links';
@@ -155,6 +161,7 @@ import { dispatch as dispatch_public_quote__token } from './handlers/public/quot
 import { dispatch as dispatch_public_quote__token__print } from './handlers/public/quote__token__print';
 import { dispatch as dispatch_public_request_technician } from './handlers/public/request-technician';
 import { dispatch as dispatch_public_showcase_portal } from './handlers/public/showcase-portal';
+import { dispatch as dispatch_public_demo_login } from './handlers/public/demo-login';
 import { dispatch as dispatch_public_ticket_status__identifier } from './handlers/public/ticket-status__identifier';
 import { dispatch as dispatch_sales_sales } from './handlers/sales/sales';
 import { dispatch as dispatch_sales_id } from './handlers/sales/id';
@@ -203,12 +210,12 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'GET', pattern: '/auth/profile/rrsp', handler: dispatch_auth_profile_rrsp },
   { method: 'PUT', pattern: '/auth/profile/rrsp', handler: dispatch_auth_profile_rrsp },
   { method: 'POST', pattern: '/auth/profile/rrsp', handler: dispatch_auth_profile_rrsp },
+  { method: 'GET', pattern: '/auth/profile/rrsp/staff', handler: dispatch_auth_profile_rrsp_staff },
+  { method: 'POST', pattern: '/auth/profile/rrsp/staff', handler: dispatch_auth_profile_rrsp_staff },
+  { method: 'PUT', pattern: '/auth/profile/rrsp/staff', handler: dispatch_auth_profile_rrsp_staff },
+  { method: 'DELETE', pattern: '/auth/profile/rrsp/staff', handler: dispatch_auth_profile_rrsp_staff },
   { method: 'POST', pattern: '/auth/geocode', handler: dispatch_auth_geocode },
-  { method: 'GET', pattern: '/backup/:id', handler: dispatch_backup_id },
-  { method: 'DELETE', pattern: '/backup/:id', handler: dispatch_backup_id },
-  { method: 'GET', pattern: '/backup/:id/download', handler: dispatch_backup_id__download },
-  { method: 'POST', pattern: '/backup/:id/restore', handler: dispatch_backup_id__restore },
-  { method: 'POST', pattern: '/backup/:id/verify', handler: dispatch_backup_id__verify },
+  // Literal /backup/* paths before /backup/:id — otherwise :id captures "list", "status", etc.
   { method: 'GET', pattern: '/backup/auto-settings', handler: dispatch_backup_auto_settings },
   { method: 'POST', pattern: '/backup/auto-settings', handler: dispatch_backup_auto_settings },
   { method: 'POST', pattern: '/backup/create', handler: dispatch_backup_create },
@@ -216,6 +223,11 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'GET', pattern: '/backup/progress/:id', handler: dispatch_backup_progress__id },
   { method: 'GET', pattern: '/backup/status', handler: dispatch_backup_status },
   { method: 'POST', pattern: '/backup/upload-restore', handler: dispatch_backup_upload_restore },
+  { method: 'GET', pattern: '/backup/:id/download', handler: dispatch_backup_id__download },
+  { method: 'POST', pattern: '/backup/:id/restore', handler: dispatch_backup_id__restore },
+  { method: 'POST', pattern: '/backup/:id/verify', handler: dispatch_backup_id__verify },
+  { method: 'GET', pattern: '/backup/:id', handler: dispatch_backup_id },
+  { method: 'DELETE', pattern: '/backup/:id', handler: dispatch_backup_id },
   { method: 'GET', pattern: '/calendar', handler: dispatch_calendar_calendar },
   { method: 'POST', pattern: '/calendar', handler: dispatch_calendar_calendar },
   { method: 'PATCH', pattern: '/calendar/:id', handler: dispatch_calendar_id },
@@ -234,6 +246,8 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/client-portal/quotes/:id/accept', handler: dispatch_client_portal_quotes__id__accept },
   { method: 'POST', pattern: '/client-portal/quotes/:id/decline', handler: dispatch_client_portal_quotes__id__decline },
   { method: 'GET', pattern: '/client-portal/quotes/:id/print', handler: dispatch_client_portal_quotes__id__print },
+  { method: 'GET', pattern: '/client-portal/deliverables', handler: dispatch_client_portal_deliverables },
+  { method: 'POST', pattern: '/client-portal/deliverables', handler: dispatch_client_portal_deliverables },
   { method: 'GET', pattern: '/clients', handler: dispatch_clients_clients },
   { method: 'POST', pattern: '/clients', handler: dispatch_clients_clients },
   { method: 'GET', pattern: '/clients/:id', handler: dispatch_clients_id },
@@ -308,6 +322,14 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/msp/license-serials/unlock', handler: dispatch_msp_license_serials__unlock },
   { method: 'GET', pattern: '/msp/license-status', handler: dispatch_msp_license_status },
   { method: 'GET', pattern: '/msp/license-status/:clientId', handler: dispatch_msp_license_status__clientId },
+  { method: 'GET', pattern: '/msp/management-systems/product-config', handler: dispatch_msp_management_systems__product_config },
+  { method: 'PUT', pattern: '/msp/management-systems/product-config', handler: dispatch_msp_management_systems__product_config },
+  { method: 'GET', pattern: '/msp/management-systems/engagements', handler: dispatch_msp_management_systems__engagements },
+  { method: 'PUT', pattern: '/msp/management-systems/engagements', handler: dispatch_msp_management_systems__engagements },
+  { method: 'GET', pattern: '/msp/management-systems/deliverable', handler: dispatch_msp_management_systems__deliverable },
+  { method: 'PUT', pattern: '/msp/management-systems/deliverable', handler: dispatch_msp_management_systems__deliverable },
+  { method: 'POST', pattern: '/msp/management-systems/deliverable', handler: dispatch_msp_management_systems__deliverable },
+  { method: 'GET', pattern: '/msp/management-systems/gate-checklist', handler: dispatch_msp_management_systems__gate_checklist },
   { method: 'GET', pattern: '/msp/management-systems', handler: dispatch_msp_management_systems },
   { method: 'GET', pattern: '/msp/orders', handler: dispatch_msp_orders },
   { method: 'POST', pattern: '/msp/orders', handler: dispatch_msp_orders },
@@ -382,6 +404,7 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'GET', pattern: '/public/quote/:token/print', handler: dispatch_public_quote__token__print },
   { method: 'POST', pattern: '/public/request-technician', handler: dispatch_public_request_technician },
   { method: 'GET', pattern: '/public/showcase-portal', handler: dispatch_public_showcase_portal },
+  { method: 'GET', pattern: '/public/demo-login', handler: dispatch_public_demo_login },
   { method: 'GET', pattern: '/public/ticket-status/:identifier', handler: dispatch_public_ticket_status__identifier },
   { method: 'GET', pattern: '/sales', handler: dispatch_sales_sales },
   { method: 'POST', pattern: '/sales', handler: dispatch_sales_sales },

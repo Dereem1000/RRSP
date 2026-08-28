@@ -33,12 +33,27 @@ type StatusInfo = {
   lastBackup: string | null;
 };
 
+const BACKUP_TYPE_LABELS: Record<string, string> = {
+  standard: 'Standard',
+  full: 'Standard',
+  manual: 'Standard',
+  auto: 'Standard',
+  system: 'Full system',
+  database: 'Database',
+  files: 'Files',
+  license: 'License',
+};
+
+function backupTypeLabel(type: string) {
+  return BACKUP_TYPE_LABELS[type] ?? type;
+}
+
 type AutoBackupSettings = {
   enabled: boolean;
   frequency: 'daily' | 'weekly' | 'monthly';
   time: string;
   day: number;
-  type: 'full' | 'database' | 'files';
+  type: 'standard' | 'full' | 'database' | 'files' | 'system';
   retention: number;
   lastRun: string | null;
   nextRun: string | null;
@@ -49,7 +64,7 @@ const DEFAULT_AUTO: AutoBackupSettings = {
   frequency: 'daily',
   time: '02:00',
   day: 0,
-  type: 'full',
+  type: 'standard',
   retention: 30,
   lastRun: null,
   nextRun: null,
@@ -70,7 +85,7 @@ export function SettingsBackupSection({
   const [auto, setAuto] = useState<AutoBackupSettings>(DEFAULT_AUTO);
   const [showRecovery, setShowRecovery] = useState(false);
   const [recovery, setRecovery] = useState({
-    restoreType: 'database' as 'database' | 'files' | 'license' | 'full',
+    restoreType: 'database' as 'database' | 'files' | 'license' | 'standard' | 'system' | 'full',
     backupId: '',
     reason: '',
     authorization: '',
@@ -100,7 +115,7 @@ export function SettingsBackupSection({
           frequency: autoData.config.frequency ?? DEFAULT_AUTO.frequency,
           time: autoData.config.time ?? DEFAULT_AUTO.time,
           day: autoData.config.day ?? DEFAULT_AUTO.day,
-          type: autoData.config.type ?? DEFAULT_AUTO.type,
+          type: autoData.config.type === 'full' ? 'standard' : (autoData.config.type ?? DEFAULT_AUTO.type),
           retention: autoData.config.retention ?? DEFAULT_AUTO.retention,
           lastRun: autoData.config.lastRun ?? null,
           nextRun: autoData.config.nextRun ?? null,
@@ -220,8 +235,8 @@ export function SettingsBackupSection({
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Backup &amp; recovery</h2>
           <p className="text-sm text-slate-500">
-            ZIP backups of database, uploads, and critical v2 paths. Recovery replaces the broken
-            emergency API.
+            Standard backups cover database, uploads, and security-critical paths. Full system backups
+            include the entire v2 source tree and runtime data.
           </p>
         </div>
         <button
@@ -265,7 +280,7 @@ export function SettingsBackupSection({
               Automatic backup
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Runs on the security worker schedule. Defaults to a daily full backup at 2:00 AM.
+              Runs on the security worker schedule. Defaults to a daily standard backup at 2:00 AM.
             </p>
           </div>
           <label className="flex items-center gap-2 text-sm font-medium">
@@ -329,9 +344,10 @@ export function SettingsBackupSection({
               className={inputClass}
               disabled={!auto.enabled}
             >
-              <option value="full">Full</option>
+              <option value="standard">Standard (data + security paths)</option>
               <option value="database">Database only</option>
               <option value="files">Files only</option>
+              <option value="system">Full system (large)</option>
             </select>
           </label>
           <label className="block">
@@ -377,11 +393,20 @@ export function SettingsBackupSection({
         <button
           type="button"
           disabled={!!loading}
-          onClick={() => createBackup('full')}
+          onClick={() => createBackup('standard')}
           className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
         >
           {loading === 'create' ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
-          Full backup
+          Standard backup
+        </button>
+        <button
+          type="button"
+          disabled={!!loading}
+          onClick={() => createBackup('system')}
+          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+          title="Includes full v2 source, data configs, and standard backup contents"
+        >
+          Full system backup
         </button>
         <button
           type="button"
@@ -424,8 +449,8 @@ export function SettingsBackupSection({
         >
           <h3 className="font-semibold text-amber-900">System recovery</h3>
           <p className="text-xs text-amber-800">
-            Full restore requires S-CLS1 and authorization code. A pre-restore safety copy is
-            created unless overwrite is enabled.
+            Standard or full system restore requires S-CLS1 and authorization code. A pre-restore
+            safety copy is created unless overwrite is enabled.
           </p>
           <label className="block">
             <span className="text-xs font-medium text-slate-600">Recovery type</span>
@@ -434,7 +459,7 @@ export function SettingsBackupSection({
               onChange={(e) =>
                 setRecovery({
                   ...recovery,
-                  restoreType: e.target.value as 'database' | 'files' | 'full',
+                  restoreType: e.target.value as 'database' | 'files' | 'license' | 'standard' | 'system',
                 })
               }
               className={inputClass}
@@ -442,7 +467,8 @@ export function SettingsBackupSection({
               <option value="database">MSP database only</option>
               <option value="license">License database only</option>
               <option value="files">Uploads / files only</option>
-              <option value="full">Full system (destructive)</option>
+              <option value="standard">Standard (data + security paths)</option>
+              <option value="system">Full system (destructive)</option>
             </select>
           </label>
           <label className="block">
@@ -457,7 +483,7 @@ export function SettingsBackupSection({
                 .filter((b) => b.status === 'completed' || b.status === 'verified')
                 .map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.backupName} ({b.backupType})
+                    {b.backupName} ({backupTypeLabel(b.backupType)})
                   </option>
                 ))}
             </select>
@@ -488,7 +514,7 @@ export function SettingsBackupSection({
               value={recovery.authorization}
               onChange={(e) => setRecovery({ ...recovery, authorization: e.target.value })}
               className={inputClass}
-              placeholder="Required for full restore"
+              placeholder="Required for standard or full system restore"
             />
           </label>
           <label className="flex items-center gap-2 text-sm">
@@ -536,7 +562,7 @@ export function SettingsBackupSection({
               backups.map((b) => (
                 <tr key={b.id} className="border-t border-slate-100">
                   <td className="max-w-xs truncate px-4 py-2 font-mono text-xs">{b.backupName}</td>
-                  <td className="px-4 py-2 capitalize">{b.backupType}</td>
+                  <td className="px-4 py-2">{backupTypeLabel(b.backupType)}</td>
                   <td className="px-4 py-2 capitalize">{b.status}</td>
                   <td className="px-4 py-2">{b.fileSize ? formatBytes(Number(b.fileSize)) : '—'}</td>
                   <td className="px-4 py-2">

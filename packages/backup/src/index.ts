@@ -1,3 +1,4 @@
+export * from './backup-types';
 export * from './config-keys';
 export * from './types';
 export * from './paths';

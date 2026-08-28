@@ -1,0 +1,97 @@
+{
+  "reportId": "audit-2026-06-13T02-31-17",
+  "generatedAt": "2026-06-13T02:31:17.947Z",
+  "hostname": "Desktop-Dereem",
+  "environment": "production",
+  "baseUrl": null,
+  "system": {
+    "name": "Computer Dynamics System v2",
+    "version": "2.1.0",
+    "root": "F:\\Computer Dynamics System v2"
+  },
+  "summary": {
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "info": 0,
+    "total": 1,
+    "score": 88,
+    "checksRun": 7,
+    "checksPassed": 5,
+    "checksFailed": 1,
+    "checksSkipped": 1
+  },
+  "overallStatus": "high_risk",
+  "findings": [
+    {
+      "id": "FIND-0001",
+      "severity": "high",
+      "category": "database",
+      "title": "Elevated threat level: high",
+      "description": "security_threat_level is \"high\" — review recent security_events and resolve underlying issues.",
+      "remediation": "Open Settings → Security, review events, and remediate file integrity or intrusion alerts.",
+      "evidence": null,
+      "checkId": "database-security-threat-level",
+      "status": "open"
+    }
+  ],
+  "checks": [
+    {
+      "id": "secrets",
+      "name": "Secrets & credential hygiene",
+      "status": "passed",
+      "detail": "No secret blockers",
+      "at": "2026-06-13T02:31:11.722Z"
+    },
+    {
+      "id": "production-config",
+      "name": "Production configuration hardening",
+      "status": "passed",
+      "detail": "Config looks production-ready",
+      "at": "2026-06-13T02:31:11.724Z"
+    },
+    {
+      "id": "database-security",
+      "name": "Database security posture",
+      "status": "failed",
+      "detail": "1 issue(s)",
+      "at": "2026-06-13T02:31:12.027Z"
+    },
+    {
+      "id": "dependencies",
+      "name": "npm dependency vulnerabilities",
+      "status": "passed",
+      "detail": "npm audit clean (0 total advisories)",
+      "at": "2026-06-13T02:31:17.579Z"
+    },
+    {
+      "id": "filesystem",
+      "name": "Filesystem & source hygiene",
+      "status": "passed",
+      "detail": "No filesystem issues",
+      "at": "2026-06-13T02:31:17.931Z"
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure & deployment",
+      "status": "passed",
+      "detail": "Infrastructure checks OK",
+      "at": "2026-06-13T02:31:17.937Z"
+    },
+    {
+      "id": "live-probes",
+      "name": "Live endpoint probes",
+      "status": "skipped",
+      "detail": "no AUDIT_BASE_URL",
+      "at": "2026-06-13T02:31:17.938Z"
+    }
+  ],
+  "meta": {
+    "strictMode": false,
+    "skipLive": false,
+    "skipDeps": false,
+    "startedAt": "2026-06-13T02:31:10.794Z",
+    "completedAt": "2026-06-13T02:31:17.947Z"
+  }
+}

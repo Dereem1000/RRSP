@@ -17,12 +17,17 @@ const SYSTEM_KEY_TO_FEATURE: Record<string, ActivationFeature> = {
   'pos-system': 'pos',
   restaurant: 'restaurant',
   document: 'document',
+  'document-management': 'document',
+  lawfirm: 'document',
+  'lawfirm-system': 'document',
+  zenlaw: 'document',
   ecommerce: 'ecommerce',
   auto: 'auto',
   distribution: 'distribution',
   medical: 'medical',
   'medical-records': 'medical',
   crm: 'crm',
+  rrsp: 'rrsp',
 };
 
 export type ProjectGuardLicenseActionRequest = {
@@ -149,6 +154,21 @@ export async function applyProjectGuardLicenseAction(
       licenseAction: { deactivatedIds: [], reactivatedIds: [], skippedIds: [] },
       licenseStatus: null,
       message: 'Client not found for Project Guard license action',
+    };
+  }
+
+  const systemKey = String(body.system_key || '').trim();
+  if (systemKey && !feature) {
+    return {
+      success: false,
+      action,
+      signal,
+      mspClientId: client.id,
+      clientName: client.companyName || client.name,
+      feature: null,
+      licenseAction: { deactivatedIds: [], reactivatedIds: [], skippedIds: [] },
+      licenseStatus: await getLicenseStatusByMspClientId(client.id),
+      message: `Unknown system_key "${systemKey}" — refusing to ${action} all license rows for client`,
     };
   }
 

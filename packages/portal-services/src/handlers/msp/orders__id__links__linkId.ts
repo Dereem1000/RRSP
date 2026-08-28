@@ -12,6 +12,7 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { removeOrderLink } from '@web/lib/orders';
+import { requireStaffOrRrspShopOperator } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -28,7 +29,7 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin');
+    requireStaffOrRrspShopOperator(session, 'write');
 
     const { id, linkId } = ctx.params;
     await removeOrderLink(id, linkId);

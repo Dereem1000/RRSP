@@ -295,18 +295,33 @@ class LicenseGuiService:
 
         return self._run(inner)
 
-    def add_license_for_company(self, company_id: int) -> str:
+    def add_license_for_company(self, company_id: int, product_label: str = 'Point of Sale Systems') -> str:
+        selected_key = GUI_LICENSE_FEATURE_LABEL_TO_KEY.get(product_label, 'pos_systems')
+        msp_from_key = {
+            'pos_systems': 'pos',
+            'restaurant_management': 'restaurant',
+            'document_management': 'document',
+            'ecommerce_websites': 'ecommerce',
+            'auto_system': 'auto',
+            'distribution_system': 'distribution',
+            'customer_management': 'crm',
+            'rrsp_online': 'rrsp',
+            'medical_records_management': 'medical',
+        }
+
         def inner() -> str:
             from license_serial import ensure_unique_license_serial, is_legacy_short_license_serial
 
             company = db.session.get(CompanyRegistration, company_id)
             if not company:
                 raise ValueError('Company not found')
+            license_features = MSPClientIntegration._build_license_features_for_key(selected_key)
             serial = ensure_unique_license_serial(
                 db.session,
                 LicenseActivation,
+                msp_feature=msp_from_key.get(selected_key, 'pos'),
                 msp_client_id=company.msp_client_id,
-                features_raw={'pos_systems': True},
+                features_raw=license_features,
             )
             if is_legacy_short_license_serial(serial):
                 raise RuntimeError('Generated short or legacy serial')
@@ -319,20 +334,7 @@ class LicenseGuiService:
                 expiration_date=now + timedelta(days=1),
                 is_active=False,
                 max_users=1,
-                features=json.dumps(
-                    {
-                        'advanced_reporting': False,
-                        'api_access': False,
-                        'pos_systems': False,
-                        'restaurant_management': False,
-                        'document_management': False,
-                        'ecommerce_websites': False,
-                        'auto_system': False,
-                        'distribution_system': False,
-                        'customer_management': False,
-                        'rrsp_online': False,
-                    }
-                ),
+                features=json.dumps(license_features),
             )
             db.session.add(lic)
             db.session.commit()
@@ -376,6 +378,7 @@ class LicenseGuiService:
                     'distribution_system': selected_key == 'distribution_system',
                     'customer_management': selected_key == 'customer_management',
                     'rrsp_online': selected_key == 'rrsp_online',
+                    'medical_records_management': selected_key == 'medical_records_management',
                 }
             )
             lic.is_active = True
@@ -459,7 +462,7 @@ class LicenseGuiService:
                 ensure_unique_license_serial,
                 is_legacy_short_license_serial,
                 next_device_seat,
-                parse_license_features,
+                resolve_license_feature_key,
             )
 
             source = db.session.get(LicenseActivation, license_id)
@@ -468,11 +471,7 @@ class LicenseGuiService:
             company = db.session.get(CompanyRegistration, source.company_id)
             if not company:
                 raise ValueError('Company not found')
-            features = parse_license_features(source.features)
-            feature_key = next(
-                (k for k in BUSINESS_LICENSE_FEATURE_KEYS if features.get(k)),
-                'pos_systems',
-            )
+            feature_key = resolve_license_feature_key(source.features, source.serial_number) or 'pos_systems'
             seat = next_device_seat(
                 LicenseActivation.query.filter_by(company_id=company.id).all(),
                 feature_key,
@@ -486,6 +485,7 @@ class LicenseGuiService:
                 'distribution_system': 'distribution',
                 'customer_management': 'crm',
                 'rrsp_online': 'rrsp',
+                'medical_records_management': 'medical',
             }
             serial = ensure_unique_license_serial(
                 db.session,

@@ -13,12 +13,17 @@ export function CreateClientModal({
   defaults,
   onCreated,
   nested = false,
+  pathPrefix = '',
+  shopMode = false,
 }: {
   onClose: () => void;
   defaults?: Record<string, string>;
   onCreated?: (client: ClientPickerOption) => void;
   /** Raise z-index when opened above another modal. */
   nested?: boolean;
+  pathPrefix?: string;
+  /** RRSP shop customer — hide CD MSP activation / portal / contract fields. */
+  shopMode?: boolean;
 }) {
   const router = useRouter();
   const { askToEmailClient } = useClientEmailPolicy();
@@ -31,7 +36,7 @@ export function CreateClientModal({
     setLoading(true);
 
     const form = new FormData(e.currentTarget);
-    const payload = formDataToClientPayload(form);
+    const payload = formDataToClientPayload(form, {}, { shopMode });
     const sendWelcomeEmail = payload.createPortalAccount
       ? askToEmailClient('Send a welcome email to this client with portal login details?')
       : false;
@@ -58,7 +63,7 @@ export function CreateClientModal({
         onClose();
       } else {
         onClose();
-        router.push(`/clients/${data.client.id}`);
+        router.push(`${pathPrefix}/clients/${data.client.id}`);
         router.refresh();
       }
     } catch (err) {
@@ -79,7 +84,7 @@ export function CreateClientModal({
       <div className="flex min-h-full items-start justify-center py-4 sm:items-center">
         <div className="flex max-h-[min(92dvh,92vh)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
           <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-3">
-            <h2 className="text-lg font-semibold text-slate-900">Add client</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{shopMode ? 'Add customer' : 'Add client'}</h2>
             <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
               <X className="h-5 w-5" />
             </button>
@@ -89,9 +94,11 @@ export function CreateClientModal({
             <ClientFormFields
               key={defaults ? JSON.stringify(defaults) : 'new'}
               layout="wide"
-              showContract
-              showUsage
-              showPortalOption
+              shopMode={shopMode}
+              showContract={!shopMode}
+              showUsage={!shopMode}
+              showPortalOption={!shopMode}
+              showActivationFeatures={!shopMode}
               defaults={defaults}
             />
 

@@ -19,6 +19,7 @@ import type {
   ManagementSystemsOverviewData,
 } from '@/lib/management-systems-shared';
 import { redactManagementSystemsOverview } from '@/lib/license-serial-privacy';
+import { listEngagements } from '@/lib/management-system-engagements';
 
 export type {
   ClientSystemActivation,
@@ -44,6 +45,10 @@ export async function getManagementSystemsOverview(
   });
 
   const licenseCache = new Map<string, Awaited<ReturnType<typeof getLicenseStatusByMspClientId>>>();
+  const engagements = await listEngagements();
+  const engagementByKey = new Map(
+    engagements.map((e) => [`${e.clientId}:${e.feature}`, e] as const)
+  );
 
   async function licenseForClient(clientId: string) {
     if (!dbAvailable) return null;
@@ -84,6 +89,8 @@ export async function getManagementSystemsOverview(
       else if (licenseStatus === 'Expired') expired++;
       else notSynced++;
 
+      const engagement = engagementByKey.get(`${client.id}:${feature}`);
+
       rows.push({
         clientId: client.id,
         clientName: client.companyName || client.name,
@@ -94,6 +101,13 @@ export async function getManagementSystemsOverview(
         licenseType: entry?.licenseType ?? null,
         expirationDate: entry?.expirationDate ?? null,
         activationDate: license?.activationDate ?? null,
+        provisionStatus: engagement?.provisionStatus ?? 'none',
+        installStatus: engagement?.installStatus ?? 'none',
+        deliverableStatus: engagement?.deliverableStatus ?? 'none',
+        provisionRunId: engagement?.provisionRunId,
+        installRunId: engagement?.installRunId,
+        provisionAt: engagement?.provisionAt,
+        installAt: engagement?.installAt,
       });
     }
 

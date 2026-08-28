@@ -26,7 +26,8 @@ export const ACTIVATION_FEATURE_LABELS: Record<
   },
   document: {
     title: 'Document Management',
-    description: 'Digital filing, workflow automation, and secure storage.',
+    description:
+      'Law Firm Management System — digital filing, workflow automation, and secure storage for legal practice.',
   },
   ecommerce: {
     title: 'E-commerce Websites',

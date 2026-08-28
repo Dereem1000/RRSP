@@ -6,6 +6,7 @@ import { DemoModeBanner } from '@/components/DemoModeBanner';
 import { DashboardHeaderActions } from '@/components/dashboard/DashboardHeaderActions';
 import { TicketHeaderActions } from '@/components/tickets/TicketHeaderActions';
 import { ClientHeaderActions } from '@/components/clients/ClientHeaderActions';
+import { RrspShopCustomerHeaderActions } from '@/components/clients/RrspShopCustomerHeaderActions';
 import { AccountingHeaderActions } from '@/components/accounting/AccountingHeaderActions';
 import { MiniAssistantDock } from '@/components/mini/MiniAssistantDock';
 import { SecurityStatusBadge } from '@/components/security/SecurityStatusBadge';
@@ -32,6 +33,9 @@ export type PortalRrspAccess = {
   shopLogoAlt?: string;
   hasCustomLogo?: boolean;
   shopDemoMode?: boolean;
+  isShopOwner?: boolean;
+  isShopStaff?: boolean;
+  portalDisplayRole?: string;
 } | null;
 
 export function PortalShell({
@@ -39,18 +43,19 @@ export function PortalShell({
   user,
   demoMode = false,
   rrspAccess = null,
+  clientPlatformLicenses = false,
   partsIncomingBadge = 0,
 }: {
   children: React.ReactNode;
   user: { id: number; firstName: string; lastName: string; role: string; securityClearance: string };
   demoMode?: boolean;
   rrspAccess?: PortalRrspAccess;
+  clientPlatformLicenses?: boolean;
   partsIncomingBadge?: number;
 }) {
   const pathname = usePathname();
   const [sidebarWidth, setSidebarWidth] = useState(72);
   const [sidebarReady, setSidebarReady] = useState(false);
-  const [demoBannerVisible, setDemoBannerVisible] = useState(demoMode);
   const [miniDockActive, setMiniDockActive] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileMode, setProfileMode] = useState<'profile' | 'contact'>('profile');
@@ -62,6 +67,7 @@ export function PortalShell({
 
   const canEditShopLogo = Boolean(
     user.role === 'client' &&
+      !rrspAccess?.isShopStaff &&
       rrspAccess?.featureEnabled &&
       (rrspAccess.licenseActive || rrspAccess.enabled || rrspAccess.needsContact)
   );
@@ -90,20 +96,16 @@ export function PortalShell({
   useAdaptiveMiniPoll(user.role === 'admin', refreshMiniStatus, { baseMs: 60_000, maxMs: 180_000 });
 
   useEffect(() => {
-    if (rrspAccess?.needsContact && !contactPromptDismissed) {
+    if (rrspAccess?.needsContact && !contactPromptDismissed && !profileOpen) {
       setProfileMode('contact');
       setProfileTab('account');
       setProfileOpen(true);
     }
-  }, [rrspAccess?.needsContact, contactPromptDismissed]);
+  }, [rrspAccess?.needsContact, contactPromptDismissed, profileOpen]);
 
   const handleSidebarWidthChange = useCallback((px: number) => {
     setSidebarWidth(px);
     setSidebarReady(true);
-  }, []);
-
-  const handleDemoBannerVisible = useCallback((visible: boolean) => {
-    setDemoBannerVisible(visible);
   }, []);
 
   const openProfile = useCallback((tab: ProfileTab = 'account') => {
@@ -140,21 +142,34 @@ export function PortalShell({
   }, [canEditShopLogo]);
 
   const pageLabel = getPortalPageLabel(pathname, user.role);
+  const isPosRoute =
+    pathname === '/pos' ||
+    pathname === '/rrsp/pos' ||
+    pathname?.startsWith('/pos/') === true ||
+    pathname?.startsWith('/rrsp/pos/') === true;
+
+  const creditBadgeOffset = miniDockActive ? 'bottom-24 lg:bottom-4' : 'bottom-20 lg:bottom-4';
+  const creditBadgeClassName = isPosRoute
+    ? `left-3 right-auto sm:left-4 lg:left-[calc(var(--portal-sidebar-width)+1rem)] ${creditBadgeOffset}`
+    : `${creditBadgeOffset} right-3 sm:right-4`;
 
   return (
     <PriceCalculatorProvider>
+      <div
+        className="contents"
+        style={{ ['--portal-sidebar-width' as string]: `${sidebarWidth}px` }}
+      >
       <DemoModeBanner
         userRole={user.role}
         initialDemoMode={demoMode}
         initialShopDemoMode={Boolean(rrspAccess?.shopDemoMode)}
-        onVisibleChange={handleDemoBannerVisible}
         onOpenShopProfile={() => openProfile('business')}
       />
 
       <div
         className="cd-mobile-app min-h-dvh bg-slate-100 lg:min-h-screen"
         style={{
-          paddingTop: demoBannerVisible ? 40 : 0,
+          paddingTop: 'var(--demo-banner-height, 0px)',
           ['--portal-sidebar-width' as string]: `${sidebarWidth}px`,
         }}
       >
@@ -164,6 +179,7 @@ export function PortalShell({
             onWidthChange={handleSidebarWidthChange}
             miniDockActive={miniDockActive}
             rrspAccess={rrspAccess}
+            clientPlatformLicenses={clientPlatformLicenses}
             partsIncomingBadge={partsIncomingBadge}
             onOpenProfile={() => openProfile('account')}
             onEditLogo={canEditShopLogo ? () => openProfile('business') : undefined}
@@ -179,6 +195,7 @@ export function PortalShell({
             user={user}
             miniDockActive={miniDockActive}
             rrspAccess={rrspAccess}
+            clientPlatformLicenses={clientPlatformLicenses}
             partsIncomingBadge={partsIncomingBadge}
             onOpenProfile={() => openProfile('account')}
             onEditLogo={canEditShopLogo ? () => openProfile('business') : undefined}
@@ -186,17 +203,27 @@ export function PortalShell({
             shopLogoAlt={shopLogoAlt}
           />
 
-          <header className="portal-desktop-header sticky top-0 z-20 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/80 px-8 py-4 backdrop-blur-md lg:flex">
+          <header
+            className="portal-desktop-header sticky z-20 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/80 px-8 py-4 backdrop-blur-md lg:flex"
+            style={{ top: 'var(--demo-banner-height, 0px)' }}
+          >
             <div className="flex w-full min-w-0 items-center justify-between gap-4">
               <p className="truncate text-xs font-medium uppercase tracking-wider text-slate-400">
                 {pageLabel}
               </p>
               <div className="flex shrink-0 items-center gap-3">
-                <PortalQuickCreate user={user} rrspAccess={rrspAccess} />
+                {!rrspAccess?.isShopStaff && (
+                  <PortalQuickCreate user={user} rrspAccess={rrspAccess} />
+                )}
                 {pathname === '/dashboard' && <DashboardHeaderActions role={user.role} />}
                 {pathname?.match(/^\/tickets\/[^/]+$/) && <TicketHeaderActions role={user.role} />}
-                {pathname?.match(/^\/clients\/[^/]+/) && <ClientHeaderActions role={user.role} />}
-                {pathname === '/accounting' && <AccountingHeaderActions role={user.role} />}
+                {pathname?.match(/^\/clients\/[^/]+$/) && <ClientHeaderActions role={user.role} />}
+                {pathname?.match(/^\/rrsp\/clients\/[^/]+$/) && (
+                  <RrspShopCustomerHeaderActions role={user.role} rrspAccess={rrspAccess} />
+                )}
+                {(pathname === '/accounting' || pathname === '/rrsp/accounting') && (
+                  <AccountingHeaderActions role={user.role} rrspAccess={rrspAccess} />
+                )}
               </div>
             </div>
           </header>
@@ -225,14 +252,7 @@ export function PortalShell({
         </div>
       </div>
 
-      <ComputerDynamicsCreditBadge
-        visible={hasCustomLogo}
-        className={
-          miniDockActive
-            ? 'bottom-24 right-3 sm:right-4 lg:bottom-4'
-            : 'bottom-20 right-3 sm:right-4 lg:bottom-4'
-        }
-      />
+      <ComputerDynamicsCreditBadge visible={hasCustomLogo} className={creditBadgeClassName} />
 
       <AccountProfileModal
         open={profileOpen}
@@ -246,6 +266,7 @@ export function PortalShell({
       {(user.role === 'admin' || user.role === 'technician' || user.role === 'client') && (
         <PartsLiveSync role={user.role} isAdmin={user.role === 'admin'} />
       )}
+      </div>
     </PriceCalculatorProvider>
   );
 }

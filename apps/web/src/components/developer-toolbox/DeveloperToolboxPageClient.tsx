@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -32,6 +33,7 @@ function StatusDot({ health }: { health?: DevSlotHealth }) {
 }
 
 export function DeveloperToolboxPageClient() {
+  const searchParams = useSearchParams();
   const [toolboxTab, setToolboxTab] = useState<'tunnel' | 'provisioning'>('tunnel');
   const [state, setState] = useState<DevToolboxState | null>(null);
   const [slots, setSlots] = useState<DevSlotConfig[]>([]);
@@ -61,6 +63,12 @@ export function DeveloperToolboxPageClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (searchParams?.get('tab') === 'provisioning') {
+      setToolboxTab('provisioning');
+    }
+  }, [searchParams]);
 
   const refreshHealth = async () => {
     setBusy('health');

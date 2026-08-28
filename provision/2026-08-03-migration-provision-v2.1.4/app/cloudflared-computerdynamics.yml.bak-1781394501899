@@ -1,0 +1,28 @@
+# Computer Dynamics v2 — Cloudflare Tunnel ingress
+# Same tunnel as v1; points at v2 portal (:3000) and license API (:5001).
+# Do not run v1 and v2 tunnel scripts at the same time.
+
+tunnel: cdcb0769-874b-4923-aeed-a493e1a2b6af
+credentials-file: C:\Users\User\.cloudflared\cdcb0769-874b-4923-aeed-a493e1a2b6af.json
+
+ingress:
+  # Direct license API (POS production uses api.computerdynamicstt.com)
+  - hostname: api.computerdynamicstt.com
+    service: http://127.0.0.1:5001
+  # Mini assistant API (requires MINI_API_TOKEN on all protected routes)
+  - hostname: mini.computerdynamicstt.com
+    service: http://127.0.0.1:8876
+  # Showcase portal (start-showcase.bat on :3001 — demo data, dual-run with main :3000)
+  - hostname: demo.computerdynamicstt.com
+    service: http://127.0.0.1:3001
+  # MSP portal + proxied /api/license/* on Next.js
+  - hostname: computerdynamicstt.com
+    service: http://127.0.0.1:3000
+  - hostname: www.computerdynamicstt.com
+    service: http://127.0.0.1:3000
+  # --- Developer Toolbox (portal-managed) ---
+  # dev1: Event Sponsor CRM
+  - hostname: dev1.computerdynamicstt.com
+    service: http://192.168.131.121:7755
+  # --- end Developer Toolbox ---
+  - service: http_status:404

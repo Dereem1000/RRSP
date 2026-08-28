@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "layout_mode": "flat",
+  "description": "Computer Dynamics v2 migration provision — monorepo install root (not CRM flat server.js).",
+  "install_root_markers": ["package.json", "apps/web/package.json"],
+  "runtime_relative": ".",
+  "data_relative": ".",
+  "package_source_subdir": "app",
+  "database_file": "data/computer_dynamics.live.db",
+  "preserve_names": [
+    "data/computer_dynamics.live.db",
+    "data/computer_dynamics.live.db-wal",
+    "data/computer_dynamics.live.db-shm",
+    "data/computer_dynamics.db",
+    "data/computer_dynamics.db-wal",
+    "data/computer_dynamics.db-shm",
+    "data/active-database.json",
+    ".env",
+    "update-layout.json",
+    "PROVISION-COMPLETION.md",
+    "cloudflared-computerdynamics.yml"
+  ],
+  "skip_path_patterns": [
+    "^data/file-repair-snapshots(/|$)",
+    "^data/\\.demo_mode(/|$)",
+    "^data/showcase(/|$)",
+    "^provision(/|$)",
+    "^seed(/|$)"
+  ],
+  "post_apply": {
+    "working_directory_relative": ".",
+    "npm_install": true,
+    "npm_scripts": [],
+    "restart_script": "start-production.bat"
+  },
+  "provision_runtime": {
+    "prebuilt_markers": ["apps/web/.next/BUILD_ID", "packages/security/dist/worker-cli.js"],
+    "server_entry": "apps/api/dist/index.js",
+    "start_script": "start-production.bat"
+  }
+}

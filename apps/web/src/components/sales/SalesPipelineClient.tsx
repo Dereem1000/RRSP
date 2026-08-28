@@ -45,10 +45,12 @@ export function SalesPipelineClient({
   opportunities,
   stats,
   clients,
+  pathPrefix = '',
 }: {
   opportunities: OpportunityRow[];
   stats: PipelineStats;
   clients: ClientPickerOption[];
+  pathPrefix?: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -190,7 +192,7 @@ export function SalesPipelineClient({
                     className="rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-indigo-300 hover:shadow-md"
                   >
                     <div className="flex items-start gap-1 p-3">
-                      <Link href={`/sales/${opp.id}`} className="min-w-0 flex-1">
+                      <Link href={`${pathPrefix}/sales/${opp.id}`} className="min-w-0 flex-1">
                         <p className="font-medium text-slate-900">{opp.companyName}</p>
                         <p className="text-xs text-slate-500">{opp.contactName}</p>
                         <p className="mt-2 text-[11px] font-medium text-indigo-700">
@@ -231,7 +233,7 @@ export function SalesPipelineClient({
               {filtered.map((opp) => (
                 <tr key={opp.id} className="border-b border-slate-50 hover:bg-slate-50/50">
                   <td className="px-4 py-3">
-                    <Link href={`/sales/${opp.id}`} className="font-medium text-indigo-700 hover:underline">
+                    <Link href={`${pathPrefix}/sales/${opp.id}`} className="font-medium text-indigo-700 hover:underline">
                       {opp.companyName}
                     </Link>
                     <p className="text-xs text-slate-500">{opp.contactName}</p>
@@ -271,7 +273,7 @@ export function SalesPipelineClient({
           onClose={() => setShowCreate(false)}
           onCreated={(id) => {
             setShowCreate(false);
-            router.push(`/sales/${id}`);
+            router.push(`${pathPrefix}/sales/${id}`);
           }}
         />
       )}

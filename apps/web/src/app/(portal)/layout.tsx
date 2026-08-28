@@ -4,6 +4,7 @@ import { getClientRrspAccess } from '@/lib/rrsp-access';
 import { getRrspPortalBranding } from '@/lib/rrsp-branding';
 import { isRrspShopDemoActive } from '@/lib/rrsp-demo';
 import { requirePortalRouteAccess } from '@/lib/portal-route-access';
+import { clientHasPlatformLicenses } from '@/lib/client-platform-deliverables';
 import {
   countPendingIncomingPartsRequests,
   resolveStockOwnerForViewer,
@@ -17,6 +18,9 @@ export default async function PortalLayout({ children }: { children: React.React
     user.role === 'client'
       ? await getClientRrspAccess(user.id)
       : null;
+
+  const clientPlatformLicenses =
+    user.role === 'client' ? await clientHasPlatformLicenses(user.id) : false;
 
   const shopBranding =
     rrspAccess?.featureEnabled && rrspAccess.licenseActive && rrspAccess.mspClientId
@@ -53,6 +57,9 @@ export default async function PortalLayout({ children }: { children: React.React
               modules: rrspAccess.modules,
               needsContact: rrspAccess.needsContact,
               licenseActive: rrspAccess.licenseActive,
+              isShopOwner: rrspAccess.isShopOwner,
+              isShopStaff: rrspAccess.isShopStaff,
+              portalDisplayRole: rrspAccess.portalDisplayRole,
               shopLogoUrl: shopBranding?.logoUrl ?? null,
               shopLogoAlt: shopBranding?.companyName || 'Shop logo',
               hasCustomLogo: Boolean(shopBranding?.hasCustomLogo),
@@ -60,6 +67,7 @@ export default async function PortalLayout({ children }: { children: React.React
             }
           : null
       }
+      clientPlatformLicenses={clientPlatformLicenses}
     >
       {children}
     </PortalShell>

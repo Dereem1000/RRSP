@@ -13,6 +13,7 @@ import {
   Pencil,
   Save,
   UserRound,
+  Users,
   X,
 } from 'lucide-react';
 import {
@@ -25,6 +26,7 @@ import {
   type RrspBranding,
   type RrspEmailSettings,
 } from '@/lib/rrsp-branding-shared';
+import { RrspStaffTab } from '@/components/portal/RrspStaffTab';
 
 type ProfileUser = {
   id: number;
@@ -48,7 +50,7 @@ type ProfileClient = {
   locationSource?: 'geocode' | 'pin' | null;
 } | null;
 
-export type ProfileTab = 'account' | 'business' | 'email';
+export type ProfileTab = 'account' | 'business' | 'email' | 'staff';
 
 const inputClass =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20';
@@ -127,10 +129,15 @@ export function AccountProfileModal({
   const [testEmail, setTestEmail] = useState('');
   const [shopDemoMode, setShopDemoMode] = useState(false);
   const [demoToggling, setDemoToggling] = useState(false);
+  const [staffLoginEnabled, setStaffLoginEnabled] = useState(false);
+  const [shopLoginSlug, setShopLoginSlug] = useState('');
+  const [isShopOwner, setIsShopOwner] = useState(false);
+  const [isShopStaff, setIsShopStaff] = useState(false);
 
   const isContactMode = mode === 'contact' || forceContact;
   const showAddress = Boolean(client || isContactMode || rrspNeedsContact);
-  const showRrspTabs = rrspLicensed && !isContactMode;
+  /** Licensed RRSP shop account (not staff) — business, email, and staff settings. */
+  const showRrspTabs = rrspLicensed && !isShopStaff;
 
   function updateLocation(next: AddressLocation) {
     locationRef.current = next;
@@ -139,8 +146,12 @@ export function AccountProfileModal({
 
   useEffect(() => {
     if (!open) return;
-    setTab(isContactMode ? 'account' : initialTab);
-  }, [open, initialTab, isContactMode]);
+    if (mode === 'contact') {
+      setTab('account');
+      return;
+    }
+    setTab(initialTab);
+  }, [open, initialTab, mode]);
 
   useEffect(() => {
     if (!open) return;
@@ -159,6 +170,8 @@ export function AccountProfileModal({
         setRrspNeedsContact(Boolean(data.rrspNeedsContact));
         const licensed = Boolean(data.rrspLicensed);
         setRrspLicensed(licensed);
+        setIsShopOwner(Boolean(data.isShopOwner));
+        setIsShopStaff(Boolean(data.isShopStaff));
         setFirstName(data.user.firstName ?? '');
         setLastName(data.user.lastName ?? '');
         setEmail(data.client?.email || data.user.email || '');
@@ -174,13 +187,16 @@ export function AccountProfileModal({
         setNewPassword('');
         setConfirmPassword('');
 
-        if (licensed) {
+        if (licensed && !data.isShopStaff) {
           const rrspRes = await fetch('/api/auth/profile/rrsp', { cache: 'no-store' });
           const rrspData = await rrspRes.json();
           if (rrspRes.ok && !cancelled) {
             if (rrspData.branding) setBranding(rrspData.branding);
             if (rrspData.email) setRrspEmail(rrspData.email);
             setShopDemoMode(Boolean(rrspData.demoMode));
+            setStaffLoginEnabled(Boolean(rrspData.staffLoginEnabled));
+            setShopLoginSlug(String(rrspData.shopLoginSlug ?? ''));
+            setIsShopOwner(Boolean(rrspData.isShopOwner));
           }
         }
       } catch (err) {
@@ -290,6 +306,36 @@ export function AccountProfileModal({
     }
   }
 
+  async function toggleStaffLogin(next: boolean) {
+    setSaving('staffLogin');
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch('/api/auth/profile/rrsp', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section: 'business',
+          branding,
+          staffLoginEnabled: next,
+          shopLoginSlug: shopLoginSlug || branding.companyName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update staff login');
+      setStaffLoginEnabled(Boolean(data.staffLoginEnabled));
+      if (data.shopLoginSlug) setShopLoginSlug(data.shopLoginSlug);
+      setMessage(
+        data.message ||
+          (next ? 'Staff can now sign in with username@yourshop' : 'Staff sign-in disabled')
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update staff login');
+    } finally {
+      setSaving('');
+    }
+  }
+
   async function saveBusiness(e: FormEvent) {
     e.preventDefault();
     setSaving('business');
@@ -304,6 +350,10 @@ export function AccountProfileModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to save business info');
       setBranding(data.branding);
+      if (data.shopLoginSlug) setShopLoginSlug(data.shopLoginSlug);
+      if (data.staffLoginEnabled !== undefined) {
+        setStaffLoginEnabled(Boolean(data.staffLoginEnabled));
+      }
       setMessage('Business information saved');
       onBrandingSaved?.();
       router.refresh();
@@ -426,6 +476,9 @@ export function AccountProfileModal({
     ...(showRrspTabs
       ? ([
           { id: 'business', label: 'Business info', icon: Building2 },
+          ...(isShopOwner
+            ? [{ id: 'staff' as ProfileTab, label: 'Staff', icon: Users }]
+            : []),
           { id: 'email', label: 'Email', icon: Mail },
         ] as const)
       : []),
@@ -591,6 +644,33 @@ export function AccountProfileModal({
               </div>
             </div>
 
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800">Allow my staff to login</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    Staff sign in with{' '}
+                    <span className="font-mono text-slate-800">
+                      username@{shopLoginSlug || 'yourshop'}
+                    </span>
+                    . Manage accounts and page access on the Staff tab once this is on.
+                  </p>
+                </div>
+                <label className="flex shrink-0 cursor-pointer items-center gap-2 pt-0.5">
+                  <span className="text-xs font-medium text-slate-700">
+                    {staffLoginEnabled ? 'On' : 'Off'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={staffLoginEnabled}
+                    disabled={saving === 'staffLogin'}
+                    onChange={(e) => toggleStaffLogin(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -641,6 +721,8 @@ export function AccountProfileModal({
               </button>
             </div>
           </form>
+        ) : tab === 'staff' && showRrspTabs && isShopOwner ? (
+          <RrspStaffTab shopLoginSlug={shopLoginSlug} staffLoginEnabled={staffLoginEnabled} />
         ) : tab === 'email' && showRrspTabs ? (
           <form onSubmit={saveRrspEmailSettings} className="mt-5 space-y-4">
             <div className="flex items-center gap-2 text-sm font-medium text-slate-800">

@@ -1,0 +1,248 @@
+#!/usr/bin/env python3
+"""
+Ensure Event Sponsor CRM dev license + CRM .env for local validation.
+
+Usage (from license_activation_system_new):
+  python setup_crm_dev.py
+  python setup_crm_dev.py --crm-root "E:\\CRM"
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sqlite3
+import sys
+from datetime import datetime, timedelta, timezone
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_DB = os.path.join(SCRIPT_DIR, "instance", "license_system.db")
+DEFAULT_CRM_ROOT = r"E:\CRM"
+COMPANY_MSP_ID = "crm-dev-local"
+COMPANY_NAME = "Event Sponsor CRM (Dev)"
+
+
+def load_env_file(path: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not os.path.isfile(path):
+        return out
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key:
+                out[key] = value
+    return out
+
+
+def ensure_license(db_path: str) -> tuple[str, bool]:
+    from license_serial import ensure_unique_license_serial, generate_license_serial
+
+    now = datetime.now(timezone.utc)
+    activation = now.isoformat()
+    expiration = (now + timedelta(days=365 * 3)).isoformat()
+    features = {
+        "inventory_management": True,
+        "advanced_reporting": True,
+        "api_access": True,
+        "multi_location": True,
+        "pos_systems": False,
+        "restaurant_management": False,
+        "document_management": False,
+        "ecommerce_websites": False,
+        "auto_system": False,
+        "distribution_system": False,
+        "customer_management": True,
+    }
+    features_json = json.dumps(features)
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id FROM company_registration WHERE msp_client_id = ?",
+        (COMPANY_MSP_ID,),
+    )
+    row = cur.fetchone()
+    if row:
+        company_id = row[0]
+        created_company = False
+    else:
+        from license_serial import generate_company_serial
+
+        company_serial = generate_company_serial(COMPANY_MSP_ID)
+        cur.execute(
+            """INSERT INTO company_registration
+               (company_name, contact_person, email, phone, address, serial_number, msp_client_id, registration_date, is_verified, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
+            (
+                COMPANY_NAME,
+                "Dev Admin",
+                "dev@local.crm",
+                "",
+                "",
+                company_serial,
+                COMPANY_MSP_ID,
+                activation,
+                activation,
+            ),
+        )
+        company_id = cur.lastrowid
+        created_company = True
+
+    cur.execute(
+        "SELECT serial_number, features FROM license_activation WHERE company_id = ? ORDER BY is_active DESC, id DESC",
+        (company_id,),
+    )
+    existing = None
+    for row in cur.fetchall():
+        try:
+            feats = json.loads(row[1] or "{}")
+        except json.JSONDecodeError:
+            feats = {}
+        if feats.get("customer_management"):
+            existing = row
+            break
+
+    if existing:
+        serial = existing[0]
+        cur.execute(
+            """UPDATE license_activation
+               SET is_active = 1, license_type = ?, expiration_date = ?, updated_at = ?
+               WHERE serial_number = ?""",
+            ("No Time Limit", expiration, activation, serial),
+        )
+        conn.commit()
+        conn.close()
+        return serial, created_company
+
+    serial = generate_license_serial(
+        msp_feature="crm",
+        msp_client_id=COMPANY_MSP_ID,
+        features_raw=features,
+        device_seat=1,
+    )
+    for _ in range(8):
+        cur.execute("SELECT id FROM license_activation WHERE serial_number = ?", (serial,))
+        if not cur.fetchone():
+            break
+        serial = generate_license_serial(
+            msp_feature="crm",
+            msp_client_id=COMPANY_MSP_ID,
+            features_raw=features,
+            device_seat=1,
+        )
+
+    cur.execute(
+        """INSERT INTO license_activation
+           (serial_number, company_id, license_type, activation_date, expiration_date, is_active, max_users, features, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)""",
+        (
+            serial,
+            company_id,
+            "No Time Limit",
+            activation,
+            expiration,
+            25,
+            features_json,
+            activation,
+            activation,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return serial, created_company
+
+
+def write_crm_env(crm_root: str, secret: str, validation_url: str) -> str:
+    env_path = os.path.join(crm_root, ".env")
+    lines = [
+        "# Auto-generated by setup_crm_dev.py — edit as needed",
+        "PORT=7755",
+        "SESSION_SECRET=crm-dev-session-change-in-production",
+        f'LICENSE_RESPONSE_SECRET={secret}',
+        f"LICENSE_VALIDATION_URL={validation_url}",
+        "",
+    ]
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    return env_path
+
+
+def seed_crm_license_settings(crm_root: str, serial: str) -> bool:
+    db_path = os.path.join(crm_root, "crm.sqlite")
+    if not os.path.isfile(db_path):
+        return False
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='app_settings'"
+    )
+    if not cur.fetchone():
+        conn.close()
+        return False
+
+    def upsert(key: str, value: str) -> None:
+        cur.execute(
+            """INSERT INTO app_settings (key, value, updated_at)
+               VALUES (?, ?, CURRENT_TIMESTAMP)
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP""",
+            (key, value),
+        )
+
+    upsert("license.serial_number", serial)
+    upsert("license.status", "not_configured")
+    conn.commit()
+    conn.close()
+    return True
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--crm-root", default=DEFAULT_CRM_ROOT)
+    parser.add_argument(
+        "--validation-url",
+        default="http://localhost:5001/api/license/validate",
+    )
+    args = parser.parse_args()
+
+    license_env = load_env_file(os.path.join(SCRIPT_DIR, ".env"))
+    secret = license_env.get("LICENSE_RESPONSE_SECRET", "").strip()
+    if not secret:
+        print("ERROR: Set LICENSE_RESPONSE_SECRET in license_activation_system_new/.env first.", file=sys.stderr)
+        return 1
+
+    db_path = os.environ.get("LICENSE_DB_PATH", DEFAULT_DB)
+    if not os.path.isabs(db_path):
+        db_path = os.path.normpath(os.path.join(SCRIPT_DIR, db_path.lstrip("./")))
+    if not os.path.isfile(db_path):
+        print(f"ERROR: License database not found at {db_path}", file=sys.stderr)
+        return 1
+
+    serial, created_company = ensure_license(db_path)
+    env_path = write_crm_env(args.crm_root, secret, args.validation_url)
+    seeded = seed_crm_license_settings(args.crm_root, serial)
+
+    print("Event Sponsor CRM dev setup complete.")
+    if created_company:
+        print(f"  Created company: {COMPANY_NAME}")
+    print(f"  CRM license serial: {serial}")
+    print(f"  Wrote {env_path}")
+    if seeded:
+        print("  Pre-filled license.serial_number in crm.sqlite (validate once in CRM Settings -> License)")
+    else:
+        print("  crm.sqlite not found — start CRM once, then run again or enter serial in Settings → License")
+    print("\nNext:")
+    print("  1. Start license API: python license_api_server.py")
+    print("  2. Start CRM: cd E:\\CRM && npm run dev")
+    print("  3. CRM → Settings → License → Validate")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

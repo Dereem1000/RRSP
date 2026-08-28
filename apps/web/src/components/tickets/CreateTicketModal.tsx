@@ -25,6 +25,8 @@ export function CreateTicketModal({
   clientMode = false,
   defaultClientId = '',
   canAddClient = false,
+  shopMode = false,
+  pathPrefix = '',
   onClose,
 }: {
   clients: ClientOption[];
@@ -32,6 +34,8 @@ export function CreateTicketModal({
   clientMode?: boolean;
   defaultClientId?: string;
   canAddClient?: boolean;
+  shopMode?: boolean;
+  pathPrefix?: string;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -194,6 +198,8 @@ export function CreateTicketModal({
           defaults={addClientDefaults}
           onCreated={handleClientCreated}
           onClose={() => setShowAddClient(false)}
+          pathPrefix={pathPrefix}
+          shopMode={shopMode}
         />
       )}
     </>,

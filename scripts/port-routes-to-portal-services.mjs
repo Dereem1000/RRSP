@@ -416,8 +416,14 @@ const registryDir = path.join(root, 'packages/portal-services/src');
 const imports = [];
 const routes = [];
 
+function routeSortKey(pattern) {
+  const parts = pattern.split('/').filter(Boolean);
+  const dynamicScore = parts.reduce((n, p) => n + (p.startsWith(':') ? 1 : 0), 0);
+  return `${String(dynamicScore).padStart(3, '0')}:${pattern}`;
+}
+
 for (const [domain, items] of Object.entries(byDomain).sort()) {
-  for (const item of items.sort((a, b) => a.pattern.localeCompare(b.pattern))) {
+  for (const item of items.sort((a, b) => routeSortKey(a.pattern).localeCompare(routeSortKey(b.pattern)))) {
     const id = dispatchId(domain, item.name);
     imports.push(`import { dispatch as dispatch_${id} } from './handlers/${domain}/${item.name}';`);
     const content = fs.readFileSync(path.join(outRoot, domain, `${item.name}.ts`), 'utf8');

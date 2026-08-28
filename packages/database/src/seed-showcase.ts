@@ -19,11 +19,27 @@ import {
   ensureCalendarSchema,
   ensureSalesSchema,
   getDatabasePath,
+  getMonorepoRoot,
   getSequelize,
   testConnection,
 } from './index';
 
 const DEMO_PASSWORD = 'Demo@2026!';
+
+/** Must match apps/web/src/lib/public-demo-logins.ts */
+const RRMS_SHOWCASE_CLIENT_ID = 'a1111111-1111-4111-8111-111111111111';
+const RRMS_DEMO_SHOP_SLUG = 'rrmsrepairdemo';
+const RRMS_OWNER_EMAIL = 'rrms-demo@rrmsrepair.demo';
+
+const RRSP_MODULES_ALL: Record<string, boolean> = {
+  tickets: true,
+  orders: true,
+  parts: true,
+  sales: true,
+  clients: true,
+  accounting: true,
+  pos: true,
+};
 
 type DemoClient = {
   id: string;
@@ -565,7 +581,9 @@ async function seedNoticeBoard(adminId: number) {
     title: 'Welcome to the Computer Dynamics Showcase',
     content:
       'This environment uses fictional clients and sample tickets, orders, and sales data. ' +
-      'Sign in as **demo** or **tech** with password `Demo@2026!` to explore the portal.',
+      'Sign in as **demo** or **tech** with password `Demo@2026!` to explore the MSP portal. ' +
+      'For **RRMS**, use **Open Live Demo** on the RRMS marketing page or sign in as **rrms-demo@rrmsrepair.demo** ' +
+      '(shop owner) or staff **bench@rrmsrepairdemo**, **intake@rrmsrepairdemo**, **counter@rrmsrepairdemo** with the same password.',
     authorId: adminId,
     priority: 'normal',
     category: 'announcement',
@@ -758,6 +776,225 @@ async function seedPosCatalog(createdBy: number) {
   }
 }
 
+async function seedRrmsLicense(mspClientId: string, companyName: string, email: string): Promise<void> {
+  const licensePath = path.join(
+    getMonorepoRoot(),
+    'license_activation_system_new',
+    'instance',
+    'license_system.db'
+  );
+  if (!fs.existsSync(licensePath)) {
+    console.warn('[seed-showcase] License DB missing — RRMS demo license skipped:', licensePath);
+    return;
+  }
+
+  const activation = iso();
+  const expiration = iso(365 * 3);
+  const features = JSON.stringify({
+    inventory_management: true,
+    advanced_reporting: true,
+    api_access: true,
+    multi_location: true,
+    rrsp_online: true,
+  });
+
+  const db = new sqlite3.Database(licensePath);
+  const runLicense = (sql: string, params: unknown[] = []) =>
+    new Promise<void>((resolve, reject) => {
+      db.run(sql, params, (err) => (err ? reject(err) : resolve()));
+    });
+  const getLicense = (sql: string, params: unknown[] = []) =>
+    new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
+      db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row as Record<string, unknown> | undefined)));
+    });
+
+  try {
+    let companyId: number | undefined;
+    const existingCompany = await getLicense(
+      'SELECT id FROM company_registration WHERE msp_client_id = ?',
+      [mspClientId]
+    );
+    if (existingCompany?.id) {
+      companyId = Number(existingCompany.id);
+    } else {
+      const companySerial = `CO-${mspClientId.slice(0, 8).toUpperCase()}`;
+      await runLicense(
+        `INSERT INTO company_registration
+         (company_name, contact_person, email, phone, address, serial_number, msp_client_id, registration_date, is_verified, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+        [
+          companyName,
+          'Rita Owner',
+          email,
+          '+1-868-555-0400',
+          '22 Demo Lane, Port of Spain',
+          companySerial,
+          mspClientId,
+          activation,
+          activation,
+        ]
+      );
+      const row = await getLicense('SELECT last_insert_rowid() AS id');
+      companyId = Number(row?.id);
+    }
+
+    if (!companyId) return;
+
+    const serial = `RRMS-DEMO-SHOWCASE-${mspClientId.slice(0, 8).toUpperCase()}`;
+    const existingLicense = await getLicense(
+      'SELECT id FROM license_activation WHERE serial_number = ?',
+      [serial]
+    );
+    if (existingLicense?.id) {
+      await runLicense(
+        `UPDATE license_activation
+         SET is_active = 1, license_type = ?, expiration_date = ?, features = ?, updated_at = ?
+         WHERE serial_number = ?`,
+        ['No Time Limit', expiration, features, activation, serial]
+      );
+    } else {
+      await runLicense(
+        `INSERT INTO license_activation
+         (serial_number, company_id, license_type, activation_date, expiration_date, is_active, max_users, features, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+        [serial, companyId, 'No Time Limit', activation, expiration, 25, features, activation, activation]
+      );
+    }
+  } finally {
+    db.close();
+  }
+}
+
+async function seedRrmsDemoShop(): Promise<void> {
+  const password = await hashPassword(DEMO_PASSWORD);
+  const now = iso();
+
+  const owner = await User.create({
+    username: 'rrms-demo',
+    email: RRMS_OWNER_EMAIL,
+    password,
+    firstName: 'Rita',
+    lastName: 'Owner',
+    role: 'client',
+    securityClearance: 'S-CLS3',
+    isActive: true,
+    isLocked: false,
+    failedLoginAttempts: 0,
+    passwordSet: true,
+    phone: '+1-868-555-0400',
+    preferences: {},
+    created_at: new Date(now),
+    updated_at: new Date(now),
+  });
+
+  const servicePlanData = {
+    billingCycle: 'monthly',
+    rrspModules: RRSP_MODULES_ALL,
+    rrspStaffLoginEnabled: true,
+    rrspShopLoginSlug: RRMS_DEMO_SHOP_SLUG,
+    rrspBranding: {
+      companyName: 'RRMS Repair Demo Shop',
+      companyAddress: '22 Demo Lane, Port of Spain',
+      companyPhone: '+1-868-555-0400',
+      companyWebsite: 'https://rrms-repair.demo',
+      companyLogo: '/logo.svg',
+    },
+  };
+
+  const created = await Client.create({
+    id: RRMS_SHOWCASE_CLIENT_ID,
+    name: 'RRMS Repair Demo Shop',
+    companyName: 'RRMS Repair Demo Shop',
+    email: RRMS_OWNER_EMAIL,
+    phone: '+1-868-555-0400',
+    address: '22 Demo Lane, Port of Spain',
+    contactPerson: 'Rita Owner',
+    billingInfo: { paymentTerms: 'Net 30', currency: 'TTD' },
+    contractDetails: { showcase: true, product: 'rrms' },
+    serviceLevel: 'standard',
+    supportTier: 'silver',
+    status: 'active',
+    startDate: new Date(dateOnly(-90)),
+    monthlyRate: 350,
+    notes: 'RRMS marketing live-demo shop — owner, staff logins, and shop demo mode.',
+    communicationHistory: [],
+    isActive: true,
+    usageTracking: {},
+    features: ['rrsp'],
+    servicePlanData,
+    assignedTechnicianId: null,
+    priorityLevel: 'medium',
+    contractStartDate: new Date(dateOnly(-90)),
+    contractEndDate: new Date(dateOnly(275)),
+    renewalDate: new Date(dateOnly(245)),
+    slaAgreement: { responseHours: 4 },
+    userId: owner.id,
+    created_at: new Date(now),
+    updated_at: new Date(now),
+  });
+  await mirrorClientToBackup(created);
+
+  const staffSpecs: Array<{
+    local: string;
+    firstName: string;
+    lastName: string;
+    roleLabel: string;
+    modules: string[];
+  }> = [
+    {
+      local: 'bench',
+      firstName: 'Ben',
+      lastName: 'Bench',
+      roleLabel: 'Bench Tech',
+      modules: ['tickets', 'parts'],
+    },
+    {
+      local: 'intake',
+      firstName: 'Ivy',
+      lastName: 'Intake',
+      roleLabel: 'Intake',
+      modules: ['tickets', 'clients', 'orders'],
+    },
+    {
+      local: 'counter',
+      firstName: 'Cara',
+      lastName: 'Counter',
+      roleLabel: 'Front desk',
+      modules: ['pos', 'accounting'],
+    },
+  ];
+
+  for (const spec of staffSpecs) {
+    const username = `${spec.local}@${RRMS_DEMO_SHOP_SLUG}`;
+    await User.create({
+      username,
+      email: `${spec.local}@${RRMS_DEMO_SHOP_SLUG}.rrsp.local`,
+      password,
+      firstName: spec.firstName,
+      lastName: spec.lastName,
+      role: 'client',
+      securityClearance: 'S-CLS3',
+      isActive: true,
+      isLocked: false,
+      failedLoginAttempts: 0,
+      passwordSet: true,
+      phone: null,
+      preferences: {
+        rrspShopStaff: {
+          mspClientId: RRMS_SHOWCASE_CLIENT_ID,
+          ownerUserId: owner.id,
+          roleLabel: spec.roleLabel,
+          modules: spec.modules,
+        },
+      },
+      created_at: new Date(now),
+      updated_at: new Date(now),
+    });
+  }
+
+  await seedRrmsLicense(RRMS_SHOWCASE_CLIENT_ID, 'RRMS Repair Demo Shop', RRMS_OWNER_EMAIL);
+}
+
 export async function seedShowcaseDatabase(): Promise<void> {
   const dbPath = getDatabasePath();
   console.log('Seeding showcase database:', dbPath);
@@ -787,6 +1024,7 @@ export async function seedShowcaseDatabase(): Promise<void> {
 
   const { admin, tech } = await seedUsers();
   const clients = await seedClients(admin.id, tech.id);
+  await seedRrmsDemoShop();
   await seedTickets(clients, tech.id, admin.id);
   await seedOrders(clients, admin.id);
   await seedSales(admin.id, tech.id, clients);
@@ -799,6 +1037,8 @@ export async function seedShowcaseDatabase(): Promise<void> {
   console.log('Showcase seed complete.');
   console.log('  Admin:  demo  /', DEMO_PASSWORD);
   console.log('  Tech:   tech  /', DEMO_PASSWORD);
+  console.log('  RRMS owner:', RRMS_OWNER_EMAIL, '/', DEMO_PASSWORD);
+  console.log('  RRMS staff: bench@, intake@, counter@', RRMS_DEMO_SHOP_SLUG);
   console.log('  Clients: use each client email with /', DEMO_PASSWORD);
 }
 

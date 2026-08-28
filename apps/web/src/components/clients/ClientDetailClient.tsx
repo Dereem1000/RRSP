@@ -9,6 +9,8 @@ import { ClientDetailNav } from './ClientDetailNav';
 import { ClientUsagePanel } from './ClientUsagePanel';
 import { ClientRelatedPanel } from './ClientRelatedPanel';
 import { ClientSellerPayablesPanel } from './ClientSellerPayablesPanel';
+import { ClientQuickActions } from './ClientQuickActions';
+import { RrspShopCustomerActions } from './RrspShopCustomerActions';
 import { SERVICE_LEVEL_COLORS, STATUS_COLORS, type UsageInfo } from '@/lib/client-constants';
 
 type Technician = { id: number; firstName: string; lastName: string };
@@ -66,16 +68,26 @@ export function ClientDetailClient({
   technicians,
   initialUsage,
   initialBilling,
+  pathPrefix = '',
+  shopOperator = false,
+  showLicensesTab = true,
+  rrspModules = [],
 }: {
   client: ClientData;
   userRole: string;
   technicians: Technician[];
   initialUsage: UsageInfo;
   initialBilling: BillingInfo;
+  pathPrefix?: string;
+  shopOperator?: boolean;
+  showLicensesTab?: boolean;
+  /** Enabled RRSP shop modules (shop customer quick actions). */
+  rrspModules?: string[];
 }) {
   const router = useRouter();
   const isAdmin = userRole === 'admin';
-  const canManagePayables = userRole === 'admin' || userRole === 'technician';
+  const canManage = isAdmin || shopOperator;
+  const canManagePayables = (userRole === 'admin' || userRole === 'technician') && !shopOperator;
 
   const [client, setClient] = useState(initial);
   const [billing, setBilling] = useState(initialBilling);
@@ -113,8 +125,10 @@ export function ClientDetailClient({
     setError('');
     setMessage('');
     try {
-      const payload = formDataToClientPayload(new FormData(e.currentTarget));
-      delete (payload as { features?: unknown }).features;
+      const payload = formDataToClientPayload(new FormData(e.currentTarget), {}, { shopMode: shopOperator });
+      if (!shopOperator) {
+        delete (payload as { features?: unknown }).features;
+      }
       const res = await fetch(`/api/clients/${client.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -173,7 +187,7 @@ export function ClientDetailClient({
       const res = await fetch(`/api/clients/${client.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to deactivate');
-      router.push('/clients');
+      router.push(`${pathPrefix}/clients`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to deactivate');
@@ -190,7 +204,7 @@ export function ClientDetailClient({
       const res = await fetch(`/api/clients/${client.id}?force=true`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to delete');
-      router.push('/clients');
+      router.push(`${pathPrefix}/clients`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
@@ -203,7 +217,7 @@ export function ClientDetailClient({
 
   return (
     <div className="space-y-6">
-      <Link href="/clients" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600">
+      <Link href={`${pathPrefix}/clients`} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600">
         <ArrowLeft className="h-4 w-4" />
         Back to clients
       </Link>
@@ -227,9 +241,15 @@ export function ClientDetailClient({
             </span>
           )}
         </div>
+        {canManage && !shopOperator && (
+          <ClientQuickActions clientId={client.id} userRole={userRole} />
+        )}
+        {shopOperator && (
+          <RrspShopCustomerActions clientId={client.id} modules={rrspModules} />
+        )}
       </div>
 
-      <ClientDetailNav clientId={client.id} />
+      <ClientDetailNav clientId={client.id} pathPrefix={pathPrefix} showLicensesTab={showLicensesTab} />
 
       {(error || message) && (
         <div className={`rounded-xl px-4 py-3 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
@@ -237,7 +257,7 @@ export function ClientDetailClient({
         </div>
       )}
 
-      {isAdmin && (
+      {canManage && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-slate-900">Edit client</h2>
           <form
@@ -248,8 +268,9 @@ export function ClientDetailClient({
             <ClientFormFields
               layout="wide"
               defaults={formDefaults}
-              showContract
-              showUsage
+              shopMode={shopOperator}
+              showContract={!shopOperator}
+              showUsage={!shopOperator}
               showActivationFeatures={false}
               technicians={technicians}
             />
@@ -264,14 +285,16 @@ export function ClientDetailClient({
                   <Trash2 className="h-4 w-4" />
                   Deactivate
                 </button>
-                <button
-                  type="button"
-                  onClick={forceDeleteClient}
-                  disabled={!!loading}
-                  className="inline-flex items-center gap-2 rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-50 disabled:opacity-60"
-                >
-                  Force delete
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={forceDeleteClient}
+                    disabled={!!loading}
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Force delete
+                  </button>
+                )}
               </div>
               <button
                 type="submit"
@@ -291,10 +314,14 @@ export function ClientDetailClient({
           <h2 className="font-semibold text-slate-900">Overview</h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <Detail label="Contact person" value={client.contactPerson || '—'} />
-            <Detail label="Support tier" value={client.supportTier} />
+            {!shopOperator && <Detail label="Support tier" value={client.supportTier} />}
             <Detail label="Priority" value={client.priorityLevel ?? 'medium'} />
-            <Detail label="Technician" value={assignedTech ? `${assignedTech.firstName} ${assignedTech.lastName}` : '—'} />
-            <Detail label="Portal account" value={client.userId ? `Linked (user #${client.userId})` : 'None'} />
+            {!shopOperator && (
+              <>
+                <Detail label="Technician" value={assignedTech ? `${assignedTech.firstName} ${assignedTech.lastName}` : '—'} />
+                <Detail label="Portal account" value={client.userId ? `Linked (user #${client.userId})` : 'None'} />
+              </>
+            )}
             <Detail label="Active" value={client.isActive ? 'Yes' : 'No'} />
             {client.address && (
               <div className="sm:col-span-2">
@@ -310,6 +337,7 @@ export function ClientDetailClient({
           )}
         </section>
 
+        {!shopOperator && (
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-slate-900">Billing</h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -321,7 +349,7 @@ export function ClientDetailClient({
             <Detail label="Contract end" value={billing.contractEndDate ? String(billing.contractEndDate).slice(0, 10) : '—'} />
           </dl>
 
-          {isAdmin && (
+          {canManage && (
             <form onSubmit={saveContract} className="mt-4 space-y-3 border-t border-slate-100 pt-4">
               <p className="text-sm font-medium text-slate-700">Update contract</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -347,18 +375,23 @@ export function ClientDetailClient({
             </form>
           )}
         </section>
+        )}
       </div>
 
-      <ClientSellerPayablesPanel clientId={client.id} canManage={canManagePayables} />
+      {canManagePayables && (
+        <ClientSellerPayablesPanel clientId={client.id} canManage={canManagePayables} />
+      )}
 
+      {!shopOperator && (
       <ClientUsagePanel
         clientId={client.id}
         initialUsage={initialUsage}
         serviceLevel={client.serviceLevel}
-        isAdmin={isAdmin}
+        isAdmin={canManage}
       />
+      )}
 
-      <ClientRelatedPanel clientId={client.id} tickets={client.Tickets ?? []} />
+      <ClientRelatedPanel clientId={client.id} tickets={client.Tickets ?? []} pathPrefix={pathPrefix} />
     </div>
   );
 }

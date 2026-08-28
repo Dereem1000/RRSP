@@ -73,7 +73,7 @@ export async function maybeRunAutoBackup(): Promise<boolean> {
   if (nextRun && nextRun > now) return false;
 
   try {
-    const backupType = (config.type ?? 'full') as BackupType;
+    const backupType = (config.type ?? 'standard') as BackupType;
     await createBackupJob(backupType, 'Scheduled auto-backup');
     await enforceRetentionPolicy();
     const updated: AutoBackupConfig = {

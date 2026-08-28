@@ -1,6 +1,6 @@
 import type { DevSlotConfig, DevSlotId } from './types';
 
-export const DEV_SLOT_IDS: DevSlotId[] = ['dev1', 'dev2', 'dev3'];
+export const DEV_SLOT_IDS: DevSlotId[] = ['dev1', 'dev2', 'dev3', 'dev4', 'dev5', 'dev6', 'dev7', 'dev8'];
 
 export const TUNNEL_ID = 'cdcb0769-874b-4923-aeed-a493e1a2b6af';
 export const TUNNEL_NAME = 'computerdynamics-tunnel';
@@ -25,6 +25,46 @@ export function defaultSlots(): DevSlotConfig[] {
       port: 7755,
       enabled: true,
       note: 'Event Sponsor CRM',
+    },
+    {
+      id: 'dev4',
+      label: 'Dev 4',
+      hostname: `dev4.${DOMAIN}`,
+      host: '',
+      port: 3000,
+      enabled: false,
+    },
+    {
+      id: 'dev5',
+      label: 'Dev 5',
+      hostname: `dev5.${DOMAIN}`,
+      host: '',
+      port: 3000,
+      enabled: false,
+    },
+    {
+      id: 'dev6',
+      label: 'Dev 6',
+      hostname: `dev6.${DOMAIN}`,
+      host: '',
+      port: 3000,
+      enabled: false,
+    },
+    {
+      id: 'dev7',
+      label: 'Dev 7',
+      hostname: `dev7.${DOMAIN}`,
+      host: '',
+      port: 3000,
+      enabled: false,
+    },
+    {
+      id: 'dev8',
+      label: 'Dev 8',
+      hostname: `dev8.${DOMAIN}`,
+      host: '',
+      port: 3000,
+      enabled: false,
     },
     {
       id: 'dev2',

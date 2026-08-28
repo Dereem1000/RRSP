@@ -5,16 +5,26 @@ import { usePathname } from 'next/navigation';
 
 const tabs = [
   { suffix: '', label: 'Overview' },
-  { suffix: '/licenses', label: 'Licenses & activation' },
+  { suffix: '/licenses', label: 'Licenses & activation', cdOnly: true },
 ] as const;
 
-export function ClientDetailNav({ clientId }: { clientId: string }) {
+export function ClientDetailNav({
+  clientId,
+  pathPrefix = '',
+  showLicensesTab = true,
+}: {
+  clientId: string;
+  pathPrefix?: string;
+  /** CD MSP clients only — hidden for RRSP shop customers */
+  showLicensesTab?: boolean;
+}) {
   const pathname = usePathname();
-  const base = `/clients/${clientId}`;
+  const base = `${pathPrefix}/clients/${clientId}`;
+  const visibleTabs = tabs.filter((tab) => tab.cdOnly !== true || showLicensesTab);
 
   return (
     <nav className="flex gap-1 border-b border-slate-200">
-      {tabs.map(({ suffix, label }) => {
+      {visibleTabs.map(({ suffix, label }) => {
         const href = `${base}${suffix}`;
         const active = suffix ? pathname === href : pathname === base;
         return (

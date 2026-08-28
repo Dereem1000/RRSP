@@ -1,0 +1,91 @@
+{
+  "msp_api": {
+    "base_url": "http://localhost:3000/api/msp",
+    "timeout": 30,
+    "retry_attempts": 3
+  },
+  "service_level_mapping": {
+    "basic": {
+      "license_type": "basic",
+      "max_users": 5,
+      "duration_days": 365,
+      "features": {
+        "inventory_management": true,
+        "advanced_reporting": false,
+        "api_access": false,
+        "multi_location": false,
+        "onsite_visits": 4,
+        "support_tickets": 20,
+        "endpoints": 0,
+        "support_hours": 0
+      }
+    },
+    "standard": {
+      "license_type": "premium",
+      "max_users": 10,
+      "duration_days": 365,
+      "features": {
+        "inventory_management": true,
+        "advanced_reporting": true,
+        "api_access": true,
+        "multi_location": false,
+        "onsite_visits": 8,
+        "support_tickets": 50,
+        "endpoints": 5,
+        "support_hours": 0
+      }
+    },
+    "premium": {
+      "license_type": "premium",
+      "max_users": 25,
+      "duration_days": 365,
+      "features": {
+        "inventory_management": true,
+        "advanced_reporting": true,
+        "api_access": true,
+        "multi_location": false,
+        "onsite_visits": 12,
+        "support_tickets": 100,
+        "endpoints": 10,
+        "support_hours": 12
+      }
+    },
+    "enterprise": {
+      "license_type": "enterprise",
+      "max_users": 100,
+      "duration_days": 365,
+      "features": {
+        "inventory_management": true,
+        "advanced_reporting": true,
+        "api_access": true,
+        "multi_location": true,
+        "onsite_visits": 20,
+        "support_tickets": 200,
+        "endpoints": 20,
+        "support_hours": 24
+      }
+    },
+    "per-job": {
+      "license_type": "basic",
+      "max_users": 3,
+      "duration_days": 30,
+      "features": {
+        "inventory_management": true,
+        "advanced_reporting": false,
+        "api_access": false,
+        "multi_location": false,
+        "onsite_visits": 0,
+        "support_tickets": 0,
+        "endpoints": 0,
+        "support_hours": 0
+      }
+    }
+  },
+  "sync_settings": {
+    "auto_sync_interval": 3600,
+    "batch_size": 50,
+    "enable_notifications": true,
+    "log_level": "INFO"
+  }
+}
+

@@ -12,7 +12,7 @@ import {
 export async function getPortalClient(userId: number) {
   return Client.findOne({
     where: { userId },
-    attributes: ['id', 'name', 'companyName', 'email', 'serviceLevel'],
+    attributes: ['id', 'name', 'companyName', 'email', 'serviceLevel', 'features'],
   });
 }
 

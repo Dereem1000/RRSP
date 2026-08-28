@@ -13,6 +13,7 @@ import {
   Link2,
   Loader2,
   Mail,
+  Plus,
   Printer,
   Receipt,
   Send,
@@ -319,6 +320,8 @@ export function AccountingPageClient({
   const [editInvoiceDueDate, setEditInvoiceDueDate] = useState('');
   const [editInvoiceDescription, setEditInvoiceDescription] = useState('');
   const [editInvoiceItems, setEditInvoiceItems] = useState<QuoteLineItem[]>([]);
+  const [invoiceAddingItems, setInvoiceAddingItems] = useState(false);
+  const [newInvoiceItems, setNewInvoiceItems] = useState<QuoteLineItem[]>([]);
   const [invoicePayments, setInvoicePayments] = useState<Payment[]>([]);
   const [invoiceEmailHistory, setInvoiceEmailHistory] = useState<EmailLogEntry[]>([]);
   const [invoiceLinks, setInvoiceLinks] = useState<InvoiceLinkView[]>([]);
@@ -426,6 +429,18 @@ export function AccountingPageClient({
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [searchParams, pathname, router]);
+
+  const closeInvoiceDetail = useCallback(() => {
+    clearDocumentDeepLink();
+    setInvoiceDetailId(null);
+    setInvoiceDetail(null);
+    setInvoiceEditing(false);
+    setInvoiceAddingItems(false);
+    setNewInvoiceItems([]);
+    setInvoicePayments([]);
+    setInvoiceEmailHistory([]);
+    setInvoiceLinks([]);
+  }, [clearDocumentDeepLink]);
 
   const loadSummary = useCallback(async () => {
     const res = await fetch(api('/api/accounting/summary'));
@@ -602,6 +617,8 @@ export function AccountingPageClient({
       setInvoiceLinks(linksRes.ok ? (linksData.links ?? []) : []);
       setInvoiceDetailId(id);
       setInvoiceEditing(false);
+      setInvoiceAddingItems(false);
+      setNewInvoiceItems([]);
       setEditInvoiceAmount(String(invoice.amount));
       setEditInvoiceDueDate(String(invoice.dueDate).slice(0, 10));
       setEditInvoiceDescription(invoice.description ?? '');
@@ -612,6 +629,50 @@ export function AccountingPageClient({
       setPaymentMethod('CASH');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load invoice');
+    } finally {
+      setLoading('');
+    }
+  }
+
+  async function saveNewInvoiceItems() {
+    if (!invoiceDetailId || !invoiceDetail) return;
+    const addedItems = newInvoiceItems
+      .filter((item) => item.name.trim())
+      .map((item) => ({
+        ...item,
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
+        total: (Number(item.quantity) || 1) * (Number(item.price) || 0),
+      }));
+    if (!addedItems.length) {
+      setError('Add at least one line item with a name');
+      return;
+    }
+    const existingItems = (invoiceDetail.items ?? []).map((item) => ({
+      ...item,
+      quantity: Number(item.quantity) || 1,
+      price: Number(item.price) || 0,
+      total: item.total ?? (Number(item.quantity) || 1) * (Number(item.price) || 0),
+    }));
+    const items = [...existingItems, ...addedItems];
+    const amount = sumItems(items);
+    setLoading(`add-items-${invoiceDetailId}`);
+    setError('');
+    try {
+      const res = await fetch(api(`/api/msp/invoices/${invoiceDetailId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      setMessage('Items added to invoice');
+      setInvoiceAddingItems(false);
+      setNewInvoiceItems([]);
+      await openInvoiceDetail(invoiceDetailId);
+      await loadInvoices();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add items');
     } finally {
       setLoading('');
     }
@@ -743,6 +804,7 @@ export function AccountingPageClient({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Invoice cancelled');
+      if (invoiceDetailId === id) await openInvoiceDetail(id);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel invoice');
@@ -760,9 +822,7 @@ export function AccountingPageClient({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed');
       setMessage('Invoice deleted');
-      setInvoiceDetailId(null);
-      setInvoiceDetail(null);
-      setInvoicePayments([]);
+      closeInvoiceDetail();
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete invoice');
@@ -1182,6 +1242,18 @@ export function AccountingPageClient({
 
       {tab === 'invoices' && (
         <div className="space-y-4">
+          {isAdmin && (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowInvoiceForm(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                <Plus className="h-4 w-4" />
+                New invoice
+              </button>
+            </div>
+          )}
           <ListFilters
             status={invoiceStatus}
             clientId={invoiceClientId}
@@ -1278,6 +1350,18 @@ export function AccountingPageClient({
 
       {tab === 'quotes' && (
         <div className="space-y-4">
+          {isAdmin && (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowQuoteForm(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                <Plus className="h-4 w-4" />
+                New quote
+              </button>
+            </div>
+          )}
           <ListFilters
             status={quoteStatus}
             clientId={quoteClientId}
@@ -1747,23 +1831,28 @@ export function AccountingPageClient({
         <Modal
           title={`Invoice ${invoiceDetail.invoiceNumber}`}
           wide
-          onClose={() => {
-            clearDocumentDeepLink();
-            setInvoiceDetailId(null);
-            setInvoiceDetail(null);
-            setInvoiceEditing(false);
-            setInvoicePayments([]);
-            setInvoiceEmailHistory([]);
-            setInvoiceLinks([]);
-          }}
+          onClose={closeInvoiceDetail}
         >
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <StatusBadge status={invoiceDetail.status} colors={INVOICE_STATUS_COLORS} />
-              {isAdmin && invoiceDetail.status !== 'cancelled' && invoiceDetail.status !== 'paid' && !invoiceEditing && (
-                <button type="button" onClick={() => setInvoiceEditing(true)} className="text-sm font-semibold text-indigo-600 hover:underline">
-                  Edit invoice
-                </button>
+              {isAdmin && invoiceDetail.status !== 'cancelled' && invoiceDetail.status !== 'paid' && !invoiceEditing && !invoiceAddingItems && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceAddingItems(true);
+                      setNewInvoiceItems([emptyLineItem()]);
+                    }}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add items
+                  </button>
+                  <button type="button" onClick={() => setInvoiceEditing(true)} className="text-sm font-semibold text-indigo-600 hover:underline">
+                    Edit invoice
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1834,6 +1923,33 @@ export function AccountingPageClient({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {invoiceAddingItems && (
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+                <p className="text-sm font-semibold text-slate-900">Add items to invoice</p>
+                <LineItemsEditor items={newInvoiceItems} onChange={setNewInvoiceItems} />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInvoiceAddingItems(false);
+                      setNewInvoiceItems([]);
+                    }}
+                    className="rounded-xl border px-4 py-2 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveNewInvoiceItems}
+                    disabled={loading === `add-items-${invoiceDetailId}`}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {loading === `add-items-${invoiceDetailId}` ? 'Saving…' : 'Add to invoice'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1941,16 +2057,32 @@ export function AccountingPageClient({
                   {loading === `send-inv-${invoiceDetailId}` ? 'Sending…' : 'Send email'}
                 </button>
               )}
-              {isAdmin && invoiceDetail.status !== 'cancelled' && (
-                <button type="button" onClick={() => cancelInvoice(invoiceDetailId)} className="rounded-xl border px-4 py-2 text-sm">
-                  Cancel invoice
+              <button
+                type="button"
+                onClick={closeInvoiceDetail}
+                className="rounded-xl border px-4 py-2 text-sm"
+              >
+                Close
+              </button>
+              {isAdmin && invoiceDetail.status !== 'cancelled' ? (
+                <button
+                  type="button"
+                  onClick={() => cancelInvoice(invoiceDetailId)}
+                  disabled={loading === `cancel-${invoiceDetailId}`}
+                  className="rounded-xl border px-4 py-2 text-sm disabled:opacity-60"
+                >
+                  {loading === `cancel-${invoiceDetailId}` ? 'Cancelling…' : 'Cancel invoice'}
                 </button>
-              )}
-              {isAdmin && (
-                <button type="button" onClick={() => deleteInvoice(invoiceDetailId)} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">
-                  Delete invoice
+              ) : isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => deleteInvoice(invoiceDetailId)}
+                  disabled={loading === `delete-inv-${invoiceDetailId}`}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {loading === `delete-inv-${invoiceDetailId}` ? 'Deleting…' : 'Delete invoice'}
                 </button>
-              )}
+              ) : null}
             </div>
               </>
             ) : (

@@ -5,6 +5,8 @@ import { getMonorepoRoot } from '@cd-v2/database';
 import type { RestoreType } from './types';
 import { getLicenseDbPath, getRestoreTempDir, getUploadsDir, resolveDbPath } from './paths';
 
+const DATA_RESTORE_EXCLUDE = new Set(['backups', 'restore-temp', 'file-repair-snapshots']);
+
 async function extractZip(zipPath: string, destDir: string): Promise<void> {
   await fs.promises.mkdir(destDir, { recursive: true });
   await new Promise<void>((resolve, reject) => {
@@ -66,13 +68,13 @@ export async function performFilesRestore(restoreDir: string, overwrite: boolean
   fs.cpSync(uploadsBackup, current, { recursive: true });
 }
 
-function restoreAppTree(srcDir: string, relPrefix: string, repoRoot: string, overwrite: boolean): void {
+function restoreTree(srcDir: string, relPrefix: string, destRoot: string, overwrite: boolean): void {
   for (const ent of fs.readdirSync(srcDir, { withFileTypes: true })) {
     const rel = relPrefix ? `${relPrefix}/${ent.name}` : ent.name;
     const src = path.join(srcDir, ent.name);
-    const dest = path.join(repoRoot, rel);
+    const dest = path.join(destRoot, rel);
     if (ent.isDirectory()) {
-      restoreAppTree(src, rel, repoRoot, overwrite);
+      restoreTree(src, rel, destRoot, overwrite);
     } else {
       if (fs.existsSync(dest) && !overwrite) {
         void copyPreRestoreSafety(dest, 'file');
@@ -86,7 +88,55 @@ function restoreAppTree(srcDir: string, relPrefix: string, repoRoot: string, ove
 export async function performAppFilesRestore(restoreDir: string, overwrite: boolean): Promise<void> {
   const appDir = path.join(restoreDir, 'app');
   if (!fs.existsSync(appDir)) return;
-  restoreAppTree(appDir, '', getMonorepoRoot(), overwrite);
+  restoreTree(appDir, '', getMonorepoRoot(), overwrite);
+}
+
+export async function performSystemDataRestore(restoreDir: string, overwrite: boolean): Promise<void> {
+  const dataBackup = path.join(restoreDir, 'data');
+  if (!fs.existsSync(dataBackup)) return;
+  const dataRoot = path.join(getMonorepoRoot(), 'data');
+  fs.mkdirSync(dataRoot, { recursive: true });
+
+  for (const ent of fs.readdirSync(dataBackup, { withFileTypes: true })) {
+    if (DATA_RESTORE_EXCLUDE.has(ent.name)) continue;
+    const src = path.join(dataBackup, ent.name);
+    const dest = path.join(dataRoot, ent.name);
+    if (ent.isDirectory()) {
+      if (fs.existsSync(dest) && !overwrite) {
+        await copyPreRestoreSafety(dest, 'data-dir');
+      }
+      if (fs.existsSync(dest)) {
+        fs.rmSync(dest, { recursive: true, force: true });
+      }
+      fs.cpSync(src, dest, { recursive: true });
+    } else {
+      if (fs.existsSync(dest) && !overwrite) {
+        await copyPreRestoreSafety(dest, 'data-file');
+      }
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
+    }
+  }
+}
+
+export async function performSystemRepoRestore(restoreDir: string, overwrite: boolean): Promise<void> {
+  const repoBackup = path.join(restoreDir, 'repo');
+  if (!fs.existsSync(repoBackup)) return;
+  restoreTree(repoBackup, '', getMonorepoRoot(), overwrite);
+}
+
+function normalizeRestoreType(restoreType: RestoreType): RestoreType {
+  if (restoreType === 'full') return 'standard';
+  return restoreType;
+}
+
+async function performStandardRestore(restoreDir: string, overwrite: boolean): Promise<void> {
+  await performDatabaseRestore(restoreDir, overwrite);
+  if (fs.existsSync(path.join(restoreDir, 'license_system.db'))) {
+    await performLicenseDbRestore(restoreDir, overwrite);
+  }
+  await performFilesRestore(restoreDir, overwrite);
+  await performAppFilesRestore(restoreDir, overwrite);
 }
 
 export async function performRestore(input: {
@@ -98,10 +148,11 @@ export async function performRestore(input: {
   const { zipPath, restoreType, overwrite = false } = input;
   if (!fs.existsSync(zipPath)) throw new Error('Backup file not found');
 
+  const kind = normalizeRestoreType(restoreType);
   const restoreDir = path.join(getRestoreTempDir(), `restore-${input.backupId ?? 'upload'}-${Date.now()}`);
   try {
     await extractZip(zipPath, restoreDir);
-    switch (restoreType) {
+    switch (kind) {
       case 'database':
         await performDatabaseRestore(restoreDir, overwrite);
         break;
@@ -111,13 +162,13 @@ export async function performRestore(input: {
       case 'license':
         await performLicenseDbRestore(restoreDir, overwrite);
         break;
-      case 'full':
-        await performDatabaseRestore(restoreDir, overwrite);
-        if (fs.existsSync(path.join(restoreDir, 'license_system.db'))) {
-          await performLicenseDbRestore(restoreDir, overwrite);
-        }
-        await performFilesRestore(restoreDir, overwrite);
-        await performAppFilesRestore(restoreDir, overwrite);
+      case 'standard':
+        await performStandardRestore(restoreDir, overwrite);
+        break;
+      case 'system':
+        await performStandardRestore(restoreDir, overwrite);
+        await performSystemDataRestore(restoreDir, overwrite);
+        await performSystemRepoRestore(restoreDir, overwrite);
         break;
       default:
         throw new Error(`Unknown restore type: ${restoreType}`);

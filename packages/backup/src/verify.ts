@@ -18,13 +18,25 @@ export type BackupVerification = {
   hasDatabase: boolean;
   hasUploads: boolean;
   hasApp: boolean;
+  hasRepo: boolean;
+  hasData: boolean;
   fileCount: number;
   error?: string;
 };
 
 export async function verifyBackupZip(filePath: string): Promise<BackupVerification> {
   if (!fs.existsSync(filePath)) {
-    return { isValid: false, hasMetadata: false, hasDatabase: false, hasUploads: false, hasApp: false, fileCount: 0, error: 'File not found' };
+    return {
+      isValid: false,
+      hasMetadata: false,
+      hasDatabase: false,
+      hasUploads: false,
+      hasApp: false,
+      hasRepo: false,
+      hasData: false,
+      fileCount: 0,
+      error: 'File not found',
+    };
   }
 
   try {
@@ -34,13 +46,17 @@ export async function verifyBackupZip(filePath: string): Promise<BackupVerificat
     const hasDatabase = files.some((p: string) => p === 'database.db' || p.endsWith('database.db'));
     const hasUploads = files.some((p: string) => p.startsWith('uploads/'));
     const hasApp = files.some((p: string) => p.startsWith('app/') || p.startsWith('packages/'));
-    const isValid = hasMetadata && (hasDatabase || hasApp);
+    const hasRepo = files.some((p: string) => p.startsWith('repo/'));
+    const hasData = files.some((p: string) => p.startsWith('data/'));
+    const isValid = hasMetadata && (hasDatabase || hasApp || hasRepo);
     return {
       isValid,
       hasMetadata,
       hasDatabase,
       hasUploads,
       hasApp,
+      hasRepo,
+      hasData,
       fileCount: files.length,
     };
   } catch (err) {
@@ -50,6 +66,8 @@ export async function verifyBackupZip(filePath: string): Promise<BackupVerificat
       hasDatabase: false,
       hasUploads: false,
       hasApp: false,
+      hasRepo: false,
+      hasData: false,
       fileCount: 0,
       error: err instanceof Error ? err.message : String(err),
     };

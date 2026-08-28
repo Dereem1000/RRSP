@@ -56,9 +56,14 @@ export function ClientSearchSelect({
   onCreateRequest,
   createLabel = 'Add client',
 }: ClientSearchSelectProps) {
-  const autoId = useId();
-  const inputId = idProp ?? autoId;
-  const listId = `${inputId}-listbox`;
+  const generatedId = useId();
+  const [inputId, setInputId] = useState<string | undefined>(idProp);
+
+  useEffect(() => {
+    if (!idProp) setInputId(generatedId);
+  }, [idProp, generatedId]);
+
+  const listId = inputId ? `${inputId}-listbox` : undefined;
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');

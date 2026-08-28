@@ -79,18 +79,48 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
         return { status: 404, body: { success: false, message: 'Client not found' } };
       }
       const body = ctx.body as Record<string, unknown>;
-      await client.update({
-        name: body.name?.trim() || client.name,
-        email: body.email?.trim() || client.email,
-        phone: body.phone !== undefined ? body.phone : client.phone,
-        address: body.address !== undefined ? body.address : client.address,
-        contactPerson: body.contactPerson !== undefined ? body.contactPerson : client.contactPerson,
-        companyName: body.companyName !== undefined ? body.companyName : client.companyName,
-        status: body.status || client.status,
-        notes: body.notes !== undefined ? body.notes : client.notes,
-      });
-      await client.reload();
-      return { status: 200, body: { success: true, client: serializeClient(client) } };
+      if (body.email && body.email !== client.email) {
+        const existing = await getShopClientModel().findOne({ where: { email: body.email } });
+        if (existing && existing.id !== id) {
+          return { status: 400, body: { success: false, message: 'Email already in use' } };
+        }
+      }
+
+      const updates = pickClientFields(body);
+      delete updates.features;
+      if (body.serviceLevel === '') updates.serviceLevel = null;
+
+      if (body.servicePlanData !== undefined) {
+        const merged = {
+          ...normalizeServicePlanData(client.servicePlanData),
+          ...normalizeServicePlanData(body.servicePlanData),
+        };
+        delete merged.rrspModules;
+        updates.servicePlanData = merged;
+      }
+
+      if (
+        updates.serviceLevel !== undefined &&
+        updates.serviceLevel !== client.serviceLevel
+      ) {
+        if (!body.usageTracking) {
+          updates.usageTracking = mergeUsageLimitsForServiceLevel(
+            client.usageTracking as Record<string, unknown>,
+            updates.serviceLevel as string | null
+          );
+        }
+        if (!body.slaAgreement) {
+          updates.slaAgreement = getDefaultSlaForLevel(updates.serviceLevel as string | null);
+        }
+        if (body.monthlyRate === undefined) {
+          const rate = getDefaultMonthlyRate(updates.serviceLevel as string | null);
+          if (rate != null) updates.monthlyRate = rate;
+        }
+      }
+
+      await client.update(updates);
+      const refreshed = await getClientById(id);
+      return { status: 200, body: { success: true, client: serializeClient(refreshed ?? client) } };
     }
 
     requireRole(session, 'admin');
@@ -165,6 +195,12 @@ export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
         return { status: 404, body: { success: false, message: 'Client not found' } };
       }
       await client.update({ isActive: false, status: 'inactive' });
+      try {
+        const { deactivateActiveLicensesForMspClientIds } = await import('@cd-v2/security');
+        await deactivateActiveLicensesForMspClientIds([id]);
+      } catch {
+        /* license DB optional */
+      }
       return { status: 200, body: { success: true, message: 'Client deactivated' } };
     }
 
@@ -196,6 +232,12 @@ export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
     }
 
     await client.update({ isActive: false, status: 'inactive' });
+    try {
+      const { deactivateActiveLicensesForMspClientIds } = await import('@cd-v2/security');
+      await deactivateActiveLicensesForMspClientIds([id]);
+    } catch {
+      /* license DB optional */
+    }
     return { status: 200, body: { success: true, message: 'Client deactivated' } };
   } catch (error) {
     return authErrorResult(error);

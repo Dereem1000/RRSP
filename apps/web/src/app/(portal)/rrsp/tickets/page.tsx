@@ -60,6 +60,7 @@ export default async function RrspTicketsPage() {
           technicians={[]}
           clientCanCreate={ticketSettings?.clientCanCreateTickets ?? true}
           shopOperator
+          pathPrefix="/rrsp"
         />
       </div>
     );

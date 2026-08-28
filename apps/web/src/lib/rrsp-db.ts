@@ -613,11 +613,18 @@ export function getSalesOpportunityModel(): ModelStatic<Model> {
   return (cached?.SalesOpportunity ?? CdSalesOpportunity) as unknown as ModelStatic<Model>;
 }
 
+export function isRrspOrdersApiPath(urlPath: string): boolean {
+  const pathOnly = urlPath.split('?')[0] || '';
+  return /\/msp\/orders(\/|$)/.test(pathOnly);
+}
+
 /** Paths that must keep using the CD database even for RRSP-licensed clients. */
 export function isCdOnlyApiPath(urlPath: string): boolean {
   const pathOnly = urlPath.split('?')[0] || '';
   // Accounting UI reuses MSP invoice/quote routes for RRSP shops.
   if (isRrspAccountingApiPath(pathOnly)) return false;
+  // Shop orders UI reuses MSP order routes for RRSP shops.
+  if (isRrspOrdersApiPath(pathOnly)) return false;
   return (
     pathOnly.includes('/parts') ||
     pathOnly.includes('/billing') ||
@@ -656,6 +663,7 @@ export function isRrspAccountingApiPath(urlPath: string): boolean {
 export function isRrspModuleApiPath(urlPath: string): boolean {
   const pathOnly = urlPath.split('?')[0] || '';
   if (isRrspAccountingApiPath(pathOnly)) return true;
+  if (isRrspOrdersApiPath(pathOnly)) return true;
   if (isCdOnlyApiPath(pathOnly)) return false;
   return (
     pathOnly.includes('/tickets') ||

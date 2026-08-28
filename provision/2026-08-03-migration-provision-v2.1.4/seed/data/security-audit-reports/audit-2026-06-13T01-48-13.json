@@ -1,0 +1,286 @@
+{
+  "reportId": "audit-2026-06-13T01-48-13",
+  "generatedAt": "2026-06-13T01:48:13.398Z",
+  "hostname": "Desktop-Dereem",
+  "environment": "production",
+  "baseUrl": null,
+  "system": {
+    "name": "Computer Dynamics System v2",
+    "version": "2.1.0",
+    "root": "F:\\Computer Dynamics System v2"
+  },
+  "summary": {
+    "critical": 0,
+    "high": 5,
+    "medium": 5,
+    "low": 2,
+    "info": 1,
+    "total": 13,
+    "score": 11,
+    "checksRun": 7,
+    "checksPassed": 2,
+    "checksFailed": 4,
+    "checksSkipped": 1
+  },
+  "overallStatus": "high_risk",
+  "findings": [
+    {
+      "id": "FIND-0002",
+      "severity": "high",
+      "category": "database",
+      "title": "developer_mode enabled in production DB",
+      "description": "developer_mode=true allows disabling security monitoring with authorization code — should be false in production.",
+      "remediation": "Set developer_mode=false in system_configs (Settings or direct DB update).",
+      "evidence": null,
+      "checkId": "database-security-developer-mode",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0003",
+      "severity": "high",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: esbuild",
+      "description": "esbuild: Missing binary integrity verification in Deno module enables remote code execution via NPM_CONFIG_REGISTRY (affected: 0.17.0 - 0.28.0)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "esbuild",
+        "severity": "high",
+        "url": "https://github.com/advisories/GHSA-gv7w-rqvm-qjhr",
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-esbuild",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0004",
+      "severity": "high",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: imap",
+      "description": "npm advisory (affected: >=0.8.18)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "imap",
+        "severity": "high",
+        "url": null,
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-imap",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0007",
+      "severity": "high",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: semver",
+      "description": "semver vulnerable to Regular Expression Denial of Service (affected: 2.0.0-alpha - 5.7.1)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "semver",
+        "severity": "high",
+        "url": "https://github.com/advisories/GHSA-c2qf-rxjj-qqgw",
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-semver",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0009",
+      "severity": "high",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: utf7",
+      "description": "npm advisory (affected: >=1.0.2)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "utf7",
+        "severity": "high",
+        "url": null,
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-utf7",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0005",
+      "severity": "medium",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: next",
+      "description": "npm advisory (affected: 9.3.4-canary.0 - 16.3.0-canary.5)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "next",
+        "severity": "moderate",
+        "url": null,
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-next",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0006",
+      "severity": "medium",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: postcss",
+      "description": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output (affected: <8.5.10)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "postcss",
+        "severity": "moderate",
+        "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-postcss",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0008",
+      "severity": "medium",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: sequelize",
+      "description": "npm advisory (affected: 0.0.0-development || >=3.30.1)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "sequelize",
+        "severity": "moderate",
+        "url": null,
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-sequelize",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0010",
+      "severity": "medium",
+      "category": "dependencies",
+      "title": "Vulnerable dependency: uuid",
+      "description": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided (affected: <11.1.1)",
+      "remediation": "Run npm audit fix or update the package manually. Test after upgrading.",
+      "evidence": {
+        "name": "uuid",
+        "severity": "moderate",
+        "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+        "fixAvailable": true
+      },
+      "checkId": "dependencies-uuid",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0011",
+      "severity": "medium",
+      "category": "filesystem",
+      "title": "Possible hardcoded secrets in source",
+      "description": "Found 4 file(s) matching sensitive string patterns (review manually).",
+      "remediation": "Move secrets to .env or system_configs; never commit real credentials in source.",
+      "evidence": [
+        {
+          "file": "apps\\web\\src\\lib\\env-secrets.ts",
+          "label": "default JWT secret string"
+        },
+        {
+          "file": "scripts\\production-preflight.mjs",
+          "label": "default JWT secret string"
+        },
+        {
+          "file": "scripts\\security-audit\\checks\\filesystem.mjs",
+          "label": "default JWT secret string"
+        },
+        {
+          "file": "scripts\\security-audit\\lib\\utils.mjs",
+          "label": "default JWT secret string"
+        }
+      ],
+      "checkId": "filesystem-hardcoded",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0001",
+      "severity": "low",
+      "category": "configuration",
+      "title": ".gitignore missing entry: data/security-audit-reports",
+      "description": "Sensitive or local-only path \"data/security-audit-reports\" is not listed in .gitignore.",
+      "remediation": "Add \"data/security-audit-reports\" to .gitignore.",
+      "evidence": null,
+      "checkId": "production-config-gitignore",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0012",
+      "severity": "low",
+      "category": "filesystem",
+      "title": "World-readable sensitive file: .env",
+      "description": ".env has other-user read permission on this host.",
+      "remediation": "Restrict file permissions (e.g. chmod 600 on Unix; ACL on Windows).",
+      "evidence": null,
+      "checkId": "filesystem-perms-.env",
+      "status": "open"
+    },
+    {
+      "id": "FIND-0013",
+      "severity": "info",
+      "category": "filesystem",
+      "title": "README documents dev JWT default",
+      "description": "README.md shows JWT_SECRET=supersecretkey as example — ensure production .env differs.",
+      "remediation": "Verify production .env uses a unique secret (audit secrets check covers this).",
+      "evidence": null,
+      "checkId": "filesystem-readme-jwt",
+      "status": "open"
+    }
+  ],
+  "checks": [
+    {
+      "id": "secrets",
+      "name": "Secrets & credential hygiene",
+      "status": "passed",
+      "detail": "No secret blockers",
+      "at": "2026-06-13T01:48:04.054Z"
+    },
+    {
+      "id": "production-config",
+      "name": "Production configuration hardening",
+      "status": "failed",
+      "detail": "1 issue(s)",
+      "at": "2026-06-13T01:48:04.056Z"
+    },
+    {
+      "id": "database-security",
+      "name": "Database security posture",
+      "status": "failed",
+      "detail": "1 issue(s)",
+      "at": "2026-06-13T01:48:04.308Z"
+    },
+    {
+      "id": "dependencies",
+      "name": "npm dependency vulnerabilities",
+      "status": "failed",
+      "detail": "8 high/critical/moderate finding(s) from npm audit",
+      "at": "2026-06-13T01:48:13.209Z"
+    },
+    {
+      "id": "filesystem",
+      "name": "Filesystem & source hygiene",
+      "status": "failed",
+      "detail": "2 issue(s)",
+      "at": "2026-06-13T01:48:13.391Z"
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure & deployment",
+      "status": "passed",
+      "detail": "Infrastructure checks OK",
+      "at": "2026-06-13T01:48:13.397Z"
+    },
+    {
+      "id": "live-probes",
+      "name": "Live endpoint probes",
+      "status": "skipped",
+      "detail": "no AUDIT_BASE_URL",
+      "at": "2026-06-13T01:48:13.397Z"
+    }
+  ],
+  "meta": {
+    "strictMode": false,
+    "skipLive": false,
+    "skipDeps": false,
+    "startedAt": "2026-06-13T01:48:03.362Z",
+    "completedAt": "2026-06-13T01:48:13.398Z"
+  }
+}

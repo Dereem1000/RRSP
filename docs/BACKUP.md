@@ -10,31 +10,39 @@ Computer Dynamics v2 stores ZIP backups under `data/backups/` and records metada
 
 | Type | Contents |
 |------|----------|
-| `full` | SQLite DB, uploads, critical monorepo paths (security, database, web auth) |
-| `database` | `computer_dynamics.db` only |
+| `standard` | MSP SQLite DB, license DB, uploads, ~64 security-critical source paths under `app/` |
+| `system` | Everything in `standard`, plus full `data/` (except backups/temp), and v2 source under `repo/` (`apps/`, `packages/`, `scripts/`, `docs/`, `license_activation_system_new/`, root config) |
+| `database` | Active MSP SQLite file only |
 | `files` | `data/uploads/` only |
 | `license` | `license_activation_system_new/instance/license_system.db` only |
-| `manual` | Same as full |
+| `manual` / `auto` | Same as `standard` |
+| `full` | **Legacy alias** for `standard` (existing backups keep this label in the DB) |
+
+`system` backups exclude `node_modules`, `.git`, `.next`, `dist`, `data/backups`, `data/restore-temp`, and `Management Systems/`.
 
 ## Restore types
 
 | Type | Action |
 |------|--------|
-| `database` | Replace SQLite file (pre-restore copy unless overwrite) |
+| `database` | Replace active MSP SQLite file (pre-restore copy unless overwrite) |
 | `files` | Replace `data/uploads/` |
 | `license` | Replace license SQLite only (S-CLS1 + auth code) |
-| `full` | MSP database + license DB (if present) + files + `app/*` paths (requires S-CLS1 + auth code) |
+| `standard` | MSP DB + license DB (if present) + uploads + `app/*` paths (S-CLS1 + auth code) |
+| `system` | Standard restore + `data/*` + `repo/*` tree (S-CLS1 + auth code) |
+| `full` | Legacy alias for `standard` |
 
 ## Settings UI
 
 **Settings → Backup**
 
-- Create / list / verify / download / delete backups
-- **System recovery** — select backup or upload ZIP (replaces v1 `/api/emergency/recovery`)
+- **Standard backup** — daily default; data + security paths
+- **Full system backup** — disaster recovery; full v2 source + runtime data
+- List / verify / download / delete backups
+- **System recovery** — select backup or upload ZIP
 
 ## Auto-backup
 
-Configured via `autoBackupConfig` in `system_configs`. The security worker calls `maybeRunAutoBackup()` each monitor cycle when `nextRun` has passed.
+Configured via `autoBackupConfig` in `system_configs`. Defaults to `standard` daily at 02:00. The security worker calls `maybeRunAutoBackup()` each monitor cycle when `nextRun` has passed.
 
 ## Auto-repair
 

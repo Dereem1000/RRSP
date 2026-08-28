@@ -1,6 +1,7 @@
 import { Client } from '@cd-v2/database';
 import { normalizeServicePlanData } from '@/lib/rrsp';
 import { normalizeStoredPhone } from '@/lib/phone-utils';
+import { normalizeRrspShopLoginSlug } from '@/lib/rrsp-shop-staff';
 import {
   emptyRrspEmailSettings,
   isCustomRrspLogo,
@@ -101,6 +102,10 @@ export async function saveRrspBrandingForClient(
   const plan = {
     ...loaded.plan,
     rrspBranding: next,
+    rrspShopLoginSlug:
+      normalizeRrspShopLoginSlug(next.companyName) ||
+      String(loaded.plan.rrspShopLoginSlug ?? '').trim() ||
+      normalizeRrspShopLoginSlug(loaded.client.companyName || loaded.client.name || ''),
   };
 
   const clientUpdates: Record<string, unknown> = { servicePlanData: plan };

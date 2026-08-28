@@ -284,14 +284,14 @@
         }
 
         .hero-image-card {
-            background: var(--white);
+            background: transparent; /* remove solid white so captions sit on page background */
             border-radius: 16px;
-            padding: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 8px;
+            box-shadow: none;
             transition: all 0.3s ease;
-            border: 1px solid var(--gray-200);
+            border: 1px solid rgba(0,0,0,0.04);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             cursor: pointer;
             flex-shrink: 0;
             width: 400px;
@@ -309,8 +309,9 @@
             border-radius: 12px;
             margin-bottom: 8px;
             background: var(--gray-100);
-            border: 1px solid var(--gray-200);
+            border: 1px solid rgba(0,0,0,0.04);
             transition: all 0.3s ease;
+            display: block;
         }
 
         .hero-image-card:hover img {
@@ -327,18 +328,14 @@
 
         .hero-image-card .description {
             font-size: 13px;
-            color: var(--gray-600);
+            color: var(--gray-700);
             text-align: center;
             line-height: 1.3;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
+            opacity: 1; /* always visible to avoid empty space */
+            transform: none;
+            transition: none;
             margin: 0;
-        }
-
-        .hero-image-card:hover .description {
-            opacity: 1;
-            transform: translateY(0);
+            margin-top: 6px;
         }
 
         .hero-image-card .role-badge {
@@ -1449,7 +1446,7 @@
     <!-- Header -->
     <header class="header">
         <nav class="nav container">
-            <a href="index.html" class="logo">
+            <a href="/" class="logo">
                 <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div style="display: none; align-items: center;">
                     <i class="fas fa-desktop" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
@@ -1457,12 +1454,12 @@
                 </div>
             </a>
             <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="index.html#services">Services</a></li>
-                <li><a href="index.html#contact">Contact</a></li>
+                <li><a href="/">Home</a></li>
+                <li><a href="/#services">Services</a></li>
+                <li><a href="/#contact">Contact</a></li>
             </ul>
             <div style="display: flex; align-items: center;">
-                <a href="index.html" class="back-btn">
+                <a href="/" class="back-btn">
                     <i class="fas fa-arrow-left"></i>
                     Back to Home
                 </a>
@@ -1471,9 +1468,11 @@
                         <i class="fas fa-calendar-alt"></i>
                         Request Demo
                     </a>
-                    <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
-                    <a href="https://wa.me/18683168851" target="_blank" class="btn-whatsapp" title="WhatsApp Chat">
-                        <i class="fab fa-whatsapp"></i>
+                    <a href="#" class="demo-btn" target="_blank" rel="noopener noreferrer" data-cd-link-slot="restaurant-management-learn-more/live-demo" data-cd-link-default="#">
+                        <i class="fas fa-play-circle"></i> Open Live Demo
+                    </a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the Restaurant Management System. Can I get a custom quote?" class="demo-btn" target="_blank" rel="noopener noreferrer">
+                        <i class="fab fa-whatsapp"></i> Get Quote
                     </a>
                 </div>
             </div>
@@ -1489,10 +1488,9 @@
                     <i class="fas fa-utensils"></i>
                     Restaurant Management System
                 </div>
-                <h1>Complete Restaurant Management Solutions</h1>
+                <h1>Run Your Restaurant From One Connected Platform</h1>
                 <p class="subtitle">
-                    A comprehensive, touchscreen-friendly restaurant management system built with modern technology, 
-                    featuring modular database design and multiple user interfaces for seamless operations.
+                    An all-in-one platform for dine-in restaurants, cafés, bars, and food-service operations. From the guest scanning a QR code at the table to the kitchen firing orders, waiters serving progressively, and cashiers closing the check — every role gets the interface they need.
                 </p>
             </div>
             
@@ -1601,11 +1599,9 @@
         <section class="featured-interface">
             <div class="featured-content">
                 <div class="featured-text">
-                    <h2>Multi-Interface Touch System</h2>
+                    <h2>One Platform, Every Role</h2>
                     <p>
-                        Our restaurant management system features multiple touch-optimized interfaces designed for different roles. 
-                        From mobile customer menus to full-screen cash registers, each interface is crafted for intuitive 
-                        touch interaction and seamless workflow integration.
+                        Kitchen, waiter, cashier, and admin each get a purpose-built interface. Data flows automatically — when the kitchen marks an item ready, the waiter sees it immediately. Touch-first design with large buttons and fullscreen modes for kitchen displays and cash registers.
                     </p>
                     <div class="cta-buttons">
                         <a href="#features" class="btn btn-primary">
@@ -1629,11 +1625,9 @@
                     <div class="featured-badge">Mobile First</div>
                 </div>
                 <div class="featured-text">
-                    <h2>Customer Mobile Experience</h2>
+                    <h2>Guest Self-Service Via QR</h2>
                     <p>
-                        Customers can access the full menu through QR codes on their tables, browse categories, 
-                        customize orders, and track their meal progress. The mobile interface is optimized for 
-                        touch interaction with large buttons and intuitive navigation.
+                        Each table gets a unique QR code linking to a mobile-optimized menu. Guests browse categories, build a cart, place orders, and request assistance — all from their phone browser. No extra apps required.
                     </p>
                     <div class="cta-buttons">
                         <a href="#interfaces" class="btn btn-primary">
@@ -1649,11 +1643,9 @@
         <section class="featured-interface" style="background: linear-gradient(135deg, var(--success), var(--accent));">
             <div class="featured-content">
                 <div class="featured-text">
-                    <h2>Waiter Mobile Interface</h2>
+                    <h2>Progressive Service, Faster Tables</h2>
                     <p>
-                        Waiters can manage their assigned tables, create orders, track order progress, and communicate 
-                        with the kitchen all from their mobile device. The interface is designed for quick, efficient 
-                        service with touch-optimized controls and real-time updates.
+                        Orders advance automatically as items are prepared. Waiters can start serving as soon as the first dish is ready instead of waiting for the entire ticket to finish — better guest experience, faster turnover. Mobile-first staff tools let waiters carry the floor on their phone.
                     </p>
                     <div class="cta-buttons">
                         <a href="#interfaces" class="btn btn-primary">
@@ -1673,7 +1665,7 @@
         <section class="features-section container" id="features">
             <h2 class="section-title">Core System Features</h2>
             <p class="section-subtitle">
-                Everything you need to run a modern, efficient restaurant operation
+                Stop juggling disconnected tools. Give every role the interface they need, on the device they already use.
             </p>
             
             <div class="features-grid">
@@ -1681,48 +1673,48 @@
                     <div class="feature-icon">
                         <i class="fas fa-database"></i>
                     </div>
-                    <h3>Modular SQLite Database</h3>
-                    <p>Separate tables for different entities including users, orders, menu items, tables, payments, and customers. Robust data management with SQLAlchemy ORM.</p>
+                    <h3>One Platform, Every Role</h3>
+                    <p>Kitchen, waiter, cashier, and admin interfaces with automatic data flow between them.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-mobile-alt"></i>
                     </div>
-                    <h3>Touchscreen Optimized</h3>
-                    <p>Large buttons, responsive design, and touch-friendly interfaces. Works seamlessly on tablets, phones, and desktop computers with mobile-first design.</p>
+                    <h3>Progressive Service</h3>
+                    <p>Serve items as they're ready, not when the whole ticket finishes. Automatic order status recalculation.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-sync-alt"></i>
                     </div>
-                    <h3>Real-time Updates</h3>
-                    <p>Live order tracking and status updates across all interfaces. Kitchen, cash register, and waiter interfaces stay synchronized in real-time.</p>
+                    <h3>Touch-First Design</h3>
+                    <p>Large buttons, responsive layouts, fullscreen modes. Works on tablets, phones, and desktops.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-shield-alt"></i>
                     </div>
-                    <h3>Role-based Security</h3>
-                    <p>Secure user sessions with role-based access control. Password hashing, input validation, and SQL injection protection for complete security.</p>
+                    <h3>Built-In Public Website</h3>
+                    <p>Auto-generated restaurant site with live menu, hours, and contact — or redirect to your existing site.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-qrcode"></i>
                     </div>
-                    <h3>QR Code Integration</h3>
-                    <p>Each table gets a unique QR code for easy mobile menu access. Customers can browse, order, and track their meals directly from their phones.</p>
+                    <h3>Inventory & Purchase Orders</h3>
+                    <p>Track stock, receive deliveries, log waste, run counts, and create POs with low-stock alerts.</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-chart-line"></i>
                     </div>
-                    <h3>Analytics & Reporting</h3>
-                    <p>Comprehensive business insights with detailed reports, payment tracking, and system monitoring for data-driven decision making.</p>
+                    <h3>Reports That Mean Something</h3>
+                    <p>Sales, orders, menu, inventory, staff, and financial reports with CSV/PDF export.</p>
                 </div>
             </div>
         </section>
@@ -1741,13 +1733,13 @@
                             <i class="fas fa-fire"></i>
                         </div>
                         <h3>Kitchen Interface</h3>
-                        <p>Streamlined order management for kitchen staff</p>
+                        <p>Purpose-built kitchen display with item-level workflow control</p>
                         <ul class="interface-features">
-                            <li>View and manage active orders</li>
-                            <li>Update order item status</li>
-                            <li>Add chef notes and instructions</li>
-                            <li>Real-time order notifications</li>
-                            <li>Touch-friendly order management</li>
+                            <li>Item-level status: pending → preparing → ready</li>
+                            <li>Chef notes on individual items</li>
+                            <li>Bulk status updates</li>
+                            <li>Automatic order status recalculation</li>
+                            <li>Fullscreen mode for kitchen displays</li>
                         </ul>
                     </div>
 
@@ -1756,13 +1748,11 @@
                             <i class="fas fa-cash-register"></i>
                         </div>
                         <h3>Cash Register Interface</h3>
-                        <p>Complete payment processing solution</p>
+                        <p>Touch-optimized register for closing checks and taking payment</p>
                         <ul class="interface-features">
-                            <li>Process payments for completed orders</li>
-                            <li>Multiple payment methods support</li>
-                            <li>Generate and print receipts</li>
-                            <li>Track payment history</li>
-                            <li>Real-time payment status updates</li>
+                            <li>Multiple payment methods: cash, card, mobile, check, gift card</li>
+                            <li>Receipt generation and printing</li>
+                            <li>Fullscreen register mode</li>
                         </ul>
                     </div>
 
@@ -1771,13 +1761,12 @@
                             <i class="fas fa-user-tie"></i>
                         </div>
                         <h3>Waiter/Server Interface</h3>
-                        <p>Efficient table and order management</p>
+                        <p>Progressive serving and floor management on any device</p>
                         <ul class="interface-features">
-                            <li>Manage assigned tables</li>
-                            <li>Create new orders for customers</li>
-                            <li>Track order status and progress</li>
-                            <li>Customer service tools</li>
-                            <li>Table assignment management</li>
+                            <li>Progressive serving as items become ready</li>
+                            <li>Table claiming and assignment</li>
+                            <li>Assistance request notifications</li>
+                            <li>Desktop and mobile views</li>
                         </ul>
                     </div>
 
@@ -1786,13 +1775,11 @@
                             <i class="fas fa-mobile-alt"></i>
                         </div>
                         <h3>Customer Menu (QR Code)</h3>
-                        <p>Mobile-optimized customer experience</p>
+                        <p>Mobile menu guests open from their table QR code</p>
                         <ul class="interface-features">
-                            <li>Mobile-optimized menu interface</li>
-                            <li>Browse menu by categories</li>
-                            <li>Add items to cart with quantity controls</li>
-                            <li>Place orders directly from mobile devices</li>
-                            <li>Contact waiter for assistance</li>
+                            <li>Browse menu and build a cart</li>
+                            <li>Place orders from the phone browser</li>
+                            <li>Ask for Assistance with smart routing</li>
                         </ul>
                     </div>
 
@@ -1801,13 +1788,12 @@
                             <i class="fas fa-cog"></i>
                         </div>
                         <h3>Admin Dashboard</h3>
-                        <p>Complete system management and oversight</p>
+                        <p>Operational overview and one-click access to every area</p>
                         <ul class="interface-features">
-                            <li>System overview and statistics</li>
-                            <li>Table management</li>
-                            <li>Menu management</li>
-                            <li>Staff management</li>
-                            <li>Reports and analytics</li>
+                            <li>KPIs and performance metrics</li>
+                            <li>Recent orders feed</li>
+                            <li>Quick navigation to all modules</li>
+                            <li>One-click switch to cash register</li>
                         </ul>
                     </div>
                 </div>
@@ -1852,9 +1838,9 @@
         <!-- Benefits -->
         <section class="benefits-section">
             <div class="container">
-                <h2 class="section-title">Why Choose Our Restaurant Management System?</h2>
+                <h2 class="section-title">Why Choose This System?</h2>
                 <p class="section-subtitle">
-                    Transform your restaurant operations with our comprehensive solution
+                    Complete operational coverage — not just POS or kitchen display; the full cycle in one product.
                 </p>
                 
                 <div class="benefits-grid">
@@ -1862,48 +1848,48 @@
                         <div class="benefit-icon">
                             <i class="fas fa-clock"></i>
                         </div>
-                        <h3>Save Time</h3>
-                        <p>Streamline operations with automated order tracking, real-time updates, and efficient workflow management.</p>
+                        <h3>Complete Operational Coverage</h3>
+                        <p>Kitchen, waiters, cashiers, QR ordering, inventory, and admin in one product — not separate POS and kitchen display tools.</p>
                     </div>
 
                     <div class="benefit-item">
                         <div class="benefit-icon">
                             <i class="fas fa-dollar-sign"></i>
                         </div>
-                        <h3>Increase Revenue</h3>
-                        <p>Better order accuracy, faster service, and improved customer experience lead to higher satisfaction and repeat business.</p>
+                        <h3>Progressive Service Model</h3>
+                        <p>Serve items as they're ready instead of waiting for the whole ticket — faster table turnover and a better guest experience.</p>
                     </div>
 
                     <div class="benefit-item">
                         <div class="benefit-icon">
                             <i class="fas fa-users"></i>
                         </div>
-                        <h3>Improve Staff Efficiency</h3>
-                        <p>Role-specific interfaces help staff work more effectively with clear responsibilities and streamlined processes.</p>
+                        <h3>Guest Self-Service Via QR</h3>
+                        <p>Each table gets a unique QR linking to a mobile menu — guests browse, order, and request help from their phone browser.</p>
                     </div>
 
                     <div class="benefit-item">
                         <div class="benefit-icon">
                             <i class="fas fa-chart-bar"></i>
                         </div>
-                        <h3>Data-Driven Decisions</h3>
-                        <p>Comprehensive analytics and reporting help you understand your business better and make informed decisions.</p>
+                        <h3>Built-In Public Website</h3>
+                        <p>Auto-generated restaurant site with live menu, hours, and contact — or redirect to your existing site.</p>
                     </div>
 
                     <div class="benefit-item">
                         <div class="benefit-icon">
                             <i class="fas fa-mobile-alt"></i>
                         </div>
-                        <h3>Modern Customer Experience</h3>
-                        <p>QR code menus and mobile ordering provide a contemporary dining experience that customers expect.</p>
+                        <h3>Inventory + Purchase Orders</h3>
+                        <p>Track stock, receive deliveries, log waste, run counts, and create POs with low-stock alerts.</p>
                     </div>
 
                     <div class="benefit-item">
                         <div class="benefit-icon">
                             <i class="fas fa-shield-alt"></i>
                         </div>
-                        <h3>Secure & Reliable</h3>
-                        <p>Enterprise-grade security with role-based access control and secure data management.</p>
+                        <h3>Configurable Refund Governance</h3>
+                        <p>Manager-approved refund workflows with audit trails and role-based controls.</p>
                     </div>
                 </div>
             </div>
@@ -1915,15 +1901,14 @@
                 <div class="cta-content">
                     <h2>Ready to Transform Your Restaurant?</h2>
                     <p>
-                        Get started with our comprehensive restaurant management system today. 
-                        Contact us for a personalized demo and see how we can help streamline your operations.
+                        Explore live demos with the Live Demo button on any feature page — then contact us for a guided walkthrough or deployment quote.
                     </p>
                     <div class="cta-buttons">
-                        <a href="index.html#contact" class="btn btn-primary">
+                        <a href="/#contact" class="btn btn-primary">
                             <i class="fas fa-phone"></i>
                             Contact Us
                         </a>
-                        <a href="index.html#services" class="btn btn-secondary">
+                        <a href="/#services" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i>
                             View All Services
                         </a>
@@ -2514,8 +2499,10 @@
         });
     </script>
     <script src="/js/public-captcha.js"></script>
+    <script src="/js/marketing-link-guard.js"></script>
     <script src="/js/public-phone-input.js"></script>
-    <script src="/js/multiserver-demos.js" defer></script>
     <script src="/js/marketing-image-editor.js?v=20260721b" defer></script>
+    <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
+    <script src="/js/marketing-link-editor.js?v=20260818c" defer></script>
 </body>
 </html>

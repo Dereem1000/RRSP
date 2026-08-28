@@ -2,12 +2,15 @@
   "name": "@cd-v2/database",
   "version": "2.1.0",
   "private": true,
+  "author": "Computer Dynamics",
+  "license": "UNLICENSED",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "verify": "tsx src/verify-connection.ts",
-    "seed-showcase": "tsx src/seed-showcase.ts"
+    "seed-showcase": "tsx src/seed-showcase.ts",
+    "provision-rrms-demo": "tsx src/provision-rrms-demo.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

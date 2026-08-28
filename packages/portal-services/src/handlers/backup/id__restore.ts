@@ -48,7 +48,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
         session.clearance ?? 'S-CLS3'
       );
       if (!auth.valid) throw new Error(auth.reason);
-    } else if (restoreType === 'full' || restoreType === 'license') {
+    } else if (restoreType === 'full' || restoreType === 'standard' || restoreType === 'system' || restoreType === 'license') {
       return { status: 400, body: { success: false, message: 'Authorization code required for full restore' } };
     }
 

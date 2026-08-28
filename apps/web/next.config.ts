@@ -20,6 +20,36 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: monorepoRoot,
   },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: '/images/marketing-overrides/:filename',
+          destination: '/api/marketing-images/file/:filename',
+        },
+      ],
+    };
+  },
+  async headers() {
+    return [
+      {
+        source: '/developer-toolbox',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+      {
+        source: '/developer-toolbox/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+      {
+        source: '/_next/static/chunks/app/(portal)/developer-toolbox/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-cache, must-revalidate' }],
+      },
+      {
+        source: '/api/developer-toolbox/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+    ];
+  },
   // /api/* is proxied by apps/web/src/app/api/<domain>/[[...path]]/route.ts (forwards cookies to Express).
   // Demo apps use relative ./ assets; do not strip /demo/<slug>/ trailing slash.
   skipTrailingSlashRedirect: true,

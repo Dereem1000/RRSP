@@ -3,6 +3,7 @@
     "base_domain": "https://www.computerdynamicstt.com",
     "host": "localhost",
     "url_path_prefix": "/demo",
+    "flask_script_name_mode": "never",
     "manager_port": 5674,
     "demo_port_range_start": 8100,
     "demo_port_range_end": 8990,
@@ -64,6 +65,60 @@
       "demo_page": "pos-system-learn-more.html",
       "ngrok_enabled": false,
       "ngrok_bat": ""
+    },
+    {
+      "id": "c5ac296c-4ca8-40a4-9ac0-c58df64a2edc",
+      "name": "Restaurant.M",
+      "slug": "restaurant-m",
+      "working_dir": "F:\\Computer Dynamics System v2\\MultiServer\\Test platforms\\Restaurant.M",
+      "type": "python-flask",
+      "client_port": 8130,
+      "server_port": 8130,
+      "demo_port": 8130,
+      "extra_ports": [],
+      "command": "",
+      "enabled": true,
+      "notes": "",
+      "demo_page": "",
+      "ngrok_enabled": false,
+      "ngrok_bat": ""
+    },
+    {
+      "id": "c67e1e8e-38de-435d-a181-2f4ae2c657e7",
+      "name": "Document.M Lawfirm",
+      "slug": "document-m-lawfirm",
+      "working_dir": "F:\\Computer Dynamics System v2\\MultiServer\\Test platforms\\Document.M LawFirm",
+      "type": "pm2-ecosystem",
+      "client_port": 8140,
+      "server_port": 8140,
+      "demo_port": 8140,
+      "extra_ports": [
+        8141
+      ],
+      "command": "",
+      "enabled": true,
+      "notes": "",
+      "demo_page": "",
+      "ngrok_enabled": false,
+      "ngrok_bat": ""
     }
-  ]
+  ],
+  "mini": {
+    "mini_base_url": "https://mini.computerdynamicstt.com",
+    "company_name": "Computer Dynamics",
+    "public_base_url": "https://www.computerdynamicstt.com",
+    "mini_connection_id": "8a5f1925-03d9-4b49-ae2c-d8592358f877",
+    "mini_connection_token": "dc607a00988e0dc0c77c2056cae7ad36c284d521e735c2bf",
+    "mini_connection_status": "pending",
+    "mini_api_token": "38849c524a29c2db8c0fac372fbc3bc7553c8d5d0f863169",
+    "mini_auto_update_enabled": false,
+    "mini_last_update_check_at": "",
+    "mini_last_update_error": "",
+    "mini_last_sync_error": "",
+    "bind_public": false,
+    "applied_updates": [],
+    "integration_kit_version": "",
+    "_resolved_public_url": "https://www.computerdynamicstt.com",
+    "_resolved_public_source": "stored"
+  }
 }

@@ -1,0 +1,1833 @@
+import { randomUUID } from 'crypto';
+import { Op, QueryTypes } from 'sequelize';
+import { Client as MspClient } from '@cd-v2/database';
+import { SERVICE_LEVELS } from '@/lib/client-constants';
+import { ensureInvoiceLinksTable } from '@/lib/accounting-schema';
+import { getOperationalSequelize as getSequelize } from '@/lib/rrsp-db';
+
+export type InvoiceRow = {
+  id: string;
+  client_id: string;
+  created_by: number;
+  invoice_number: string;
+  amount: number;
+  paidAmount: number;
+  currency: string;
+  status: string;
+  due_date: string;
+  paid_date: string | null;
+  billing_cycle: string;
+  payment_gateway: string;
+  description: string | null;
+  items: string | null;
+  created_at: string;
+  updated_at: string;
+  clientName?: string;
+  clientEmail?: string;
+  serviceLevel?: string | null;
+};
+
+export type PaymentRow = {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  payment_method: string;
+  payment_date: string;
+  processed_by: string;
+  reference: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QuoteRow = {
+  id: string;
+  client_id: string;
+  created_by: string | number;
+  quote_number: string;
+  title: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  valid_until: string;
+  accepted_date: string | null;
+  converted_to_invoice_id: string | null;
+  items: string | null;
+  terms: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  clientName?: string;
+  clientEmail?: string;
+};
+
+export type AccountingSummary = {
+  totalRevenue: number;
+  pendingAmount: number;
+  totalInvoices: number;
+  overdueInvoices: number;
+  paidInvoices: number;
+  totalQuotes: number;
+  draftQuotes: number;
+  sentQuotes: number;
+  acceptedQuotes: number;
+  convertedQuotes: number;
+};
+
+export type RecentFinancialTransaction = {
+  id: string;
+  kind?: 'payment' | 'credit_note';
+  invoiceId: string;
+  clientId: string | null;
+  invoiceNumber: string;
+  clientName: string | null;
+  amount: number;
+  currency: string;
+  paymentDate: string;
+  paymentMethod: string;
+  reference: string | null;
+  creditNoteNumber?: string | null;
+};
+
+export type Pagination = {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+};
+
+function parseItems(raw: string | null): unknown[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function serializeInvoice(row: InvoiceRow) {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    createdBy: row.created_by,
+    invoiceNumber: row.invoice_number,
+    amount: Number(row.amount),
+    paidAmount: Number(row.paidAmount ?? 0),
+    currency: row.currency,
+    status: row.status,
+    dueDate: row.due_date,
+    paidDate: row.paid_date,
+    billingCycle: row.billing_cycle,
+    paymentGateway: row.payment_gateway,
+    description: row.description,
+    items: parseItems(row.items),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    client: row.clientName
+      ? {
+          id: row.client_id,
+          name: row.clientName,
+          email: row.clientEmail,
+          serviceLevel: row.serviceLevel,
+        }
+      : undefined,
+  };
+}
+
+function serializeQuote(row: QuoteRow) {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    createdBy: row.created_by,
+    quoteNumber: row.quote_number,
+    title: row.title,
+    description: row.description,
+    amount: Number(row.amount),
+    currency: row.currency,
+    status: row.status,
+    validUntil: row.valid_until,
+    acceptedAt: row.accepted_date,
+    convertedToInvoiceId: row.converted_to_invoice_id,
+    items: parseItems(row.items),
+    terms: row.terms,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    client: row.clientName
+      ? { id: row.client_id, name: row.clientName, email: row.clientEmail }
+      : undefined,
+  };
+}
+
+function serializePayment(row: PaymentRow) {
+  return {
+    id: row.id,
+    invoiceId: row.invoice_id,
+    amount: Number(row.amount),
+    paymentMethod: row.payment_method,
+    paymentDate: row.payment_date,
+    processedBy: row.processed_by,
+    reference: row.reference,
+    notes: row.notes,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getMspClientIds(): Promise<string[]> {
+  const clients = await MspClient.findAll({
+    where: { serviceLevel: { [Op.in]: [...SERVICE_LEVELS] } },
+    attributes: ['id'],
+  });
+  return clients.map((c) => c.id);
+}
+
+export async function getInvoiceById(id: string) {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<InvoiceRow>(
+    `SELECT i.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail, c.service_level AS serviceLevel
+     FROM invoices i
+     LEFT JOIN clients c ON c.id = i.client_id
+     WHERE i.id = :id`,
+    { type: QueryTypes.SELECT, replacements: { id } }
+  );
+  return rows[0] ? (await withCreditNoteSummaries([serializeInvoice(rows[0])]))[0] : null;
+}
+
+export async function createInvoice(input: {
+  clientId: string;
+  amount: number;
+  dueDate: string;
+  createdBy: number;
+  currency?: string;
+  status?: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'partial';
+  billingCycle?: 'monthly' | 'trimonthly' | 'immediately';
+  paymentGateway?: 'CASH' | 'PayPal' | 'bank_transfer' | 'WiPay';
+  description?: string | null;
+  items?: unknown[];
+}) {
+  const sequelize = getSequelize();
+  const id = randomUUID();
+  const invoiceNumber = await generateInvoiceNumber();
+  const now = new Date().toISOString();
+
+  await sequelize.query(
+    `INSERT INTO invoices (id, client_id, created_by, invoice_number, amount, paidAmount, currency, status, due_date, billing_cycle, payment_gateway, description, items, created_at, updated_at)
+     VALUES (:id, :clientId, :createdBy, :invoiceNumber, :amount, :paidAmount, :currency, :status, :dueDate, :billingCycle, :paymentGateway, :description, :items, :now, :now)`,
+    {
+      replacements: {
+        id,
+        clientId: input.clientId,
+        createdBy: input.createdBy,
+        invoiceNumber,
+        amount: input.amount,
+        paidAmount: input.status === 'paid' ? input.amount : 0,
+        currency: input.currency ?? 'TTD',
+        status: input.status ?? 'pending',
+        dueDate: input.dueDate,
+        billingCycle: input.billingCycle ?? 'immediately',
+        paymentGateway: input.paymentGateway ?? 'CASH',
+        description: input.description ?? null,
+        items: JSON.stringify(input.items ?? []),
+        now,
+      },
+    }
+  );
+
+  const invoice = await getInvoiceById(id);
+  if (!invoice) return null;
+
+  if (invoice.status === 'paid') {
+    await sequelize.query(`UPDATE invoices SET paid_date = :paidDate, updated_at = :now WHERE id = :id`, {
+      replacements: { id, paidDate: now, now },
+    });
+    return getInvoiceById(id);
+  }
+
+  return invoice;
+}
+
+export async function updateInvoice(
+  id: string,
+  updates: Partial<{
+    clientId: string;
+    amount: number;
+    currency: string;
+    status: 'pending' | 'paid' | 'overdue' | 'cancelled' | 'partial';
+    dueDate: string;
+    billingCycle: 'monthly' | 'trimonthly' | 'immediately';
+    paymentGateway: 'CASH' | 'PayPal' | 'bank_transfer' | 'WiPay';
+    description: string | null;
+    items: unknown[];
+  }>
+) {
+  const existing = await getInvoiceById(id);
+  if (!existing) return null;
+
+  const sequelize = getSequelize();
+  const now = new Date().toISOString();
+  const fields: string[] = [];
+  const replacements: Record<string, unknown> = { id, now };
+
+  if (updates.clientId !== undefined) {
+    fields.push('client_id = :clientId');
+    replacements.clientId = updates.clientId;
+  }
+  if (updates.amount !== undefined) {
+    fields.push('amount = :amount');
+    replacements.amount = updates.amount;
+  }
+  if (updates.currency !== undefined) {
+    fields.push('currency = :currency');
+    replacements.currency = updates.currency;
+  }
+  if (updates.dueDate !== undefined) {
+    fields.push('due_date = :dueDate');
+    replacements.dueDate = updates.dueDate;
+  }
+  if (updates.billingCycle !== undefined) {
+    fields.push('billing_cycle = :billingCycle');
+    replacements.billingCycle = updates.billingCycle;
+  }
+  if (updates.paymentGateway !== undefined) {
+    fields.push('payment_gateway = :paymentGateway');
+    replacements.paymentGateway = updates.paymentGateway;
+  }
+  if (updates.description !== undefined) {
+    fields.push('description = :description');
+    replacements.description = updates.description;
+  }
+  if (updates.items !== undefined) {
+    fields.push('items = :items');
+    replacements.items = JSON.stringify(updates.items);
+  }
+  if (updates.status !== undefined) {
+    fields.push('status = :status');
+    replacements.status = updates.status;
+    if (updates.status === 'paid') {
+      fields.push('paid_date = :paidDate');
+      replacements.paidDate = now;
+    } else {
+      fields.push('paid_date = NULL');
+    }
+  }
+
+  if (fields.length === 0) return existing;
+  fields.push('updated_at = :now');
+
+  await sequelize.query(`UPDATE invoices SET ${fields.join(', ')} WHERE id = :id`, { replacements });
+  return getInvoiceById(id);
+}
+
+export async function deleteInvoice(id: string) {
+  const existing = await getInvoiceById(id);
+  if (!existing) return false;
+  const sequelize = getSequelize();
+  await sequelize.query(`DELETE FROM invoices WHERE id = :id`, { replacements: { id } });
+  return true;
+}
+
+export async function getAccountingSummary(): Promise<AccountingSummary> {
+  const sequelize = getSequelize();
+  const [invoiceStats] = await sequelize.query<{
+    totalRevenue: number;
+    pendingAmount: number;
+    totalInvoices: number;
+    overdueInvoices: number;
+    paidInvoices: number;
+  }>(
+    `SELECT
+      COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS totalRevenue,
+      COALESCE(SUM(CASE WHEN status IN ('pending', 'partial', 'overdue') THEN amount ELSE 0 END), 0) AS pendingAmount,
+      COUNT(*) AS totalInvoices,
+      COALESCE(SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END), 0) AS overdueInvoices,
+      COALESCE(SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END), 0) AS paidInvoices
+    FROM invoices`,
+    { type: QueryTypes.SELECT }
+  );
+
+  const [quoteStats] = await sequelize.query<{
+    totalQuotes: number;
+    draftQuotes: number;
+    sentQuotes: number;
+    acceptedQuotes: number;
+    convertedQuotes: number;
+  }>(
+    `SELECT
+      COUNT(*) AS totalQuotes,
+      COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0) AS draftQuotes,
+      COALESCE(SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END), 0) AS sentQuotes,
+      COALESCE(SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END), 0) AS acceptedQuotes,
+      COALESCE(SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END), 0) AS convertedQuotes
+    FROM quotes`,
+    { type: QueryTypes.SELECT }
+  );
+
+  let totalRevenue = Math.round(Number(invoiceStats?.totalRevenue ?? 0) * 100) / 100;
+
+  // Parts catalog buyer invoices: only CD profit (markup + delivery) counts as revenue —
+  // not platform stock cost and not amounts remitted to external sellers.
+  try {
+    const {
+      backfillPartsPackageCdRevenue,
+    } = await import('@/lib/parts-seller-payables');
+    await backfillPartsPackageCdRevenue();
+
+    const [partsAdj] = await sequelize.query<{
+      partsInvoiceTotal: number;
+      partsCdRevenue: number;
+    }>(
+      `
+        SELECT
+          COALESCE(SUM(i.amount), 0) AS partsInvoiceTotal,
+          COALESCE(SUM(COALESCE(p.cdRevenueAmount, 0)), 0) AS partsCdRevenue
+        FROM parts_delivery_packages p
+        INNER JOIN invoices i ON i.id = p.invoiceId
+        WHERE p.invoiceId IS NOT NULL
+          AND TRIM(p.invoiceId) != ''
+          AND i.status = 'paid'
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+    const partsInvoiceTotal = Number(partsAdj?.partsInvoiceTotal ?? 0);
+    const partsCdRevenue = Number(partsAdj?.partsCdRevenue ?? 0);
+    if (partsInvoiceTotal > 0 || partsCdRevenue > 0) {
+      totalRevenue = Math.round((totalRevenue - partsInvoiceTotal + partsCdRevenue) * 100) / 100;
+    }
+  } catch (error) {
+    console.error('Failed to adjust parts catalog revenue in accounting summary', error);
+  }
+
+  return {
+    totalRevenue: Math.max(0, totalRevenue),
+    pendingAmount: Math.round(Number(invoiceStats?.pendingAmount ?? 0) * 100) / 100,
+    totalInvoices: Number(invoiceStats?.totalInvoices ?? 0),
+    overdueInvoices: Number(invoiceStats?.overdueInvoices ?? 0),
+    paidInvoices: Number(invoiceStats?.paidInvoices ?? 0),
+    totalQuotes: Number(quoteStats?.totalQuotes ?? 0),
+    draftQuotes: Number(quoteStats?.draftQuotes ?? 0),
+    sentQuotes: Number(quoteStats?.sentQuotes ?? 0),
+    acceptedQuotes: Number(quoteStats?.acceptedQuotes ?? 0),
+    convertedQuotes: Number(quoteStats?.convertedQuotes ?? 0),
+  };
+}
+
+export async function getRecentFinancialTransactions(limit = 8): Promise<RecentFinancialTransaction[]> {
+  const sequelize = getSequelize();
+  await ensureCreditNotesSchema();
+  const safeLimit = Math.min(Math.max(Number(limit) || 8, 1), 50);
+
+  const paymentRows = await sequelize.query<{
+    id: string;
+    invoice_id: string;
+    client_id: string | null;
+    amount: number;
+    payment_method: string;
+    payment_date: string;
+    reference: string | null;
+    invoice_number: string;
+    currency: string;
+    clientName: string | null;
+  }>(
+    `SELECT p.id, p.invoice_id, p.amount, p.payment_method, p.payment_date, p.reference,
+            i.invoice_number, i.currency, i.client_id AS client_id,
+            COALESCE(c.company_name, c.name) AS clientName
+     FROM payments p
+     INNER JOIN invoices i ON i.id = p.invoice_id
+     LEFT JOIN clients c ON c.id = i.client_id
+     ORDER BY p.payment_date DESC, p.created_at DESC
+     LIMIT :limit`,
+    { type: QueryTypes.SELECT, replacements: { limit: safeLimit } }
+  );
+
+  const creditRows = await sequelize.query<{
+    id: string;
+    invoice_id: string | null;
+    client_id: string | null;
+    amount: number;
+    payment_date: string;
+    credit_number: string;
+    invoice_number: string | null;
+    currency: string;
+    clientName: string | null;
+  }>(
+    `SELECT cn.id,
+            cn.invoiceId AS invoice_id,
+            cn.clientId AS client_id,
+            cn.amount,
+            cn.createdAt AS payment_date,
+            cn.creditNumber AS credit_number,
+            i.invoice_number,
+            COALESCE(cn.currency, i.currency, 'TTD') AS currency,
+            COALESCE(c.company_name, c.name) AS clientName
+     FROM credit_notes cn
+     LEFT JOIN invoices i ON i.id = cn.invoiceId
+     LEFT JOIN clients c ON c.id = COALESCE(cn.clientId, i.client_id)
+     ORDER BY cn.createdAt DESC
+     LIMIT :limit`,
+    { type: QueryTypes.SELECT, replacements: { limit: safeLimit } }
+  );
+
+  const payments: RecentFinancialTransaction[] = paymentRows.map((row) => ({
+    id: row.id,
+    kind: 'payment' as const,
+    invoiceId: row.invoice_id,
+    clientId: row.client_id,
+    invoiceNumber: row.invoice_number,
+    clientName: row.clientName,
+    amount: Number(row.amount),
+    currency: row.currency ?? 'TTD',
+    paymentDate: row.payment_date,
+    paymentMethod: row.payment_method,
+    reference: row.reference,
+  }));
+
+  const credits: RecentFinancialTransaction[] = creditRows
+    .filter((row) => row.invoice_id)
+    .map((row) => ({
+      id: row.id,
+      kind: 'credit_note' as const,
+      invoiceId: row.invoice_id as string,
+      clientId: row.client_id,
+      invoiceNumber: row.invoice_number || '—',
+      clientName: row.clientName,
+      amount: Number(row.amount),
+      currency: row.currency ?? 'TTD',
+      paymentDate: row.payment_date,
+      paymentMethod: 'credit_note',
+      reference: row.credit_number,
+      creditNoteNumber: row.credit_number,
+    }));
+
+  return [...payments, ...credits]
+    .sort((a, b) => String(b.paymentDate).localeCompare(String(a.paymentDate)))
+    .slice(0, safeLimit);
+}
+
+async function creditNoteSummariesByInvoiceIds(
+  invoiceIds: string[]
+): Promise<
+  Map<
+    string,
+    { creditNoteTotal: number; creditNoteNumber: string | null; creditNoteCount: number }
+  >
+> {
+  const map = new Map<
+    string,
+    { creditNoteTotal: number; creditNoteNumber: string | null; creditNoteCount: number }
+  >();
+  const ids = [...new Set(invoiceIds.map((id) => id?.trim()).filter(Boolean))];
+  if (!ids.length) return map;
+
+  await ensureCreditNotesSchema();
+  const sequelize = getSequelize();
+  const placeholders = ids.map((_, i) => `:id${i}`).join(', ');
+  const replacements: Record<string, string> = {};
+  ids.forEach((id, i) => {
+    replacements[`id${i}`] = id;
+  });
+  const rows = await sequelize.query<{
+    invoiceId: string;
+    creditNumber: string;
+    amount: number;
+  }>(
+    `
+      SELECT invoiceId, creditNumber, amount
+      FROM credit_notes
+      WHERE invoiceId IN (${placeholders})
+      ORDER BY createdAt DESC
+    `,
+    { type: QueryTypes.SELECT, replacements }
+  );
+
+  for (const row of rows) {
+    const invoiceId = String(row.invoiceId || '').trim();
+    if (!invoiceId) continue;
+    const amount = Math.round(Number(row.amount) * 100) / 100;
+    const existing = map.get(invoiceId);
+    if (!existing) {
+      map.set(invoiceId, {
+        creditNoteTotal: amount,
+        creditNoteNumber: row.creditNumber || null,
+        creditNoteCount: 1,
+      });
+    } else {
+      existing.creditNoteTotal = Math.round((existing.creditNoteTotal + amount) * 100) / 100;
+      existing.creditNoteCount += 1;
+    }
+  }
+  return map;
+}
+
+async function withCreditNoteSummaries<T extends { id: string }>(invoices: T[]) {
+  const summaries = await creditNoteSummariesByInvoiceIds(invoices.map((inv) => inv.id));
+  return invoices.map((inv) => {
+    const summary = summaries.get(inv.id);
+    return {
+      ...inv,
+      creditNoteTotal: summary?.creditNoteTotal ?? null,
+      creditNoteNumber: summary?.creditNoteNumber ?? null,
+      creditNoteCount: summary?.creditNoteCount ?? 0,
+    };
+  });
+}
+
+export async function getAccountingAnalytics() {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<{ status: string; amount: number; paidAmount: number }>(
+    `SELECT status, amount, paidAmount FROM invoices`,
+    { type: QueryTypes.SELECT }
+  );
+
+  const invoices = rows.map((row) => ({
+    status: row.status,
+    amount: Number(row.amount),
+    paidAmount: Number(row.paidAmount ?? 0),
+  }));
+
+  return {
+    totalInvoices: invoices.length,
+    totalAmount: invoices.reduce((sum, inv) => sum + inv.amount, 0),
+    paidInvoices: invoices.filter((inv) => inv.status === 'paid').length,
+    partialInvoices: invoices.filter((inv) => inv.status === 'partial').length,
+    paidAmount: invoices.reduce((sum, inv) => sum + inv.paidAmount, 0),
+    overdueInvoices: invoices.filter((inv) => inv.status === 'overdue').length,
+    overdueAmount: invoices.filter((inv) => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0),
+    pendingAmount: invoices.filter((inv) => inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0),
+    statusBreakdown: {
+      pending: invoices.filter((inv) => inv.status === 'pending').length,
+      partial: invoices.filter((inv) => inv.status === 'partial').length,
+      paid: invoices.filter((inv) => inv.status === 'paid').length,
+      overdue: invoices.filter((inv) => inv.status === 'overdue').length,
+      cancelled: invoices.filter((inv) => inv.status === 'cancelled').length,
+    },
+  };
+}
+
+export async function listMspInvoices(options: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  clientId?: string;
+}) {
+  const page = Math.max(1, options.page ?? 1);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+  const offset = (page - 1) * limit;
+
+  const sequelize = getSequelize();
+  const replacements: Record<string, unknown> = { limit, offset };
+  let where = '1=1';
+  if (options.status) {
+    where += ' AND i.status = :status';
+    replacements.status = options.status;
+  }
+  if (options.clientId) {
+    where += ' AND i.client_id = :clientId';
+    replacements.clientId = options.clientId;
+  }
+
+  const countRows = await sequelize.query<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM invoices i WHERE ${where}`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+  const total = Number(countRows[0]?.count ?? 0);
+
+  const rows = await sequelize.query<InvoiceRow>(
+    `SELECT i.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail, c.service_level AS serviceLevel
+     FROM invoices i
+     LEFT JOIN clients c ON c.id = i.client_id
+     WHERE ${where}
+     ORDER BY i.created_at DESC
+     LIMIT :limit OFFSET :offset`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+
+  return {
+    invoices: await withCreditNoteSummaries(rows.map(serializeInvoice)),
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) || 0 },
+  };
+}
+
+export async function listInvoicesForClient(
+  clientId: string,
+  options: { page?: number; limit?: number; status?: string }
+) {
+  const page = Math.max(1, options.page ?? 1);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+  const offset = (page - 1) * limit;
+  const sequelize = getSequelize();
+  const replacements: Record<string, unknown> = { limit, offset, clientId };
+  let where = 'i.client_id = :clientId';
+  if (options.status) {
+    where += ' AND i.status = :status';
+    replacements.status = options.status;
+  }
+
+  const countRows = await sequelize.query<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM invoices i WHERE ${where}`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+  const total = Number(countRows[0]?.count ?? 0);
+
+  const rows = await sequelize.query<InvoiceRow>(
+    `SELECT i.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail, c.service_level AS serviceLevel
+     FROM invoices i
+     LEFT JOIN clients c ON c.id = i.client_id
+     WHERE ${where}
+     ORDER BY i.created_at DESC
+     LIMIT :limit OFFSET :offset`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+
+  return {
+    invoices: rows.map(serializeInvoice),
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) || 0 },
+  };
+}
+
+export async function markInvoicePaid(
+  invoiceId: string,
+  userId: number,
+  options?: { paymentDate?: string; paymentMethod?: string; paymentNotes?: string }
+) {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<InvoiceRow>(
+    `SELECT * FROM invoices WHERE id = :id`,
+    { type: QueryTypes.SELECT, replacements: { id: invoiceId } }
+  );
+  const invoice = rows[0];
+  if (!invoice) return null;
+  if (invoice.status === 'paid') throw new Error('Invoice is already marked as paid');
+
+  const totalAmount = Number(invoice.amount);
+  const currentPaid = Number(invoice.paidAmount ?? 0);
+  const remaining = totalAmount - currentPaid;
+  const paymentDate = options?.paymentDate ?? new Date().toISOString();
+  const paymentMethod = options?.paymentMethod ?? 'CASH';
+  const now = new Date().toISOString();
+
+  const paymentId = randomUUID();
+  await sequelize.query(
+    `INSERT INTO payments (id, invoice_id, amount, payment_method, payment_date, processed_by, notes, status, created_at, updated_at)
+     VALUES (:id, :invoiceId, :amount, :method, :paymentDate, :processedBy, :notes, 'completed', :now, :now)`,
+    {
+      replacements: {
+        id: paymentId,
+        invoiceId,
+        amount: remaining,
+        method: paymentMethod,
+        paymentDate,
+        processedBy: String(userId),
+        notes: options?.paymentNotes ?? 'Marked as paid via accounting',
+        now,
+      },
+    }
+  );
+
+  await sequelize.query(
+    `UPDATE invoices SET status = 'paid', paidAmount = :amount, paid_date = :paidDate, updated_at = :now WHERE id = :id`,
+    { replacements: { id: invoiceId, amount: totalAmount, paidDate: paymentDate, now } }
+  );
+
+  try {
+    const { markPartsPackagePaidFromInvoice } = await import('@/lib/parts-billing');
+    await markPartsPackagePaidFromInvoice(invoiceId);
+  } catch (error) {
+    console.error('Failed to clear parts package unpaid flag', error);
+  }
+
+  const updated = await sequelize.query<InvoiceRow>(
+    `SELECT i.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail, c.service_level AS serviceLevel
+     FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = :id`,
+    { type: QueryTypes.SELECT, replacements: { id: invoiceId } }
+  );
+
+  return serializeInvoice(updated[0]);
+}
+
+export async function listInvoicePayments(invoiceId: string) {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<PaymentRow>(
+    `SELECT * FROM payments WHERE invoice_id = :invoiceId ORDER BY payment_date DESC, created_at DESC`,
+    { type: QueryTypes.SELECT, replacements: { invoiceId } }
+  );
+  return rows.map(serializePayment);
+}
+
+export async function addInvoicePayment(
+  invoiceId: string,
+  userId: number,
+  input: {
+    amount: number;
+    paymentMethod: 'CASH' | 'paypal' | 'bank_transfer' | 'wipay';
+    reference?: string;
+    notes?: string | null;
+    paymentDate?: string;
+  }
+) {
+  const sequelize = getSequelize();
+  const invoiceRows = await sequelize.query<InvoiceRow>(`SELECT * FROM invoices WHERE id = :id`, {
+    type: QueryTypes.SELECT,
+    replacements: { id: invoiceId },
+  });
+  const invoice = invoiceRows[0];
+  if (!invoice) return null;
+
+  const totalAmount = Number(invoice.amount);
+  const currentPaid = Number(invoice.paidAmount ?? 0);
+  const paymentAmount = Number(input.amount);
+  if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) throw new Error('Payment amount must be greater than 0');
+
+  const newPaid = currentPaid + paymentAmount;
+  if (newPaid > totalAmount + 0.0001) {
+    throw new Error(
+      `Payment amount (${paymentAmount}) would exceed remaining balance (${Math.max(0, totalAmount - currentPaid)})`
+    );
+  }
+
+  const now = new Date().toISOString();
+  const paymentId = randomUUID();
+  const paymentDate = input.paymentDate ?? now;
+
+  await sequelize.query(
+    `INSERT INTO payments (id, invoice_id, amount, payment_method, payment_date, processed_by, reference, notes, status, created_at, updated_at)
+     VALUES (:id, :invoiceId, :amount, :method, :paymentDate, :processedBy, :reference, :notes, 'completed', :now, :now)`,
+    {
+      replacements: {
+        id: paymentId,
+        invoiceId,
+        amount: paymentAmount,
+        method: input.paymentMethod,
+        paymentDate,
+        processedBy: String(userId),
+        reference: input.reference ?? null,
+        notes: input.notes ?? null,
+        now,
+      },
+    }
+  );
+
+  let newStatus: 'pending' | 'partial' | 'paid' = 'pending';
+  let paidDate: string | null = null;
+  if (newPaid >= totalAmount - 0.0001) {
+    newStatus = 'paid';
+    paidDate = paymentDate;
+  } else if (newPaid > 0) {
+    newStatus = 'partial';
+  }
+
+  await sequelize.query(
+    `UPDATE invoices SET paidAmount = :paidAmount, status = :status, paid_date = :paidDate, updated_at = :now WHERE id = :id`,
+    { replacements: { id: invoiceId, paidAmount: newPaid, status: newStatus, paidDate, now } }
+  );
+
+  if (newStatus === 'paid') {
+    try {
+      const { markPartsPackagePaidFromInvoice } = await import('@/lib/parts-billing');
+      await markPartsPackagePaidFromInvoice(invoiceId);
+    } catch (error) {
+      console.error('Failed to clear parts package unpaid flag', error);
+    }
+  }
+
+  const paymentRow = await sequelize.query<PaymentRow>(`SELECT * FROM payments WHERE id = :id`, {
+    type: QueryTypes.SELECT,
+    replacements: { id: paymentId },
+  });
+
+  return {
+    invoice: await getInvoiceById(invoiceId),
+    payment: paymentRow[0] ? serializePayment(paymentRow[0]) : null,
+    remainingBalance: Math.max(0, totalAmount - newPaid),
+  };
+}
+
+export async function deletePayment(paymentId: string) {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<PaymentRow>(`SELECT * FROM payments WHERE id = :id`, {
+    type: QueryTypes.SELECT,
+    replacements: { id: paymentId },
+  });
+  const payment = rows[0];
+  if (!payment) return null;
+
+  const invoiceRows = await sequelize.query<InvoiceRow>(`SELECT * FROM invoices WHERE id = :id`, {
+    type: QueryTypes.SELECT,
+    replacements: { id: payment.invoice_id },
+  });
+  const invoice = invoiceRows[0];
+  if (!invoice) throw new Error('Invoice not found for payment');
+
+  const totalAmount = Number(invoice.amount);
+  const currentPaid = Number(invoice.paidAmount ?? 0);
+  const paymentAmount = Number(payment.amount);
+  const newPaid = Math.max(0, currentPaid - paymentAmount);
+  const now = new Date().toISOString();
+
+  await sequelize.query(`DELETE FROM payments WHERE id = :id`, { replacements: { id: paymentId } });
+
+  let newStatus: 'pending' | 'partial' | 'paid' = 'pending';
+  let paidDate: string | null = null;
+  if (newPaid >= totalAmount - 0.0001) {
+    newStatus = 'paid';
+    paidDate = invoice.paid_date;
+  } else if (newPaid > 0) {
+    newStatus = 'partial';
+  }
+
+  await sequelize.query(
+    `UPDATE invoices SET paidAmount = :paidAmount, status = :status, paid_date = :paidDate, updated_at = :now WHERE id = :id`,
+    { replacements: { id: payment.invoice_id, paidAmount: newPaid, status: newStatus, paidDate, now } }
+  );
+
+  return { invoice: await getInvoiceById(payment.invoice_id) };
+}
+
+export async function listQuotes(options: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  clientId?: string;
+}) {
+  const page = Math.max(1, options.page ?? 1);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+  const offset = (page - 1) * limit;
+  const sequelize = getSequelize();
+  const replacements: Record<string, unknown> = { limit, offset };
+  let where = '1=1';
+  if (options.status) {
+    where += ' AND q.status = :status';
+    replacements.status = options.status;
+  }
+  if (options.clientId) {
+    where += ' AND q.client_id = :clientId';
+    replacements.clientId = options.clientId;
+  }
+
+  const countRows = await sequelize.query<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM quotes q WHERE ${where}`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+  const total = Number(countRows[0]?.count ?? 0);
+
+  const rows = await sequelize.query<QuoteRow>(
+    `SELECT q.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail
+     FROM quotes q
+     LEFT JOIN clients c ON c.id = q.client_id
+     WHERE ${where}
+     ORDER BY q.created_at DESC
+     LIMIT :limit OFFSET :offset`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+
+  return {
+    quotes: rows.map(serializeQuote),
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) || 0 },
+  };
+}
+
+export async function getQuoteById(id: string) {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<QuoteRow>(
+    `SELECT q.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail
+     FROM quotes q LEFT JOIN clients c ON c.id = q.client_id WHERE q.id = :id`,
+    { type: QueryTypes.SELECT, replacements: { id } }
+  );
+  return rows[0] ? serializeQuote(rows[0]) : null;
+}
+
+/**
+ * Some DBs still have quotes.client_id FK → clients_backup (legacy rename).
+ * Mirror the live clients row into clients_backup so quote inserts succeed.
+ */
+async function ensureClientSatisfiesQuoteForeignKey(clientId: string) {
+  const sequelize = getSequelize();
+  try {
+    const tables = await sequelize.query<{ name: string }>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'clients_backup' LIMIT 1`,
+      { type: QueryTypes.SELECT }
+    );
+    if (!tables.length) return;
+
+    const existing = await sequelize.query<{ id: string }>(
+      `SELECT id FROM clients_backup WHERE id = :clientId LIMIT 1`,
+      { type: QueryTypes.SELECT, replacements: { clientId } }
+    );
+    if (existing.length) return;
+
+    await sequelize.query(
+      `
+        INSERT OR IGNORE INTO clients_backup (
+          id, name, company_name, email, phone, address, contact_person, billing_info, contract_details,
+          service_level, support_tier, status, start_date, end_date, monthly_rate, notes, communication_history,
+          is_active, usage_tracking, service_plan_data, assigned_technician_id, priority_level,
+          contract_start_date, contract_end_date, renewal_date, sla_agreement, created_at, updated_at,
+          userId, contact_number, emergency_contact, emergency_phone
+        )
+        SELECT
+          id,
+          COALESCE(name, company_name, 'Client'),
+          company_name,
+          COALESCE(email, id || '@local.invalid'),
+          phone, address, contact_person, billing_info, contract_details,
+          COALESCE(service_level, 'standard'),
+          COALESCE(support_tier, 'silver'),
+          COALESCE(status, 'active'),
+          start_date, end_date, monthly_rate, notes, communication_history,
+          COALESCE(is_active, 1),
+          usage_tracking, service_plan_data, assigned_technician_id, priority_level,
+          contract_start_date, contract_end_date, renewal_date, sla_agreement,
+          COALESCE(created_at, CURRENT_TIMESTAMP),
+          COALESCE(updated_at, CURRENT_TIMESTAMP),
+          userId, contact_number, emergency_contact, emergency_phone
+        FROM clients
+        WHERE id = :clientId
+      `,
+      { replacements: { clientId } }
+    );
+  } catch (error) {
+    console.error('ensureClientSatisfiesQuoteForeignKey failed', clientId, error);
+  }
+}
+
+export async function generateQuoteNumber(): Promise<string> {
+  const sequelize = getSequelize();
+  const { isRrspDbActive } = await import('@/lib/rrsp-db');
+  const shop = isRrspDbActive();
+  const rows = await sequelize.query<{ quote_number: string }>(
+    `SELECT quote_number FROM quotes ORDER BY created_at DESC, quote_number DESC LIMIT 50`,
+    { type: QueryTypes.SELECT }
+  );
+  if (shop) {
+    let nextNumber = 1;
+    for (const row of rows) {
+      const match = row.quote_number?.match(/^SHOP-Q-(\d+)$/i);
+      if (match) {
+        nextNumber = Math.max(nextNumber, parseInt(match[1], 10) + 1);
+      }
+    }
+    return `SHOP-Q-${String(nextNumber).padStart(4, '0')}`;
+  }
+  let nextNumber = 1007;
+  if (rows[0]?.quote_number) {
+    const cdq = rows[0].quote_number.match(/CDQ-(\d+)/);
+    const quo = rows[0].quote_number.match(/QUO-(\d+)/);
+    if (cdq) nextNumber = parseInt(cdq[1], 10) + 1;
+    else if (quo) nextNumber = parseInt(quo[1], 10) + 1;
+    else if (!quo) nextNumber = 1007;
+  }
+  return `CDQ-${nextNumber}`;
+}
+
+export async function generateInvoiceNumber(): Promise<string> {
+  const sequelize = getSequelize();
+  const { isRrspDbActive } = await import('@/lib/rrsp-db');
+  const shop = isRrspDbActive();
+  const rows = await sequelize.query<{ invoice_number: string }>(
+    `SELECT invoice_number FROM invoices ORDER BY created_at DESC, invoice_number DESC LIMIT 50`,
+    { type: QueryTypes.SELECT }
+  );
+  if (shop) {
+    let nextNumber = 1;
+    for (const row of rows) {
+      const match = row.invoice_number?.match(/^SHOP-INV-(\d+)$/i);
+      if (match) {
+        nextNumber = Math.max(nextNumber, parseInt(match[1], 10) + 1);
+      }
+    }
+    return `SHOP-INV-${String(nextNumber).padStart(4, '0')}`;
+  }
+  let nextNumber = 1;
+  if (rows[0]?.invoice_number) {
+    const match = rows[0].invoice_number.match(/INV-3806\/3936-(\d+)/);
+    if (match) nextNumber = parseInt(match[1], 10) + 1;
+  }
+  return `INV-3806/3936-${String(nextNumber).padStart(3, '0')}`;
+}
+
+export async function createQuote(input: {
+  clientId: string;
+  title: string;
+  amount: number;
+  validUntil: string;
+  createdBy: number;
+  items?: unknown[];
+  description?: string;
+  terms?: string;
+  notes?: string;
+  status?: string;
+}) {
+  const sequelize = getSequelize();
+  await ensureClientSatisfiesQuoteForeignKey(input.clientId);
+  const id = randomUUID();
+  const quoteNumber = await generateQuoteNumber();
+  const now = new Date().toISOString();
+  const status = input.status ?? 'draft';
+
+  // Keep PRAGMA + INSERT on one connection (SQLite FK pragma is per-connection).
+  await sequelize.transaction(async (transaction) => {
+    await sequelize.query('PRAGMA foreign_keys = OFF', { transaction });
+    try {
+      await sequelize.query(
+        `INSERT INTO quotes (id, client_id, created_by, quote_number, title, description, amount, currency, status, valid_until, items, terms, notes, created_at, updated_at)
+         VALUES (:id, :clientId, :createdBy, :quoteNumber, :title, :description, :amount, 'TTD', :status, :validUntil, :items, :terms, :notes, :now, :now)`,
+        {
+          transaction,
+          replacements: {
+            id,
+            clientId: input.clientId,
+            createdBy: String(input.createdBy),
+            quoteNumber,
+            title: input.title,
+            description: input.description ?? null,
+            amount: input.amount,
+            status,
+            validUntil: input.validUntil,
+            items: JSON.stringify(input.items ?? []),
+            terms: input.terms ?? null,
+            notes: input.notes ?? null,
+            now,
+          },
+        }
+      );
+    } finally {
+      await sequelize.query('PRAGMA foreign_keys = ON', { transaction });
+    }
+  });
+
+  return getQuoteById(id);
+}
+
+export type QuoteLineItem = {
+  name: string;
+  description?: string;
+  quantity: number;
+  price: number;
+  total: number;
+};
+
+export function normalizeQuoteItems(items: unknown[]): QuoteLineItem[] {
+  return items.map((raw) => {
+    const item = raw as Partial<QuoteLineItem>;
+    const quantity = Number(item.quantity ?? 1) || 1;
+    const price = Number(item.price ?? 0) || 0;
+    const total = Number(item.total ?? quantity * price) || quantity * price;
+    return {
+      name: String(item.name ?? 'Item'),
+      description: item.description ? String(item.description) : undefined,
+      quantity,
+      price,
+      total,
+    };
+  });
+}
+
+export function sumQuoteItems(items: QuoteLineItem[]) {
+  return Math.round(items.reduce((sum, item) => sum + Number(item.total ?? 0), 0) * 100) / 100;
+}
+
+export async function updateQuote(
+  id: string,
+  updates: Partial<{
+    title: string;
+    amount: number;
+    validUntil: string;
+    status: string;
+    items: unknown[];
+    description: string;
+    terms: string;
+    notes: string;
+  }>
+) {
+  const existing = await getQuoteById(id);
+  if (!existing) return null;
+  if (existing.status === 'converted') throw new Error('Cannot edit a converted quote');
+
+  const sequelize = getSequelize();
+  const now = new Date().toISOString();
+  const fields: string[] = [];
+  const replacements: Record<string, unknown> = { id, now };
+
+  if (updates.title !== undefined) {
+    fields.push('title = :title');
+    replacements.title = updates.title;
+  }
+  if (updates.amount !== undefined) {
+    fields.push('amount = :amount');
+    replacements.amount = updates.amount;
+  }
+  if (updates.validUntil !== undefined) {
+    fields.push('valid_until = :validUntil');
+    replacements.validUntil = updates.validUntil;
+  }
+  if (updates.status !== undefined) {
+    fields.push('status = :status');
+    replacements.status = updates.status;
+    if (updates.status === 'accepted') {
+      fields.push('accepted_date = :acceptedDate');
+      replacements.acceptedDate = now;
+    }
+  }
+  if (updates.description !== undefined) {
+    fields.push('description = :description');
+    replacements.description = updates.description;
+  }
+  if (updates.terms !== undefined) {
+    fields.push('terms = :terms');
+    replacements.terms = updates.terms;
+  }
+  if (updates.notes !== undefined) {
+    fields.push('notes = :notes');
+    replacements.notes = updates.notes;
+  }
+  if (updates.items !== undefined) {
+    fields.push('items = :items');
+    replacements.items = JSON.stringify(updates.items);
+  }
+
+  if (fields.length === 0) return existing;
+  fields.push('updated_at = :now');
+
+  await sequelize.query(`UPDATE quotes SET ${fields.join(', ')} WHERE id = :id`, { replacements });
+  return getQuoteById(id);
+}
+
+export async function deleteQuote(id: string) {
+  const existing = await getQuoteById(id);
+  if (!existing) return false;
+  if (existing.status === 'converted') throw new Error('Cannot delete a converted quote');
+
+  const sequelize = getSequelize();
+  await sequelize.query(`DELETE FROM quotes WHERE id = :id`, { replacements: { id } });
+  return true;
+}
+
+export async function acceptQuote(id: string) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  if (quote.status !== 'sent' && quote.status !== 'draft') {
+    throw new Error('Only draft or sent quotes can be accepted');
+  }
+  return updateQuote(id, { status: 'accepted' });
+}
+
+export async function rejectQuote(id: string, reason?: string) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  if (quote.status !== 'sent') throw new Error('Only sent quotes can be rejected');
+
+  const updates: { status: 'rejected'; notes?: string } = { status: 'rejected' };
+  if (reason) {
+    updates.notes = quote.notes ? `${quote.notes}\n\nRejected: ${reason}` : `Rejected: ${reason}`;
+  }
+  return updateQuote(id, updates);
+}
+
+export async function expireQuote(id: string) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  if (!['draft', 'sent'].includes(quote.status)) {
+    throw new Error('Only draft or sent quotes can be expired');
+  }
+  return updateQuote(id, { status: 'expired' });
+}
+
+export async function sendQuoteEmail(
+  id: string,
+  clientEmail?: string,
+  origin?: string,
+  sentBy?: number
+) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+
+  const email = clientEmail || quote.client?.email;
+  if (!email) throw new Error('Client email is required');
+
+  const { sendQuoteToClient } = await import('@/lib/quote-email');
+  const sent = await sendQuoteToClient(
+    { ...quote, items: normalizeQuoteItems(quote.items ?? []) },
+    email,
+    { origin, sentBy }
+  );
+  if (!sent) throw new Error('Failed to send quote email');
+
+  if (quote.status === 'draft') {
+    return updateQuote(id, { status: 'sent' });
+  }
+  return quote;
+}
+
+export async function sendInvoiceEmail(
+  id: string,
+  options?: {
+    clientEmail?: string;
+    origin?: string;
+    type?: 'created' | 'reminder' | 'overdue' | 'paid' | 'partial' | 'updated';
+    paymentAmount?: number;
+    sentBy?: number;
+  }
+) {
+  const invoice = await getInvoiceById(id);
+  if (!invoice) return null;
+
+  const email = options?.clientEmail || invoice.client?.email;
+  if (!email) throw new Error('Client email is required');
+
+  const { sendInvoiceToClient } = await import('@/lib/invoice-email');
+  const sent = await sendInvoiceToClient(invoice, email, {
+    origin: options?.origin,
+    type: options?.type ?? 'created',
+    paymentAmount: options?.paymentAmount,
+    sentBy: options?.sentBy,
+  });
+  if (!sent) throw new Error('Failed to send invoice email');
+  return invoice;
+}
+
+export async function convertQuoteToInvoice(
+  id: string,
+  createdBy: number,
+  options: { dueDate: string; billingCycle?: string; paymentGateway?: string }
+) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  if (quote.status !== 'accepted') throw new Error('Only accepted quotes can be converted to invoices');
+
+  const sequelize = getSequelize();
+  const invoiceId = randomUUID();
+  const invoiceNumber = await generateInvoiceNumber();
+  const now = new Date().toISOString();
+
+  await sequelize.query(
+    `INSERT INTO invoices (id, client_id, created_by, invoice_number, amount, paidAmount, currency, status, due_date, billing_cycle, payment_gateway, description, items, created_at, updated_at)
+     VALUES (:id, :clientId, :createdBy, :invoiceNumber, :amount, 0, :currency, 'pending', :dueDate, :billingCycle, :paymentGateway, :description, :items, :now, :now)`,
+    {
+      replacements: {
+        id: invoiceId,
+        clientId: quote.clientId,
+        createdBy,
+        invoiceNumber,
+        amount: quote.amount,
+        currency: quote.currency,
+        dueDate: options.dueDate,
+        billingCycle: options.billingCycle ?? 'immediately',
+        paymentGateway: options.paymentGateway ?? 'CASH',
+        description: `Converted from Quote ${quote.quoteNumber}: ${quote.description ?? quote.title}`,
+        items: JSON.stringify(quote.items ?? []),
+        now,
+      },
+    }
+  );
+
+  await sequelize.query(
+    `UPDATE quotes SET status = 'converted', converted_to_invoice_id = :invoiceId, updated_at = :now WHERE id = :id`,
+    { replacements: { id, invoiceId, now } }
+  );
+
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) throw new Error('Converted invoice not found');
+  return { quote: await getQuoteById(id), invoice };
+}
+
+export async function listInvoicesForTicket(options: {
+  ticketId: string;
+  ticketNumber: string;
+  clientId?: string | null;
+}) {
+  const sequelize = getSequelize();
+  const ticketRef = `%Ticket ${options.ticketNumber}%`;
+  const replacements: Record<string, unknown> = {
+    ticketId: options.ticketId,
+    ticketRef,
+  };
+
+  let clientFilter = '';
+  if (options.clientId) {
+    clientFilter = 'AND i.client_id = :clientId';
+    replacements.clientId = options.clientId;
+  }
+
+  const rows = await sequelize.query<InvoiceRow>(
+    `SELECT DISTINCT i.*, COALESCE(c.company_name, c.name) AS clientName, c.email AS clientEmail, c.service_level AS serviceLevel
+     FROM invoices i
+     LEFT JOIN clients c ON c.id = i.client_id
+     WHERE (
+       i.description LIKE :ticketRef
+       OR EXISTS (
+         SELECT 1 FROM invoice_links il
+         WHERE il.invoiceId = i.id
+           AND il.linkedType = 'ticket'
+           AND il.linkedId = :ticketId
+           AND il.isActive = 1
+       )
+       OR i.id IN (
+         SELECT ol_inv.linkedId
+         FROM order_links ol_inv
+         INNER JOIN order_links ol_tkt
+           ON ol_tkt.orderId = ol_inv.orderId
+          AND ol_tkt.linkedType = 'ticket'
+          AND ol_tkt.linkedId = :ticketId
+          AND ol_tkt.isActive = 1
+         WHERE ol_inv.linkedType = 'invoice'
+           AND ol_inv.isActive = 1
+       )
+     )
+     ${clientFilter}
+     ORDER BY i.created_at DESC
+     LIMIT 20`,
+    { type: QueryTypes.SELECT, replacements }
+  );
+
+  return rows.map((row) => serializeInvoice(row));
+}
+
+export async function syncInvoiceLineItemNameFromOrder(input: {
+  invoiceId: string;
+  itemIndex: number;
+  itemName: string;
+}) {
+  const invoice = await getInvoiceById(input.invoiceId);
+  if (!invoice) return null;
+
+  const itemName = input.itemName.trim();
+  if (!itemName) return invoice;
+
+  const items = Array.isArray(invoice.items) ? [...invoice.items] : [];
+  const current = items[input.itemIndex] as { name?: string; description?: string; quantity?: number; price?: number; total?: number } | undefined;
+  if (!current) return invoice;
+
+  const currentName = String(current.name ?? '').trim();
+  const shouldSync =
+    /^imported\s*item$/i.test(currentName) &&
+    !/^imported\s*item$/i.test(itemName) &&
+    currentName.toLowerCase() !== itemName.toLowerCase();
+
+  if (!shouldSync) return invoice;
+
+  const quantity = Number(current.quantity) || 1;
+  const price = Number(current.price) || 0;
+  items[input.itemIndex] = {
+    ...current,
+    name: itemName,
+    quantity,
+    price,
+    total: quantity * price,
+  };
+
+  const amount = items.reduce<number>((sum, item) => {
+    const row = item as { quantity?: number; price?: number; total?: number };
+    const lineTotal =
+      row.total != null
+        ? Number(row.total)
+        : (Number(row.quantity) || 1) * (Number(row.price) || 0);
+    return sum + lineTotal;
+  }, 0);
+
+  return updateInvoice(input.invoiceId, { items, amount: Math.round(amount * 100) / 100 });
+}
+
+export type InvoiceLinkRow = {
+  id: string;
+  invoiceId: string;
+  linkedType: string;
+  linkedId: string;
+  linkedNumber: string;
+  linkDate: string;
+  linkedBy: string | number;
+  notes: string | null;
+  isActive: number | boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function listInvoiceLinks(invoiceId: string) {
+  await ensureInvoiceLinksTable();
+  await ensureCreditNotesSchema();
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<
+    InvoiceLinkRow & {
+      creditNoteAmount?: number | null;
+      creditNoteMarkupPercent?: number | null;
+    }
+  >(
+    `
+      SELECT
+        il.id,
+        il.invoiceId,
+        il.linkedType,
+        il.linkedId,
+        il.linkedNumber,
+        il.linkDate,
+        il.linkedBy,
+        il.notes,
+        il.isActive,
+        il.createdAt,
+        il.updatedAt,
+        cn.amount AS creditNoteAmount,
+        cn.markupPercent AS creditNoteMarkupPercent
+      FROM invoice_links il
+      LEFT JOIN credit_notes cn
+        ON il.linkedType = 'credit_note' AND cn.id = il.linkedId
+      WHERE il.invoiceId = :invoiceId AND il.isActive = 1
+      ORDER BY il.linkDate DESC
+    `,
+    { type: QueryTypes.SELECT, replacements: { invoiceId } }
+  );
+  return rows.map((row) => {
+    const raw = row as InvoiceLinkRow & Record<string, unknown>;
+    const amountRaw =
+      raw.creditNoteAmount ?? raw.creditnoteamount ?? raw.credit_note_amount ?? null;
+    const markupRaw =
+      raw.creditNoteMarkupPercent ??
+      raw.creditnotemarkuppercent ??
+      raw.credit_note_markup_percent ??
+      null;
+    return {
+      id: row.id,
+      invoiceId: row.invoiceId,
+      linkedType: row.linkedType,
+      linkedId: row.linkedId,
+      linkedNumber: row.linkedNumber,
+      linkDate: row.linkDate,
+      linkedBy: row.linkedBy,
+      notes: row.notes,
+      createdAt: row.createdAt,
+      amount:
+        amountRaw == null || amountRaw === ''
+          ? null
+          : Math.round(Number(amountRaw) * 100) / 100,
+      markupPercent:
+        markupRaw == null || markupRaw === ''
+          ? null
+          : Math.round(Number(markupRaw) * 100) / 100,
+    };
+  });
+}
+
+export async function addInvoiceLink(
+  invoiceId: string,
+  input: { linkedType: 'ticket' | 'order'; linkedId: string; linkedNumber: string; notes?: string | null },
+  linkedBy: number
+) {
+  await ensureInvoiceLinksTable();
+  const invoice = await getInvoiceById(invoiceId);
+  if (!invoice) return null;
+
+  const sequelize = getSequelize();
+  if (input.linkedType === 'ticket') {
+    const rows = await sequelize.query<{ id: string }>(`SELECT id FROM tickets WHERE id = :id`, {
+      type: QueryTypes.SELECT,
+      replacements: { id: input.linkedId },
+    });
+    if (!rows[0]) throw new Error('Ticket not found');
+  } else {
+    const rows = await sequelize.query<{ id: string }>(`SELECT id FROM orders WHERE id = :id AND isActive = 1`, {
+      type: QueryTypes.SELECT,
+      replacements: { id: input.linkedId },
+    });
+    if (!rows[0]) throw new Error('Order not found');
+  }
+
+  const existing = await sequelize.query<{ id: string }>(
+    `SELECT id FROM invoice_links WHERE invoiceId = :invoiceId AND linkedType = :linkedType AND linkedId = :linkedId AND isActive = 1`,
+    {
+      type: QueryTypes.SELECT,
+      replacements: { invoiceId, linkedType: input.linkedType, linkedId: input.linkedId },
+    }
+  );
+  if (existing[0]) throw new Error('Link already exists');
+
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await sequelize.query(
+    `INSERT INTO invoice_links (id, invoiceId, linkedType, linkedId, linkedNumber, linkDate, linkedBy, notes, isActive, createdAt, updatedAt)
+     VALUES (:id, :invoiceId, :linkedType, :linkedId, :linkedNumber, :linkDate, :linkedBy, :notes, 1, :now, :now)`,
+    {
+      replacements: {
+        id,
+        invoiceId,
+        linkedType: input.linkedType,
+        linkedId: input.linkedId,
+        linkedNumber: input.linkedNumber,
+        linkDate: now,
+        linkedBy: String(linkedBy),
+        notes: input.notes ?? null,
+        now,
+      },
+    }
+  );
+
+  const links = await listInvoiceLinks(invoiceId);
+  return links.find((l) => l.id === id) ?? null;
+}
+
+export async function removeInvoiceLink(invoiceId: string, linkId: string) {
+  await ensureInvoiceLinksTable();
+  const sequelize = getSequelize();
+  await sequelize.query(
+    `UPDATE invoice_links SET isActive = 0, updatedAt = :now WHERE id = :linkId AND invoiceId = :invoiceId`,
+    { replacements: { linkId, invoiceId, now: new Date().toISOString() } }
+  );
+  return true;
+}
+
+export type CreditNoteView = {
+  id: string;
+  creditNumber: string;
+  invoiceId: string | null;
+  invoiceNumber?: string | null;
+  clientId: string | null;
+  amount: number;
+  currency: string;
+  reason: string | null;
+  description: string | null;
+  markupPercent: number | null;
+  status: string;
+  partsSellerPayableId: string | null;
+  createdAt: string;
+};
+
+export async function ensureCreditNotesSchema() {
+  const sequelize = getSequelize();
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS credit_notes (
+      id TEXT PRIMARY KEY,
+      creditNumber TEXT NOT NULL UNIQUE,
+      invoiceId TEXT,
+      clientId TEXT,
+      amount REAL NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'TTD',
+      reason TEXT,
+      description TEXT,
+      items TEXT,
+      markupPercent REAL,
+      status TEXT NOT NULL DEFAULT 'posted',
+      partsSellerPayableId TEXT,
+      createdBy TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS credit_notes_invoice
+      ON credit_notes (invoiceId)
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS credit_notes_payable
+      ON credit_notes (partsSellerPayableId)
+  `);
+}
+
+async function generateCreditNoteNumber(): Promise<string> {
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<{ creditNumber: string }>(
+    `SELECT creditNumber FROM credit_notes ORDER BY createdAt DESC, creditNumber DESC LIMIT 50`,
+    { type: QueryTypes.SELECT }
+  );
+  let next = 1;
+  for (const row of rows) {
+    const match = row.creditNumber?.match(/^CN-(\d+)$/i);
+    if (match) next = Math.max(next, parseInt(match[1], 10) + 1);
+  }
+  return `CN-${String(next).padStart(4, '0')}`;
+}
+
+/**
+ * Posted credit note recognizing CD marketplace markup profit when a seller is paid out.
+ */
+export async function createMarketplaceProfitCreditNote(input: {
+  buyerInvoiceId: string;
+  buyerClientId?: string | null;
+  payableId: string;
+  profitAmount: number;
+  sellerAmount: number;
+  listedLineTotal: number;
+  markupPercent: number;
+  createdBy: number;
+  sellerName?: string | null;
+}): Promise<CreditNoteView | null> {
+  await ensureCreditNotesSchema();
+  const profit = Math.round(Number(input.profitAmount) * 100) / 100;
+  if (!(profit > 0)) return null;
+
+  const sequelize = getSequelize();
+  const existing = await sequelize.query<{ id: string; creditNumber: string }>(
+    `SELECT id, creditNumber FROM credit_notes WHERE partsSellerPayableId = :payableId LIMIT 1`,
+    { type: QueryTypes.SELECT, replacements: { payableId: input.payableId } }
+  );
+  if (existing[0]) {
+    return getCreditNoteById(existing[0].id);
+  }
+
+  const id = randomUUID();
+  const creditNumber = await generateCreditNoteNumber();
+  const now = new Date().toISOString();
+  const sellerLabel = input.sellerName?.trim() || 'seller';
+  const description =
+    `Marketplace profit recognized after payout to ${sellerLabel}. ` +
+    `Markup ${input.markupPercent.toFixed(1)}% on listed lines ` +
+    `(profit ${profit.toFixed(2)} of listed ${input.listedLineTotal.toFixed(2)}; ` +
+    `seller remitted ${input.sellerAmount.toFixed(2)}). ` +
+    `Related buyer invoice ${input.buyerInvoiceId}.`;
+
+  const items = [
+    {
+      name: 'CD marketplace markup profit',
+      description: `Profit margin ${input.markupPercent.toFixed(1)}% after seller payout`,
+      quantity: 1,
+      price: profit,
+      total: profit,
+    },
+  ];
+
+  await sequelize.query(
+    `
+      INSERT INTO credit_notes (
+        id, creditNumber, invoiceId, clientId, amount, currency, reason, description, items,
+        markupPercent, status, partsSellerPayableId, createdBy, createdAt, updatedAt
+      ) VALUES (
+        :id, :creditNumber, :invoiceId, :clientId, :amount, 'TTD', :reason, :description, :items,
+        :markupPercent, 'posted', :payableId, :createdBy, :now, :now
+      )
+    `,
+    {
+      replacements: {
+        id,
+        creditNumber,
+        invoiceId: input.buyerInvoiceId,
+        clientId: input.buyerClientId?.trim() || null,
+        amount: profit,
+        reason: 'marketplace_markup_profit',
+        description,
+        items: JSON.stringify(items),
+        markupPercent: Math.round(input.markupPercent * 100) / 100,
+        payableId: input.payableId,
+        createdBy: String(input.createdBy),
+        now,
+      },
+    }
+  );
+
+  try {
+    await ensureInvoiceLinksTable();
+    await sequelize.query(
+      `INSERT INTO invoice_links (id, invoiceId, linkedType, linkedId, linkedNumber, linkDate, linkedBy, notes, isActive, createdAt, updatedAt)
+       VALUES (:id, :invoiceId, 'credit_note', :linkedId, :linkedNumber, :linkDate, :linkedBy, :notes, 1, :now, :now)`,
+      {
+        replacements: {
+          id: randomUUID(),
+          invoiceId: input.buyerInvoiceId,
+          linkedId: id,
+          linkedNumber: creditNumber,
+          linkDate: now,
+          linkedBy: String(input.createdBy),
+          notes: `Marketplace profit ${input.markupPercent.toFixed(1)}%`,
+          now,
+        },
+      }
+    );
+  } catch (error) {
+    console.error('Failed to link credit note to buyer invoice', error);
+  }
+
+  return getCreditNoteById(id);
+}
+
+export async function getCreditNoteById(id: string): Promise<CreditNoteView | null> {
+  await ensureCreditNotesSchema();
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<{
+    id: string;
+    creditNumber: string;
+    invoiceId: string | null;
+    clientId: string | null;
+    amount: number;
+    currency: string;
+    reason: string | null;
+    description: string | null;
+    markupPercent: number | null;
+    status: string;
+    partsSellerPayableId: string | null;
+    createdAt: string;
+  }>(`SELECT * FROM credit_notes WHERE id = :id LIMIT 1`, {
+    type: QueryTypes.SELECT,
+    replacements: { id },
+  });
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    creditNumber: row.creditNumber,
+    invoiceId: row.invoiceId,
+    clientId: row.clientId,
+    amount: Math.round(Number(row.amount) * 100) / 100,
+    currency: row.currency || 'TTD',
+    reason: row.reason,
+    description: row.description,
+    markupPercent:
+      row.markupPercent == null ? null : Math.round(Number(row.markupPercent) * 100) / 100,
+    status: row.status,
+    partsSellerPayableId: row.partsSellerPayableId,
+    createdAt: row.createdAt,
+  };
+}
+
+export async function listCreditNotes(options?: { limit?: number }): Promise<CreditNoteView[]> {
+  await ensureCreditNotesSchema();
+  const sequelize = getSequelize();
+  const limit = Math.min(Math.max(Number(options?.limit) || 50, 1), 200);
+  const rows = await sequelize.query<{
+    id: string;
+    creditNumber: string;
+    invoiceId: string | null;
+    invoiceNumber?: string | null;
+    clientId: string | null;
+    amount: number;
+    currency: string;
+    reason: string | null;
+    description: string | null;
+    markupPercent: number | null;
+    status: string;
+    partsSellerPayableId: string | null;
+    createdAt: string;
+  }>(
+    `
+      SELECT
+        cn.*,
+        i.invoice_number AS invoiceNumber
+      FROM credit_notes cn
+      LEFT JOIN invoices i ON i.id = cn.invoiceId
+      ORDER BY cn.createdAt DESC
+      LIMIT :limit
+    `,
+    { type: QueryTypes.SELECT, replacements: { limit } }
+  );
+  return rows.map((row) => {
+    const raw = row as Record<string, unknown>;
+    return {
+      id: row.id,
+      creditNumber: row.creditNumber,
+      invoiceId: row.invoiceId,
+      invoiceNumber:
+        (row.invoiceNumber ?? raw.invoicenumber ?? raw.invoice_number ?? null) as string | null,
+      clientId: row.clientId,
+      amount: Math.round(Number(row.amount) * 100) / 100,
+      currency: row.currency || 'TTD',
+      reason: row.reason,
+      description: row.description,
+      markupPercent:
+        row.markupPercent == null ? null : Math.round(Number(row.markupPercent) * 100) / 100,
+      status: row.status,
+      partsSellerPayableId: row.partsSellerPayableId,
+      createdAt: row.createdAt,
+    };
+  });
+}
+
+export { serializeInvoice, serializeQuote, parseItems };

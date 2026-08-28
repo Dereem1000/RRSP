@@ -124,7 +124,7 @@ function relaxDemoCspOnResponse(proxyRes, res) {
   );
 }
 
-function rewriteLocationHeader(location, uiPrefix) {
+function rewriteLocationHeader(location, uiPrefix, keepFlaskPathsAtRoot = false) {
   if (!location || typeof location !== "string") return location;
   if (
     location.startsWith("http://") ||
@@ -135,6 +135,7 @@ function rewriteLocationHeader(location, uiPrefix) {
   }
   if (location.startsWith("/")) {
     if (location === "/") return `${uiPrefix}/`;
+    if (keepFlaskPathsAtRoot) return location;
     return `${uiPrefix}${location}`;
   }
   return location;
@@ -227,7 +228,10 @@ function registerDemoProxies(app, manifest) {
       uiProxyOpts.pathRewrite = (pathname) =>
         stripDemoPrefix(pathname, uiPrefix);
       uiProxyOpts.selfHandleResponse = true;
-      uiProxyOpts.on.proxyRes = responseInterceptor(
+      const existingOn = uiProxyOpts.on || {};
+      uiProxyOpts.on = {
+        ...existingOn,
+        proxyRes: responseInterceptor(
         async (responseBuffer, proxyRes, req, res) => {
           // Avoid stale demo bundles at Cloudflare/browser (was max-age=14400 on JS).
           res.setHeader(
@@ -241,7 +245,7 @@ function registerDemoProxies(app, manifest) {
           if (loc) {
             res.setHeader(
               "location",
-              rewriteLocationHeader(loc, uiPrefix)
+              rewriteLocationHeader(loc, uiPrefix, true)
             );
           }
           const ct = proxyRes.headers["content-type"] || "";
@@ -254,7 +258,8 @@ function registerDemoProxies(app, manifest) {
             uiPrefix
           );
         }
-      );
+      ),
+      };
     }
     app.use(createProxyMiddleware(uiProxyOpts));
     console.log(`[MultiServer] Proxy ${uiPrefix} -> ${host}:${clientPort}`);

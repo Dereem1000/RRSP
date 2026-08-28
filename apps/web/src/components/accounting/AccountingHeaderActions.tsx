@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { FileText, Loader2, Receipt, RefreshCw, Settings } from 'lucide-react';
+import type { PortalRrspAccess } from '@/components/PortalShell';
 
 const btnClass =
   'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-60';
@@ -14,8 +16,21 @@ export const ACCOUNTING_HEADER_EVENTS = {
   REFRESH_COMPLETE: 'accounting:refresh-complete',
 } as const;
 
-export function AccountingHeaderActions({ role }: { role: string }) {
-  const isAdmin = role === 'admin';
+export function AccountingHeaderActions({
+  role,
+  rrspAccess = null,
+}: {
+  role: string;
+  rrspAccess?: PortalRrspAccess;
+}) {
+  const pathname = usePathname();
+  const onRrspAccounting = pathname === '/rrsp/accounting';
+  const isShopOperator =
+    role === 'client' &&
+    onRrspAccounting &&
+    Boolean(rrspAccess?.enabled) &&
+    (rrspAccess?.modules ?? []).includes('accounting');
+  const canManage = role === 'admin' || isShopOperator;
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -37,9 +52,11 @@ export function AccountingHeaderActions({ role }: { role: string }) {
     dispatch(ACCOUNTING_HEADER_EVENTS.REFRESH);
   }
 
+  if (pathname !== '/accounting' && !onRrspAccounting) return null;
+
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {isAdmin && (
+      {canManage && (
         <>
           <button
             type="button"

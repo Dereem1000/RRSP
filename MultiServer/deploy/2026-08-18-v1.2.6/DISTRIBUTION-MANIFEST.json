@@ -1,0 +1,55 @@
+﻿{
+    "buildDate":  "2026-08-18",
+    "preserveNotes":  {
+                          "config.json":  "Systems, ports, slugs, ngrok flags â€” unique per machine.",
+                          "demos-manifest.json":  "Exported website manifest if saved in install folder.",
+                          "demo-pages.json":  "Website page map if synced locally.",
+                          "deploy/Caddyfile":  "Generated from local config.json (ports/slugs). Regenerate with deploy/install-caddy.ps1 after update.",
+                          "logs":  "Per-system demo run logs.",
+                          "distributions":  "Local update packages built on this machine."
+                      },
+    "version":  "1.2.6",
+    "appliesTo":  "Existing MultiServer installs - instance config, manifests, Caddyfile, and logs are never copied from the package",
+    "buildId":  "20260818",
+    "excludesFromPayload":  [
+                                "config.json",
+                                "config.example.json",
+                                "demos-manifest.json",
+                                "demo-pages.json",
+                                "DISTRIBUTION-MANIFEST.json",
+                                "deploy/Caddyfile",
+                                "logs"
+                            ],
+    "preserves":  [
+                      "config.json",
+                      "demos-manifest.json",
+                      "demo-pages.json",
+                      "DISTRIBUTION-MANIFEST.json",
+                      "Caddyfile",
+                      "config.json.bak*",
+                      "*.log",
+                      "logs",
+                      ".git",
+                      "distributions",
+                      "__pycache__",
+                      ".venv",
+                      "venv",
+                      ".cursor",
+                      ".vscode"
+                  ],
+    "minCompatibleVersion":  "1.0.0",
+    "product":  "MultiServer",
+    "changelog":  [
+                      "v1.2.4 - PM2 vault uses demo_port+1 when extra_ports empty (run Law Firm + Medical Records together)",
+                      "v1.2.4 - Auto-detect / Assign ports set extra_ports for pm2-ecosystem",
+                      "v1.2.2 - Law Firm provision-ecosystem.config.js at extracted live root (Platforms/Document.M LawFirm)",
+                      "v1.2.2 - reject provision package / package app as the demo path (flat extract onto install root)",
+                      "v1.2.1 - Host mode (dedicate PC to MultiServer demos)",
+                      "v1.2.0 - dark UI, resource monitoring, Mini integration",
+                      "v1.1.0 - ngrok tunnel support (per-system + settings)",
+                      "v1.1.0 - monolith app detection (CRM-style apps no longer misclassified as split stack)",
+                      "v1.1.0 - server-only launchers and ngrok v2 compatibility",
+                      "v1.1.0 - version shown in GUI, /health, and demos-manifest.json"
+                  ],
+    "packageType":  "update"
+}

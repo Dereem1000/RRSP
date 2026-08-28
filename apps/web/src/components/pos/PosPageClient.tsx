@@ -148,6 +148,7 @@ export function PosPageClient({
   });
   const [keypadTarget, setKeypadTarget] = useState<KeypadTarget>(null);
   const [draftValue, setDraftValue] = useState('');
+  const [mobileKeypadOpen, setMobileKeypadOpen] = useState(false);
   const [productLayout, setProductLayout] = useState<ProductLayout>('grid');
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [kindFilter, setKindFilter] = useState<CategoryFilter>('all');
@@ -277,6 +278,7 @@ export function PosPageClient({
     setCart((prev) => [...prev, line]);
     focusKeypad({ kind: 'price', productId }, initialPrice);
     setMobileCartOpen(true);
+    setMobileKeypadOpen(true);
     return productId;
   }
 
@@ -461,7 +463,7 @@ export function PosPageClient({
         : 'Open item or tap cart price/qty';
 
   return (
-    <div className="flex flex-col gap-2 touch-manipulation max-lg:min-h-[calc(100dvh-8rem)] sm:gap-3 lg:min-h-0 lg:flex-1">
+    <div className="flex flex-col gap-2 touch-manipulation max-lg:min-h-[calc(100dvh-8rem)] max-lg:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:gap-3 lg:min-h-0 lg:flex-1 lg:pb-0">
       <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -790,21 +792,6 @@ export function PosPageClient({
               </div>
             )}
           </div>
-
-          {/* Mobile: open cart sheet — products keep the screen */}
-          <div className="mt-2 shrink-0 border-t border-slate-100 pt-2 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileCartOpen(true)}
-              className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white active:scale-[0.99]"
-            >
-              <span className="inline-flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Cart{cartCount > 0 ? ` · ${cartCount}` : ''}
-              </span>
-              <span>{formatMoney(cartTotal)}</span>
-            </button>
-          </div>
         </section>
 
         {/* Cart + Pay: side column on desktop; bottom sheet on mobile */}
@@ -944,6 +931,13 @@ export function PosPageClient({
                             min={1}
                             step={1}
                             value={line.quantity}
+                            onFocus={() => {
+                              setMobileKeypadOpen(true);
+                              focusKeypad(
+                                { kind: 'qty', productId: line.productId },
+                                String(line.quantity)
+                              );
+                            }}
                             onChange={(e) => {
                               const qty = Math.floor(Number(e.target.value) || 0);
                               setLineQty(line.productId, qty);
@@ -989,6 +983,13 @@ export function PosPageClient({
                               min={0}
                               step="0.01"
                               value={formatPriceInput(line.unitPrice)}
+                              onFocus={() => {
+                                setMobileKeypadOpen(true);
+                                focusKeypad(
+                                  { kind: 'price', productId: line.productId },
+                                  formatPriceInput(line.unitPrice)
+                                );
+                              }}
                               onChange={(e) => {
                                 const price = Number.parseFloat(e.target.value);
                                 setLinePrice(line.productId, Number.isFinite(price) ? price : 0);
@@ -1068,6 +1069,22 @@ export function PosPageClient({
               </button>
             </div>
             <p className="mb-2 hidden truncate text-[11px] text-slate-500 lg:block">{keypadHint}</p>
+            <div className="mb-2 lg:hidden">
+              <p className="mb-1.5 text-[11px] leading-snug text-slate-500">
+                Tap qty or price on a line to use your device keyboard, or open the on-screen keypad.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMobileKeypadOpen((open) => !open)}
+                className="min-h-10 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                aria-expanded={mobileKeypadOpen}
+              >
+                {mobileKeypadOpen ? 'Hide on-screen keypad' : 'On-screen keypad'}
+              </button>
+              {mobileKeypadOpen ? (
+                <p className="mt-1.5 truncate text-[11px] text-slate-500">{keypadHint}</p>
+              ) : null}
+            </div>
 
             <label className="mb-2 block">
             <span className="mb-1 block text-xs font-medium text-slate-600">Customer</span>
@@ -1106,8 +1123,12 @@ export function PosPageClient({
               </div>
             </div>
 
-            {/* On-screen keypad for counter/desktop only — phones use the OS keyboard */}
-            <div className="mb-2 hidden min-h-10 items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-base font-semibold text-slate-900 lg:flex">
+            {/* On-screen keypad — optional on mobile; always on counter/desktop */}
+            <div
+              className={`mb-2 min-h-10 items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-base font-semibold text-slate-900 ${
+                mobileKeypadOpen ? 'flex' : 'hidden'
+              } lg:flex`}
+            >
               <span className="truncate">
                 {keypadTarget ? (draftValue === '' ? '0' : draftValue) : '—'}
               </span>
@@ -1132,7 +1153,11 @@ export function PosPageClient({
               </div>
             </div>
 
-            <div className="mb-2 hidden grid-cols-3 gap-1.5 lg:grid">
+            <div
+              className={`mb-2 grid-cols-3 gap-1.5 ${
+                mobileKeypadOpen ? 'grid' : 'hidden'
+              } lg:grid`}
+            >
               {KEYPAD_KEYS.map((key) => (
                 <button
                   key={key}
@@ -1162,6 +1187,21 @@ export function PosPageClient({
           </div>
         </aside>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setMobileCartOpen(true)}
+        className={`fixed right-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-[45] flex min-h-12 max-w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-950/20 active:scale-[0.99] lg:hidden${mobileCartOpen ? ' hidden' : ''}`}
+        aria-label={cartCount > 0 ? `Open cart, ${cartCount} items` : 'Open cart'}
+      >
+        <span className="inline-flex items-center gap-2">
+          <ShoppingCart className="h-5 w-5 shrink-0" />
+          <span className="truncate">
+            {cartCount > 0 ? `Cart · ${cartCount}` : 'Cart'}
+          </span>
+        </span>
+        <span className="shrink-0 font-bold">{formatMoney(cartTotal)}</span>
+      </button>
 
       {showAddProduct &&
         typeof document !== 'undefined' &&

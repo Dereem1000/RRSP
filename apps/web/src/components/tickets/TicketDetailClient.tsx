@@ -79,6 +79,8 @@ export function TicketDetailClient({
   userRole,
   linkedOrders: initialLinkedOrders = [],
   invoiceOrderItems = [],
+  pathPrefix = '',
+  shopOperator = false,
 }: {
   ticket: TicketData;
   comments: Comment[];
@@ -87,11 +89,13 @@ export function TicketDetailClient({
   userRole: string;
   linkedOrders?: LinkedOrder[];
   invoiceOrderItems?: TicketInvoiceLineItem[];
+  pathPrefix?: string;
+  shopOperator?: boolean;
 }) {
   const router = useRouter();
   const { askToEmailClient } = useClientEmailPolicy();
-  const isStaff = userRole === 'admin' || userRole === 'technician';
-  const isAdmin = userRole === 'admin';
+  const isStaff = userRole === 'admin' || userRole === 'technician' || shopOperator;
+  const isAdmin = userRole === 'admin' || shopOperator;
 
   const [ticket, setTicket] = useState(initial);
   const [comments, setComments] = useState(initialComments);
@@ -422,7 +426,7 @@ export function TicketDetailClient({
   return (
     <div className="space-y-6">
       <Link
-        href="/tickets"
+        href={`${pathPrefix}/tickets`}
         className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -432,11 +436,11 @@ export function TicketDetailClient({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-sm text-indigo-600">
-            <TicketLink id={ticket.id} label={ticket.ticketNumber} className="font-mono text-sm text-indigo-600" />
+            <TicketLink id={ticket.id} label={ticket.ticketNumber} className="font-mono text-sm text-indigo-600" pathPrefix={pathPrefix} />
           </p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">{ticket.issue}</h1>
           <p className="mt-2 text-sm text-slate-500">
-            <ClientLink id={ticket.clientId} label={ticket.clientName} className="text-sm text-slate-500 hover:text-indigo-700" />
+            <ClientLink id={ticket.clientId} label={ticket.clientName} className="text-sm text-slate-500 hover:text-indigo-700" pathPrefix={pathPrefix} />
             {ticket.clientContactNumber ? ` · ${ticket.clientContactNumber}` : ''}
             {ticket.client?.phone && !ticket.clientContactNumber ? ` · ${ticket.client.phone}` : ''}
           </p>
@@ -458,7 +462,7 @@ export function TicketDetailClient({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <OrderLink id={order.id} label={order.orderNumber} />
+                    <OrderLink id={order.id} label={order.orderNumber} pathPrefix={pathPrefix} />
                     <p className="mt-1 text-sm font-medium text-slate-900">{order.title}</p>
                     <p className="text-sm text-slate-600">{order.itemName}</p>
                     <p className="mt-1 text-xs text-slate-500">
@@ -639,6 +643,7 @@ export function TicketDetailClient({
                     id={ticket.clientId}
                     label={ticket.clientName}
                     className="font-medium hover:text-indigo-700"
+                    pathPrefix={pathPrefix}
                   />
                   {ticket.clientContactNumber ? ` · ${ticket.clientContactNumber}` : ''}
                 </dd>
@@ -744,7 +749,7 @@ export function TicketDetailClient({
                     {c.commentType === 'order_part' && c.linkedOrderId ? (
                       <p className="mt-3 text-sm text-slate-600">
                         Linked order:{' '}
-                        <OrderLink id={c.linkedOrderId} label="View order" className="font-medium text-indigo-700" />
+                        <OrderLink id={c.linkedOrderId} label="View order" className="font-medium text-indigo-700" pathPrefix={pathPrefix} />
                       </p>
                     ) : null}
                     {isAdmin && c.commentType === 'order_part' && !c.linkedOrderId ? (

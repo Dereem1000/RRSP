@@ -15,9 +15,9 @@ export type IntegrityResult =
 
 /**
  * Bump when the protected path list changes so the worker rebaselines on next cycle.
- * 2.1.4 — broader catalog (API guard, alerts, auth handlers) + activity threshold module.
+ * 2.1.5 — Mini provisioning proxy hardening (buffered API proxy, disconnect guards).
  */
-export const PROTECTED_FILES_VERSION = '2.1.4';
+export const PROTECTED_FILES_VERSION = '2.1.5';
 
 export { getProtectedFilePaths } from '@cd-v2/database';
 

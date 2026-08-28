@@ -39,6 +39,7 @@ export function TicketsPageClient({
   technicians,
   clientCanCreate = false,
   shopOperator = false,
+  pathPrefix = '',
 }: {
   tickets: TicketRow[];
   userRole: string;
@@ -47,6 +48,7 @@ export function TicketsPageClient({
   clientCanCreate?: boolean;
   /** RRSP shop user acting as operator (pick shop customers). */
   shopOperator?: boolean;
+  pathPrefix?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -261,7 +263,7 @@ export function TicketsPageClient({
                 <tr key={t.id} className="transition hover:bg-slate-50/50">
                   <td className="px-4 py-4">
                     <Link
-                      href={`/tickets/${t.id}`}
+                      href={`${pathPrefix}/tickets/${t.id}`}
                       className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-800"
                     >
                       {t.ticketNumber}
@@ -275,7 +277,7 @@ export function TicketsPageClient({
                   </td>
                   {treatAsOperator && (
                     <td className="px-4 py-4">
-                      <ClientLink id={t.clientId} label={t.clientName} className="font-medium text-slate-900 hover:text-indigo-700" />
+                      <ClientLink id={t.clientId} label={t.clientName} className="font-medium text-slate-900 hover:text-indigo-700" pathPrefix={pathPrefix} />
                     </td>
                   )}
                   <td className="max-w-[10rem] truncate px-4 py-4 text-slate-600 sm:max-w-xs">{t.issue}</td>
@@ -309,6 +311,8 @@ export function TicketsPageClient({
           clientMode={userRole === 'client' && !shopOperator}
           defaultClientId={presetClientId}
           canAddClient={treatAsOperator}
+          shopMode={shopOperator}
+          pathPrefix={pathPrefix}
           onClose={() => setShowCreate(false)}
         />
       )}

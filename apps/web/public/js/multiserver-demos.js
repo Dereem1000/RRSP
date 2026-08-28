@@ -6,6 +6,38 @@
   const MANIFEST_URL = "/demos-manifest.json";
   const PAGES_URL = "/demo-pages.json";
 
+  let marketingLinkOverrides = {};
+
+  function pageLinkSlot() {
+    const anchor =
+      document.getElementById("openLiveDemoAnchor") ||
+      document.querySelector(".cd-live-demo-slot[data-cd-link-slot]");
+    const fromEl = anchor && anchor.getAttribute("data-cd-link-slot");
+    if (fromEl) return fromEl.trim();
+    const parts = location.pathname.split("/").filter(Boolean);
+    const page = parts[parts.length - 1] || "";
+    if (!page.endsWith(".html")) return "";
+    return page.replace(/\.html$/, "") + "/live-demo";
+  }
+
+  async function loadMarketingLinkOverrides() {
+    try {
+      const res = await fetch("/api/marketing-links", { credentials: "same-origin" });
+      if (res.ok) {
+        const data = await res.json();
+        marketingLinkOverrides = data.overrides || {};
+      }
+    } catch {
+      marketingLinkOverrides = {};
+    }
+    return marketingLinkOverrides;
+  }
+
+  function overrideUrlForPage() {
+    const slot = pageLinkSlot();
+    return slot && marketingLinkOverrides[slot] ? marketingLinkOverrides[slot] : null;
+  }
+
   /** Old bookmark slugs → canonical slug in demos-manifest.json */
   const LEGACY_SLUG_ALIASES = {
     "lawfirm-deployment-20260416-004524-demo": "lawfirm",
@@ -187,7 +219,7 @@
     },
 
     async open(slug) {
-      const url = this.getUrl(slug);
+      const url = overrideUrlForPage() || this.getUrl(slug);
       if (!url) {
         const demos = (this.manifest && this.manifest.demos) || [];
         if (!demos.length) {
@@ -223,6 +255,27 @@
       window.open(url, "_blank", "noopener,noreferrer");
     },
 
+    resolveButtonClass(anchorSlot, opts) {
+      if (opts.className) return opts.className;
+      if (anchorSlot) {
+        if (anchorSlot.closest(".hero-buttons") || anchorSlot.closest(".hero-cta-row")) {
+          return "btn btn-secondary";
+        }
+        if (
+          anchorSlot.closest(".development-content") ||
+          anchorSlot.closest(".development-section")
+        ) {
+          return "demo-button";
+        }
+        const parent = anchorSlot.parentElement;
+        if (parent) {
+          if (parent.querySelector(".demo-button")) return "demo-button";
+          if (parent.querySelector(".demo-btn")) return "demo-btn";
+        }
+      }
+      return "cd-live-demo-btn";
+    },
+
     injectButton(slug, options) {
       const opts = options || {};
       let anchor = opts.anchor;
@@ -231,37 +284,69 @@
       if (document.getElementById("cd-live-demo-btn")) return;
 
       // Prefer a dedicated slot so we never replace Request Demo / WhatsApp / Learn More links.
-      const slot =
+      const anchorSlot =
         document.getElementById("openLiveDemoAnchor") ||
         document.querySelector(".cd-live-demo-slot");
-      if (slot) {
-        anchor = slot;
+      if (anchorSlot) {
+        anchor = anchorSlot;
       }
       if (!anchor) return;
 
       const btn = document.createElement("a");
       btn.id = "cd-live-demo-btn";
-      btn.href = "#";
-      btn.className = opts.className || "cd-live-demo-btn";
+      const linkSlot = pageLinkSlot();
+      const manifestUrl = this.getUrl(slug);
+      const overrideUrl = overrideUrlForPage();
+      const displayUrl = overrideUrl || manifestUrl || "";
+      btn.href = displayUrl || "#";
+      btn.className = this.resolveButtonClass(anchorSlot, opts);
+      if (linkSlot) {
+        btn.setAttribute("data-cd-link-slot", linkSlot);
+        if (manifestUrl) btn.setAttribute("data-cd-link-default", manifestUrl);
+      }
       btn.innerHTML =
-        (opts.icon !== false
-          ? '<i class="fas fa-play-circle" style="margin-right:8px"></i>'
-          : "") + (opts.label || "Open Live Demo");
-      btn.style.marginLeft = opts.marginLeft || "12px";
+        (opts.icon !== false ? '<i class="fas fa-play-circle"></i>' : "") +
+        (opts.label || "Open Live Demo");
+      const inFlexRow =
+        anchorSlot &&
+        (anchorSlot.closest(".hero-buttons") ||
+          anchorSlot.closest(".hero-cta-row") ||
+          anchorSlot.closest(".nav-actions") ||
+          anchorSlot.closest(".development-content"));
+      if (!inFlexRow) {
+        btn.style.marginLeft = opts.marginLeft || "12px";
+      }
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         CDDemos.open(slug);
       });
 
-      if (slot) {
-        slot.appendChild(btn);
+      if (anchorSlot) {
+        anchorSlot.appendChild(btn);
       } else {
         anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+      }
+
+      // Defer so marketing-link-editor listeners can attach after async admin check.
+      setTimeout(function () {
+        document.dispatchEvent(
+          new CustomEvent("cd-marketing-link-ready", { detail: { el: btn, slot: pageLinkSlot() } })
+        );
+      }, 0);
+    },
+
+    applyMarketingLinkOverrides(map) {
+      marketingLinkOverrides = map || {};
+      const btn = document.getElementById("cd-live-demo-btn");
+      const linkSlot = pageLinkSlot();
+      if (btn && linkSlot && marketingLinkOverrides[linkSlot]) {
+        btn.setAttribute("href", marketingLinkOverrides[linkSlot]);
       }
     },
 
     async initFromPage() {
       await this.load();
+      await loadMarketingLinkOverrides();
       const slug = this.slugForCurrentPage();
       if (!slug) return;
 
@@ -272,7 +357,26 @@
         document.getElementById("viewDemoBtn") ||
         document.querySelector(".demo-button[data-live-demo]");
       if (anchor) {
-        this.injectButton(slug, { anchor: anchor });
+        const existingBtn = document.getElementById("cd-live-demo-btn");
+        if (existingBtn) {
+          // Ensure the existing button has the proper slot/default and click behavior.
+          const linkSlot = pageLinkSlot();
+          const manifestUrl = this.getUrl(slug);
+          const overrideUrl = overrideUrlForPage();
+          const displayUrl = overrideUrl || manifestUrl || "#";
+          if (linkSlot) existingBtn.setAttribute("data-cd-link-slot", linkSlot);
+          if (manifestUrl) existingBtn.setAttribute("data-cd-link-default", manifestUrl);
+          existingBtn.href = displayUrl;
+          // Avoid duplicate listeners
+          existingBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            CDDemos.open(slug);
+          });
+          this.applyMarketingLinkOverrides(marketingLinkOverrides);
+        } else {
+          this.injectButton(slug, { anchor: anchor });
+          this.applyMarketingLinkOverrides(marketingLinkOverrides);
+        }
       }
     },
   };

@@ -12,8 +12,10 @@ import {
 } from '@cd-v2/api-handlers';
 
 import { Client } from '@web/lib/db';
+import { getShopClientModel, isRrspDbActive } from '@web/lib/rrsp-db';
 import { buildUsageInfo } from '@web/lib/clients';
 import { USAGE_TYPES } from '@web/lib/client-constants';
+import { requireStaffOrRrspShopOperator } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -30,10 +32,11 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin');
+    requireStaffOrRrspShopOperator(session, 'write');
 
     const { id } = ctx.params;
-    const client = await Client.findByPk(id);
+    const ClientModel = isRrspDbActive() ? getShopClientModel() : Client;
+    const client = await ClientModel.findByPk(id);
     if (!client) {
       return { status: 404, body: { success: false, message: 'Client not found' } };
     }

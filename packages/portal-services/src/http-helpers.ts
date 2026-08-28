@@ -1,5 +1,7 @@
 import { guardRequest, verifyPublicCaptchaDetailed } from '@cd-v2/security';
-import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
+import type { ApiContext, ApiResult, TokenPayload } from '@cd-v2/api-handlers';
+import { AuthError, requireRole } from '@cd-v2/api-handlers';
+import { isRrspDbActive } from '@web/lib/rrsp-db';
 import {
   LICENSE_SERIAL_REVEAL_COOKIE,
   LICENSE_SERIAL_REVEAL_HEADER,
@@ -142,4 +144,23 @@ export function wipayParamsFromCtx(ctx: ApiContext): WiPayResponseParams {
 
 export function redirectResult(location: string, status = 302): ApiResult {
   return { status, body: '', rawBody: '', headers: { Location: location } };
+}
+
+/** CD staff, or RRSP shop operator when the shop DB context is active. */
+export function requireStaffOrRrspShopOperator(
+  session: TokenPayload,
+  scope: 'read' | 'write' = 'read'
+): void {
+  if (session.role === 'client') {
+    if (!isRrspDbActive()) {
+      throw new AuthError('Access denied', 403);
+    }
+    return;
+  }
+  if (scope === 'write') requireRole(session, 'admin');
+  else requireRole(session, 'admin', 'technician');
+}
+
+export function orderIncludeCost(session: TokenPayload): boolean {
+  return session.role === 'admin' || (session.role === 'client' && isRrspDbActive());
 }

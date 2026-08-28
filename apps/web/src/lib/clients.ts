@@ -1,6 +1,7 @@
 import { Op, QueryTypes } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import { Client, Ticket, User, getSequelize } from '@cd-v2/database';
+import { getShopClientModel, getTicketModel, isRrspDbActive } from '@/lib/rrsp-db';
 import { buildUsageLimitsFromLevel, getDefaultMonthlyRate, getDefaultSlaForLevel, type UsageInfo } from '@/lib/client-constants';
 import { sendClientWelcomeEmail } from '@/lib/email';
 import {
@@ -34,10 +35,13 @@ export async function resolveClientActivationFeatures(client: Client): Promise<A
 }
 
 export async function getClientById(id: string) {
-  return Client.findByPk(id, {
+  const ClientModel = isRrspDbActive() ? getShopClientModel() : Client;
+  const TicketModel = isRrspDbActive() ? getTicketModel() : Ticket;
+
+  return ClientModel.findByPk(id, {
     include: [
       {
-        model: Ticket,
+        model: TicketModel,
         attributes: ['id', 'ticketNumber', 'issue', 'status', 'priority', 'dateCreated', 'lastUpdated'],
         limit: 20,
         order: [['lastUpdated', 'DESC']],

@@ -70,7 +70,7 @@ export function writeTunnelConfigFromSlots(slots: DevSlotConfig[]): { configPath
   );
 
   text = text.replace(
-    /\n(?:  #[^\n]*\n)?  - hostname: dev[123]\.[^\n]+\n    service: http:\/\/[^\n]+/g,
+    /\n(?:  #[^\n]*\n)?  - hostname: dev[1-8]\.[^\n]+\n    service: http:\/\/[^\n]+/g,
     ''
   );
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -94,9 +95,6 @@ type ProvisioningPayload = {
 const inputClass =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20';
 
-const MINI_OFFLINE_HINT =
-  'Cannot reach Mini from Computer Dynamics. Open Settings → Integrations, confirm Mini is docked, and that Local Mini URL matches runtime/dashboard.url in the Mini install folder.';
-
 async function readProvisioningApiJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
   if (!text.trim()) return {};
@@ -104,20 +102,126 @@ async function readProvisioningApiJson(res: Response): Promise<Record<string, un
     return JSON.parse(text) as Record<string, unknown>;
   } catch {
     if (text.trimStart().startsWith('<')) {
-      throw new Error(MINI_OFFLINE_HINT);
+      // HTML usually means CD web/proxy glitch or a login page — not proof Mini is down.
+      throw new Error(
+        `Computer Dynamics returned an HTML page (HTTP ${res.status}) instead of provisioning JSON. Refresh once; if it persists, restart CD web/api. Mini may still be running.`,
+      );
     }
-    throw new Error('Unexpected response from the provisioning API.');
+    throw new Error(`Unexpected response from the provisioning API (HTTP ${res.status}).`);
   }
 }
 
 function provisioningApiError(body: Record<string, unknown>, res: Response, fallback: string): string {
   const err = body.error ?? body.message;
   if (typeof err === 'string' && err.trim()) return err;
-  if (res.status === 504 || res.status === 524) {
-    return 'Mini took too long to return provisioning data. If Mini was busy, wait a moment and click Refresh.';
+  if (body.starting === true) {
+    return 'Computer Dynamics API is still starting — wait a few seconds and click Refresh.';
   }
-  if (res.status === 503) return MINI_OFFLINE_HINT;
+  if (res.status === 524) {
+    return 'Cloudflare timed out the request (524). Long provision runs now continue on Mini in the background — click Refresh to check recent runs, or retry the run.';
+  }
+  if (res.status === 504) {
+    return 'Mini took too long to return provisioning data. If Mini was busy running an audit or package build, wait a minute and click Refresh.';
+  }
+  if (res.status === 502) {
+    return 'Temporary connection issue talking to Mini. Wait a moment and click Refresh.';
+  }
+  if (res.status === 503) {
+    return 'Computer Dynamics API is temporarily unavailable (503). If Mini health is OK, restart CD api/web and retry.';
+  }
+  if (res.status === 401 || res.status === 403) {
+    return 'Your Computer Dynamics session expired. Sign in again, then reopen Provisioning.';
+  }
   return fallback;
+}
+
+const PROVISION_UI_REV = 'async-v4';
+
+const FINAL_PROVISION_RESULTS = new Set(['PASSED', 'PASSED_WITH_WARNINGS', 'FAILED']);
+
+function hasProvisionRunOutcome(body: Record<string, unknown>): boolean {
+  if (typeof body.exit_code === 'number') return true;
+  const label = String(body.audit_result ?? body.result ?? '').trim().toUpperCase();
+  return FINAL_PROVISION_RESULTS.has(label);
+}
+
+function resolveProvisionPollJobId(res: Response, body: Record<string, unknown>): string | null {
+  const jobId = String(body.job_id || body.jobId || '').trim();
+  if (!jobId) return null;
+  const status = String(body.status || '').toLowerCase();
+  if (res.status === 202 || Boolean(body.accepted) || status === 'running' || body.audit_pending === true) {
+    return jobId;
+  }
+  if (!hasProvisionRunOutcome(body)) return jobId;
+  return null;
+}
+
+async function waitForProvisionRunJob(
+  jobId: string,
+  onProgress?: (message: string) => void,
+): Promise<Record<string, unknown>> {
+  const deadline = Date.now() + 20 * 60_000;
+  let polls = 0;
+  while (Date.now() < deadline) {
+    const res = await fetch(
+      `/api/developer-toolbox/provisioning?job_id=${encodeURIComponent(jobId)}`,
+      { credentials: 'include' },
+    );
+    const body = await readProvisioningApiJson(res);
+    polls += 1;
+    if (!res.ok && res.status >= 500 && res.status !== 502) {
+      throw new Error(provisioningApiError(body, res, 'Provision run status check failed'));
+    }
+    const jobStatus = String(body.status || '').toLowerCase();
+    if (jobStatus === 'running') {
+      const elapsed = Math.round((polls * 3));
+      onProgress?.(`Provision audit running on Mini… (${elapsed}s)`);
+      await new Promise((resolve) => window.setTimeout(resolve, 3000));
+      continue;
+    }
+    if (jobStatus === 'completed' || jobStatus === 'failed') {
+      const normalized = normalizeProvisionRunBody(body);
+      if (normalized.error && jobStatus === 'failed') {
+        throw new Error(String(normalized.error));
+      }
+      if (!hasProvisionRunOutcome(normalized)) {
+        throw new Error(
+          'Mini reported the audit finished but did not return a result. Click Refresh to see recent runs.',
+        );
+      }
+      return normalized;
+    }
+    if (body.error) {
+      throw new Error(String(body.error));
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 3000));
+  }
+  throw new Error(
+    'Provision audit is still running on Mini. Click Refresh in a few minutes to see the latest run.',
+  );
+}
+
+function normalizeProvisionRunBody(body: Record<string, unknown>): Record<string, unknown> {
+  const nested = body.result;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+    return { ...body, ...(nested as Record<string, unknown>) };
+  }
+  const auditLabel =
+    (typeof body.audit_result === 'string' && body.audit_result)
+    || (typeof body.result === 'string' && body.result)
+    || undefined;
+  return auditLabel ? { ...body, result: auditLabel } : body;
+}
+
+function formatProvisionRunMessage(body: Record<string, unknown>): string {
+  const normalized = normalizeProvisionRunBody(body);
+  const label = String(normalized.audit_result || normalized.result || '').trim();
+  const exitCode = normalized.exit_code;
+  const exitText = exitCode === 0 || exitCode ? String(exitCode) : '?';
+  if (label) return `Result: ${label} (exit ${exitText})`;
+  const jobStatus = String(normalized.status || '').toLowerCase();
+  if (jobStatus === 'running') return 'Provision audit started on Mini…';
+  return `Result: unknown (exit ${exitText})`;
 }
 
 function checklistStatusClass(status?: string) {
@@ -281,6 +385,15 @@ function reportSelectionKey(projectRoot: string, runId: string) {
 }
 
 export function ProvisioningPanel() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const deepLinkApplied = useRef(false);
+  const engagementContext = useRef<{
+    clientId: string;
+    feature: string;
+    returnTo: string;
+  } | null>(null);
+  const clearFieldsRef = useRef<Set<string>>(new Set());
   const [data, setData] = useState<ProvisioningPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -318,15 +431,22 @@ export function ProvisioningPanel() {
 
   const applyRunDefaults = useCallback((system?: ProvisionSystem | null, force = false) => {
     const defaults = system?.run_defaults;
-    if (!defaults) return;
-    const pick = (current: string, next?: string) => {
+    const clear = clearFieldsRef.current;
+    const pick = (current: string, next?: string, field?: string) => {
+      if (field && clear.has(field)) return '';
       if (!next) return current;
       return force || !current.trim() ? next : current;
     };
+    if (!defaults) {
+      if (clear.has('package')) setPackagePath('');
+      if (clear.has('install')) setInstallRoot('');
+      if (clear.has('publicUrl')) setPublicUrl('');
+      return;
+    }
     const projectRoot = system?.project_root || '';
     const packageVersionMismatch = (pathValue: string) => {
       const current = pathValue.trim();
-      if (!current || !defaults.version) return false;
+      if (!current || !defaults?.version) return false;
       const match = current.match(/-provision-v([\d.]+)/i);
       return Boolean(match && match[1] !== defaults.version);
     };
@@ -337,17 +457,18 @@ export function ProvisioningPanel() {
         ? defaults.package_path
         : undefined;
     setPackagePath((current) => {
+      if (clear.has('package')) return '';
       if (force || !current.trim() || packageVersionMismatch(current)) {
-        return packageDefault || defaults.suggested_package_path || '';
+        return packageDefault || defaults?.suggested_package_path || '';
       }
       return current;
     });
-    setInstallRoot((current) => pick(current, defaults.install_root));
-    setPublicUrl((current) => pick(current, defaults.public_url));
-    if (defaults.version) {
+    setInstallRoot((current) => pick(current, defaults?.install_root, 'install'));
+    setPublicUrl((current) => pick(current, defaults?.public_url, 'publicUrl'));
+    if (defaults?.version) {
       setVersion(defaults.version);
     }
-    setCustomerName((current) => pick(current, defaults.customer_name));
+    setCustomerName((current) => pick(current, defaults?.customer_name, 'customerName'));
   }, []);
 
   useEffect(() => {
@@ -361,6 +482,73 @@ export function ProvisioningPanel() {
   }, [activeSystem?.id, activeSystem?.run_defaults, activeSystem?.project_root, activeSystem?.system_name, applyRunDefaults]);
 
   useEffect(() => {
+    if (deepLinkApplied.current) return;
+    const clientId = searchParams?.get('clientId')?.trim();
+    const feature = searchParams?.get('feature')?.trim();
+    const customer = searchParams?.get('customerName')?.trim();
+    const projectRoot = searchParams?.get('projectRoot')?.trim();
+    const phaseParam = searchParams?.get('phase')?.trim();
+    const returnTo = searchParams?.get('returnTo')?.trim();
+    const clearParam = searchParams?.get('clear')?.trim();
+
+    if (clearParam) {
+      clearFieldsRef.current = new Set(
+        clearParam.split(',').map((s) => s.trim()).filter(Boolean),
+      );
+    }
+    if (customer) setCustomerName(customer);
+    if (phaseParam) setPhase(phaseParam);
+    if (projectRoot) setSelectedRoot(projectRoot);
+    if (clientId && feature) {
+      engagementContext.current = {
+        clientId,
+        feature,
+        returnTo: returnTo || `/msp/systems?feature=${encodeURIComponent(feature)}`,
+      };
+    }
+    if (customer || projectRoot || phaseParam || clientId) {
+      deepLinkApplied.current = true;
+      if (clearFieldsRef.current.has('package')) setPackagePath('');
+      if (clearFieldsRef.current.has('install')) setInstallRoot('');
+      if (clearFieldsRef.current.has('publicUrl')) setPublicUrl('');
+    }
+  }, [searchParams]);
+
+  const recordEngagementGateResult = useCallback(
+    async (body: Record<string, unknown>) => {
+      const ctx = engagementContext.current;
+      if (!ctx) return;
+      const result = body.audit_result ?? body.result ?? '';
+      const runId = String(
+        (body.latest_run as { run_id?: string } | undefined)?.run_id || body.run_id || '',
+      ).trim();
+      try {
+        await fetch('/api/msp/management-systems/engagements', {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'record-gate',
+            clientId: ctx.clientId,
+            feature: ctx.feature,
+            customerName: customerName || undefined,
+            phase,
+            result,
+            runId: runId || undefined,
+          }),
+        });
+        const label = String(result).toUpperCase();
+        if (label === 'PASSED' || label === 'PASSED_WITH_WARNINGS' || label === 'FAILED') {
+          router.push(ctx.returnTo);
+        }
+      } catch {
+        // non-fatal
+      }
+    },
+    [customerName, phase, router],
+  );
+
+  useEffect(() => {
     if (!showConnectionField) return;
     if (connectionId && installConnections.some((row) => row.connection_id === connectionId)) return;
     if (installConnections.length === 1 && installConnections[0]?.connection_id) {
@@ -370,15 +558,24 @@ export function ProvisioningPanel() {
     }
   }, [showConnectionField, installConnections, connectionId, activeSystem?.id]);
 
-  const load = useCallback(async (attempt = 0) => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(async (attempt = 0, options?: { quiet?: boolean }) => {
+    if (!options?.quiet) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await fetch('/api/developer-toolbox/provisioning', { credentials: 'include' });
       const body = await readProvisioningApiJson(res);
-      if ((res.status === 504 || res.status === 524) && attempt < 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 2500));
-        return load(attempt + 1);
+      const shouldRetry =
+        attempt < 2
+        && (res.status === 504
+          || res.status === 524
+          || res.status === 502
+          || res.status === 503
+          || body.starting === true);
+      if (shouldRetry) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000 * (attempt + 1)));
+        return load(attempt + 1, options);
       }
       if (!res.ok || body.error) {
         throw new Error(
@@ -388,16 +585,24 @@ export function ProvisioningPanel() {
       const payload = body as ProvisioningPayload;
       setData(payload);
       const nextSystems = payload.provisioning?.systems ?? [];
+      const urlRoot = searchParams?.get('projectRoot')?.trim() || '';
       setSelectedRoot((prev) => {
-        if (prev && nextSystems.some((s: ProvisionSystem) => s.project_root === prev)) return prev;
+        const preferred = prev || urlRoot;
+        if (preferred && nextSystems.some((s: ProvisionSystem) => s.project_root === preferred)) {
+          return preferred;
+        }
         return nextSystems[0]?.project_root ?? '';
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
+      if (!options?.quiet) {
+        setError(err instanceof Error ? err.message : 'Failed to load');
+      }
     } finally {
-      setLoading(false);
+      if (!options?.quiet) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     void load();
@@ -495,6 +700,7 @@ export function ProvisioningPanel() {
     try {
       const runBody: Record<string, unknown> = {
         action: 'run',
+        client_poll: true,
         project_root: selectedRoot,
         phase,
         customer_name: customerName,
@@ -517,19 +723,37 @@ export function ProvisioningPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(runBody),
       });
-      const body = await readProvisioningApiJson(res);
-      if (!res.ok || body.error) {
+      let body = await readProvisioningApiJson(res);
+      if (!res.ok || (body.error && !body.accepted && res.status !== 202)) {
         throw new Error(provisioningApiError(body, res, 'Provision run failed'));
       }
-      setMessage(`Result: ${String(body.result || 'done')} (exit ${body.exit_code ?? '?'})`);
+      const pollJobId = resolveProvisionPollJobId(res, body);
+      if (pollJobId) {
+        setMessage(
+          `Provision audit started on Mini (job ${pollJobId.slice(0, 8)}…) — do not close this page…`,
+        );
+        body = await waitForProvisionRunJob(pollJobId, (msg) => setMessage(msg));
+      } else if (!hasProvisionRunOutcome(body)) {
+        throw new Error(
+          'Provision run returned no job id and no result. Hard-refresh this page (Ctrl+Shift+R) — you may be on a cached UI build.',
+        );
+      }
+      body = normalizeProvisionRunBody(body);
+      if (!hasProvisionRunOutcome(body)) {
+        throw new Error(
+          'Provision run finished without a result. Check Recent runs below or click Refresh.',
+        );
+      }
+      setMessage(formatProvisionRunMessage(body));
       const report = body.report as { report_markdown?: string } | undefined;
       if (report?.report_markdown) {
         setReportMarkdown(report.report_markdown);
       } else if (body.stdout) {
         setReportMarkdown([String(body.stdout), body.stderr ? String(body.stderr) : ''].filter(Boolean).join('\n\n'));
       }
-      if (body.provisioning) setData({ provisioning: body.provisioning as ProvisioningPayload['provisioning'] });
-      else await load();
+      if (body.provisioning) {
+        setData({ provisioning: body.provisioning as ProvisioningPayload['provisioning'] });
+      }
       const latestRun = body.latest_run as
         | { run_id?: string; project_root?: string; json_path?: string }
         | undefined;
@@ -542,6 +766,7 @@ export function ProvisioningPanel() {
           setSelectedReportKey(reportSelectionKey(reportRoot, latestRun.run_id));
         }
       }
+      await recordEngagementGateResult(body);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Provision run failed');
     } finally {
@@ -712,6 +937,7 @@ export function ProvisioningPanel() {
         Run <code className="rounded bg-slate-100 px-1">provision-audit.ps1</code> on the docked Mini instance.
         Pick the customer product root (CRM, POS, etc.) — reports land in{' '}
         <code className="rounded bg-slate-100 px-1">provision/audit-runs/</code>.
+        <span className="mt-1 block text-xs text-slate-400">Provisioning UI: {PROVISION_UI_REV}</span>
       </p>
 
       {error && (

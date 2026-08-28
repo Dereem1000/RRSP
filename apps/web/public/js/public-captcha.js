@@ -21,22 +21,42 @@ window.CDPublicCaptcha = (function () {
 
   function loadScript() {
     return new Promise(function (resolve, reject) {
-      if (window.grecaptcha) {
-        resolve(window.grecaptcha);
+      function finish() {
+        if (!window.grecaptcha) {
+          reject(new Error('grecaptcha failed to load'));
+          return;
+        }
+        if (typeof window.grecaptcha.ready === 'function') {
+          window.grecaptcha.ready(function () {
+            resolve(window.grecaptcha);
+          });
+          return;
+        }
+        if (typeof window.grecaptcha.render === 'function') {
+          resolve(window.grecaptcha);
+          return;
+        }
+        reject(new Error('grecaptcha API not ready'));
+      }
+
+      if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
+        finish();
         return;
       }
+
       const existing = document.querySelector('script[data-cd-recaptcha]');
       if (existing) {
-        existing.addEventListener('load', function () { resolve(window.grecaptcha); });
+        existing.addEventListener('load', finish);
         existing.addEventListener('error', reject);
         return;
       }
+
       const script = document.createElement('script');
       script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
       script.async = true;
       script.defer = true;
       script.setAttribute('data-cd-recaptcha', '1');
-      script.onload = function () { resolve(window.grecaptcha); };
+      script.onload = finish;
       script.onerror = reject;
       document.head.appendChild(script);
     });
@@ -51,16 +71,14 @@ window.CDPublicCaptcha = (function () {
 
     await loadScript();
     if (!container) return false;
-    container.style.display = 'block';
+    container.style.display = 'flex';
     container.innerHTML = '';
 
     const mount = document.createElement('div');
     container.appendChild(mount);
 
-    widgetId = window.grecaptcha.render(mount, {
-      sitekey: cfg.siteKey,
-    });
-    return true;
+    widgetId = window.grecaptcha.render(mount, { sitekey: cfg.siteKey });
+    return widgetId != null;
   }
 
   function getToken() {

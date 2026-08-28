@@ -7,14 +7,9 @@
 		{
 			"name": "Mini 2026",
 			"path": "E:/Mini 2026"
-		},
-		{
-			"name": "AutoM.System (dev + deploy)",
-			"path": "E:/AutoM.System"
-		},
-		{
-			"path": "E:/CRM"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"powershell.cwd": "Computer Dynamics (portal)"
+	}
 }

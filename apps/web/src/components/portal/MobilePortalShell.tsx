@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LayoutGrid, LogOut, Pencil, X } from 'lucide-react';
+import { LayoutGrid, LogOut, Pencil, Settings, X } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
 import { DashboardHeaderActions } from '@/components/dashboard/DashboardHeaderActions';
 import { TicketHeaderActions } from '@/components/tickets/TicketHeaderActions';
 import { ClientHeaderActions } from '@/components/clients/ClientHeaderActions';
+import { RrspShopCustomerHeaderActions } from '@/components/clients/RrspShopCustomerHeaderActions';
 import { AccountingHeaderActions } from '@/components/accounting/AccountingHeaderActions';
 import { PortalQuickCreate } from '@/components/portal/PortalQuickCreate';
 import {
@@ -23,6 +24,7 @@ export function MobilePortalChrome({
   user,
   miniDockActive = false,
   rrspAccess = null,
+  clientPlatformLicenses = false,
   partsIncomingBadge = 0,
   onOpenProfile,
   onEditLogo,
@@ -31,7 +33,15 @@ export function MobilePortalChrome({
 }: {
   user: { id: number; firstName: string; lastName: string; role: string; securityClearance: string };
   miniDockActive?: boolean;
-  rrspAccess?: { featureEnabled?: boolean; enabled: boolean; modules: string[] } | null;
+  rrspAccess?: {
+    featureEnabled?: boolean;
+    enabled: boolean;
+    modules: string[];
+    isShopOwner?: boolean;
+    isShopStaff?: boolean;
+    portalDisplayRole?: string;
+  } | null;
+  clientPlatformLicenses?: boolean;
   partsIncomingBadge?: number;
   onOpenProfile?: () => void;
   onEditLogo?: () => void;
@@ -43,12 +53,24 @@ export function MobilePortalChrome({
   const [moreOpen, setMoreOpen] = useState(false);
 
   const allNav = useMemo(
-    () => getPortalNavForRole(user.role, { miniDockActive, rrsp: rrspAccess }),
-    [user.role, miniDockActive, rrspAccess],
+    () =>
+      getPortalNavForRole(user.role, {
+        miniDockActive,
+        rrsp: rrspAccess,
+        clientPlatformLicenses,
+      }),
+    [user.role, miniDockActive, rrspAccess, clientPlatformLicenses],
   );
+  const portalHomeHref =
+    rrspAccess?.isShopStaff && rrspAccess?.enabled ? '/rrsp' : '/dashboard';
   const primaryNav = useMemo(
-    () => getMobilePrimaryNav(user.role, { miniDockActive, rrsp: rrspAccess }),
-    [user.role, miniDockActive, rrspAccess],
+    () =>
+      getMobilePrimaryNav(user.role, {
+        miniDockActive,
+        rrsp: rrspAccess,
+        clientPlatformLicenses,
+      }),
+    [user.role, miniDockActive, rrspAccess, clientPlatformLicenses],
   );
   const primaryHrefs = useMemo(() => new Set(primaryNav.map((item) => item.href)), [primaryNav]);
   const moreNav = useMemo(
@@ -78,12 +100,15 @@ export function MobilePortalChrome({
 
   return (
     <>
-      <header className="portal-mobile-chrome sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3">
+      <header
+        className="portal-mobile-chrome sticky z-30 border-b border-slate-200/80 bg-white/95 px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3"
+        style={{ top: 'var(--demo-banner-height, 0px)' }}
+      >
         <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="cd-mobile-header-brand relative inline-flex">
               <BrandLogo
-                href="/dashboard"
+                href={portalHomeHref}
                 size="sm"
                 src={shopLogoUrl}
                 alt={shopLogoAlt || 'Portal logo'}
@@ -106,8 +131,13 @@ export function MobilePortalChrome({
             <PortalQuickCreate user={user} rrspAccess={rrspAccess} />
             {pathname === '/dashboard' && <DashboardHeaderActions role={user.role} />}
             {pathname?.match(/^\/tickets\/[^/]+$/) && <TicketHeaderActions role={user.role} />}
-            {pathname?.match(/^\/clients\/[^/]+/) && <ClientHeaderActions role={user.role} />}
-            {pathname === '/accounting' && <AccountingHeaderActions role={user.role} />}
+            {pathname?.match(/^\/clients\/[^/]+$/) && <ClientHeaderActions role={user.role} />}
+            {pathname?.match(/^\/rrsp\/clients\/[^/]+$/) && (
+              <RrspShopCustomerHeaderActions role={user.role} rrspAccess={rrspAccess} />
+            )}
+            {(pathname === '/accounting' || pathname === '/rrsp/accounting') && (
+              <AccountingHeaderActions role={user.role} rrspAccess={rrspAccess} />
+            )}
           </div>
         </div>
       </header>
@@ -168,15 +198,28 @@ export function MobilePortalChrome({
                   setMoreOpen(false);
                   onOpenProfile?.();
                 }}
-                className="min-w-0 flex-1 rounded-xl text-left transition hover:bg-slate-50"
-                title="Open your profile"
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left transition hover:bg-slate-50"
+                title="Profile & settings"
               >
-                <p className="text-base font-semibold text-slate-900">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs capitalize text-slate-500">
-                  {user.role} · {user.securityClearance} · tap for profile
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-slate-900">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs capitalize text-slate-500">
+                    {rrspAccess?.portalDisplayRole ?? user.role}
+                    {(user.role === 'admin' || user.role === 'technician') &&
+                      !rrspAccess?.isShopOwner &&
+                      !rrspAccess?.isShopStaff && (
+                        <>
+                          {' '}
+                          · {user.securityClearance}
+                        </>
+                      )}
+                    {' '}
+                    · profile & settings
+                  </p>
+                </div>
+                <Settings className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
               </button>
               <button
                 type="button"

@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repair Report Management System | RRMS | Computer Dynamics</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        window.placeholderImg = function placeholderImg(img, label) {
+            if (!img) return;
+            var slot = img.dataset.cdSlot || img.getAttribute('data-original-src') ||
+                ('images/rrms/' + String(label || img.alt || 'Screenshot').toLowerCase().replace(/ /g, '-') + '.png');
+            var text = encodeURIComponent((label || img.alt || 'Screenshot') + ' — add screenshot');
+            var pathHint = encodeURIComponent(slot);
+            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='240'%3E%3Crect fill='%23e2e8f0' width='400' height='240'/%3E%3Ctext fill='%2364748b' font-family='Inter,sans-serif' font-size='14' x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle'%3E" + text + "%3C/text%3E%3Ctext fill='%2394a3b8' font-family='Inter,sans-serif' font-size='11' x='50%25' y='58%25' text-anchor='middle' dominant-baseline='middle'%3E" + pathHint + "%3C/text%3E%3C/svg%3E";
+            img.onerror = function () { placeholderImg(img, label || img.alt || 'Screenshot'); };
+        };
+
+        (function () {
+            var pendingData = null;
+            var applied = false;
+            window.__cdMarketingImagesPromise = fetch('/api/marketing-images', { credentials: 'same-origin' })
+                .then(function (res) { return res.ok ? res.json() : null; })
+                .catch(function () { return null; });
+            window.__cdMarketingImagesPromise.then(function (data) {
+                pendingData = data;
+                if (data) window.__cdMarketingImagesData = data;
+                tryApplyMarketingImages();
+            });
+            function tryApplyMarketingImages() {
+                if (applied || !pendingData || !document.body) return;
+                var overrides = pendingData.overrides || {};
+                document.querySelectorAll('img[data-cd-slot], img[data-original-src]').forEach(function (img) {
+                    if (img.closest('.header, header, .nav, nav, .logo')) return;
+                    var slot = img.dataset.cdSlot || img.getAttribute('data-original-src');
+                    if (!slot) return;
+                    var url = overrides[slot] || '';
+                    if (url) {
+                        img.src = url;
+                        img.onerror = function () { placeholderImg(img, img.alt || 'Screenshot'); };
+                    } else {
+                        placeholderImg(img, img.alt || 'Screenshot');
+                    }
+                });
+                applied = true;
+                window.__cdMarketingImagesApplied = true;
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', tryApplyMarketingImages);
+            } else {
+                tryApplyMarketingImages();
+            }
+        })();
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+        }
+
+        .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+        .logo {
+            display: flex; align-items: center;
+            font-size: 24px; font-weight: 800; color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 50px; width: auto; max-width: 200px;
+            margin-right: 12px; object-fit: contain;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex; list-style: none; gap: 24px; align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--gray-700); text-decoration: none;
+            font-weight: 500; font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: var(--primary); }
+
+        .nav-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        .back-btn, .demo-btn {
+            padding: 12px 20px; border-radius: 12px;
+            text-decoration: none; font-weight: 600;
+            font-size: 0.9rem; display: inline-flex;
+            align-items: center; gap: 8px; transition: all 0.3s ease;
+        }
+
+        .back-btn {
+            background: var(--gray-100); color: var(--gray-700);
+        }
+
+        .back-btn:hover { background: var(--gray-200); transform: translateY(-2px); }
+
+        .demo-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .mobile-menu-btn {
+            display: none; background: none; border: none;
+            font-size: 1.25rem; color: var(--gray-700); cursor: pointer;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0ea5e9 0%, var(--primary) 45%, var(--secondary) 100%);
+            color: white;
+            padding: 120px 0 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.35;
+        }
+
+        .hero-content { position: relative; z-index: 2; }
+
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            padding: 8px 16px; border-radius: 999px;
+            font-size: 0.85rem; font-weight: 600;
+            margin-bottom: 20px; backdrop-filter: blur(8px);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.25rem, 5vw, 3.5rem);
+            font-weight: 800; margin-bottom: 20px; line-height: 1.15;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem; opacity: 0.92;
+            max-width: 720px; margin-bottom: 16px; line-height: 1.55;
+        }
+
+        .hero-tagline {
+            font-size: 0.95rem; opacity: 0.85;
+            margin-bottom: 32px; font-weight: 500;
+        }
+
+        .hero-buttons {
+            display: flex; flex-wrap: wrap; gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .hero-highlights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .hero .platform-highlight {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            padding: 14px 12px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .hero .platform-highlight .highlight-value {
+            font-size: 1rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .hero .platform-highlight h4 {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .hero .platform-highlight p {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.35;
+        }
+
+        .demo-button {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.2); color: white;
+            padding: 14px 28px; border-radius: 50px;
+            text-decoration: none; font-weight: 600;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease; backdrop-filter: blur(10px);
+        }
+
+        .demo-button:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+
+        .hero-gallery {
+            display: flex; gap: 16px;
+            overflow-x: auto; padding-bottom: 12px;
+            scroll-snap-type: x mandatory;
+        }
+
+        .hero-gallery::-webkit-scrollbar { height: 8px; }
+        .hero-gallery::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .hero-gallery::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+
+        .hero-image-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease; cursor: pointer;
+            flex-shrink: 0; width: 340px; min-width: 340px;
+            text-align: left; scroll-snap-align: start;
+        }
+
+        .hero-image-card:hover {
+            transform: translateY(-6px);
+            background: rgba(255,255,255,0.15);
+        }
+
+        .hero-image-card img {
+            width: 100%; height: 220px;
+            object-fit: cover; object-position: center top;
+            border-radius: 10px; background: rgba(255,255,255,0.08);
+        }
+
+        .hero-image-card .module-tag {
+            display: inline-block; font-size: 0.7rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            background: rgba(255,255,255,0.2);
+            padding: 3px 8px; border-radius: 6px;
+            margin: 10px 0 6px;
+        }
+
+        .hero-image-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+        .hero-image-card p { font-size: 0.8rem; opacity: 0.85; line-height: 1.35; }
+
+        .section-header { text-align: center; margin-bottom: 48px; }
+        .section-header h2 {
+            font-size: 2.25rem; font-weight: 700;
+            color: var(--dark); margin-bottom: 16px;
+        }
+        .section-header p {
+            font-size: 1.05rem; color: var(--gray-600);
+            max-width: 860px; margin: 0 auto;
+        }
+
+        .portal-overview-section {
+            padding: 72px 0;
+            background: linear-gradient(180deg, var(--white) 0%, var(--gray-50) 55%, #f0f9ff 100%);
+        }
+
+        .overview-subhead {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .overview-subhead h3 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .overview-subhead p {
+            font-size: 0.95rem;
+            color: var(--gray-600);
+        }
+
+        .modules-list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+        .module-list-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 14px;
+            padding: 20px 22px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .module-list-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08);
+        }
+        .module-list-card h4 {
+            font-size: 1rem; font-weight: 700;
+            color: var(--dark); margin-bottom: 8px;
+        }
+        .module-list-card p {
+            font-size: 0.875rem; color: var(--gray-600); line-height: 1.45;
+        }
+
+        .module-list-card.featured {
+            border-color: #0ea5e9;
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 72%);
+            box-shadow: 0 10px 32px rgba(14, 165, 233, 0.12);
+        }
+
+        .module-list-card.featured h4 { color: #0369a1; }
+
+        .marketplace-spotlight {
+            border: 1px solid #7dd3fc;
+            border-radius: 20px;
+            padding: 32px;
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+            box-shadow: 0 12px 40px rgba(14, 165, 233, 0.1);
+        }
+
+        .marketplace-spotlight-first {
+            margin-bottom: 48px;
+        }
+
+        .marketplace-spotlight-head {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .parts-spotlight-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #0ea5e9, var(--primary));
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .parts-pillar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .parts-pillar-card {
+            background: white;
+            border: 1px solid #bae6fd;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(14, 165, 233, 0.08);
+        }
+
+        .parts-pillar-card .pillar-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0ea5e9, var(--primary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            margin-bottom: 14px;
+        }
+
+        .parts-pillar-card h4 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .parts-pillar-card p {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+        }
+
+        .parts-workflow-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 28px;
+            justify-content: center;
+        }
+
+        .parts-workflow-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .parts-workflow-pill i { color: var(--primary); }
+
+        .module-detail-panel.featured-module {
+            border-color: #7dd3fc;
+            box-shadow: 0 12px 40px rgba(14, 165, 233, 0.12);
+        }
+
+        .module-detail-panel.featured-module .module-detail-index {
+            background: linear-gradient(135deg, #0ea5e9, var(--primary));
+        }
+
+        .parts-showcase-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            margin-top: 32px;
+        }
+
+        .parts-showcase-card {
+            border: 1px solid var(--gray-200);
+            border-radius: 14px;
+            padding: 14px;
+            background: var(--gray-50);
+            position: relative;
+        }
+
+        .parts-showcase-card h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .parts-showcase-image {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 1px solid var(--gray-200);
+            background: white;
+        }
+
+        .parts-showcase-image .cd-mkt-img-frame,
+        .parts-showcase-image.cd-mkt-host {
+            width: 100%;
+            height: 100%;
+        }
+
+        .parts-showcase-card .showcase-image {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            object-fit: cover;
+            object-position: center top;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            background: white;
+        }
+
+        .interface-section { padding: 72px 0; background: var(--white); }
+        .interface-section.alt { background: var(--gray-50); }
+
+        .module-details-intro {
+            padding: 72px 0 40px;
+            background: var(--white);
+        }
+
+        .module-jump-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 28px;
+        }
+
+        .module-jump-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            color: var(--gray-700);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .module-jump-link:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .module-jump-link i { font-size: 0.8rem; opacity: 0.85; }
+
+        .module-detail-section {
+            padding: 48px 0;
+            border-top: 1px solid var(--gray-200);
+            scroll-margin-top: 88px;
+        }
+
+        .module-detail-section.alt {
+            background: var(--gray-50);
+        }
+
+        .module-detail-panel {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
+            padding: clamp(28px, 4vw, 44px);
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+        }
+
+        .module-detail-section.alt .module-detail-panel {
+            border-color: var(--gray-200);
+        }
+
+        .module-detail-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .module-detail-index {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 800;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .module-detail-head h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .module-detail-tag {
+            display: inline-block;
+            margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .interface-showcase {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(400px, 1.4fr);
+            gap: clamp(32px, 4vw, 64px);
+            align-items: center;
+            margin-bottom: 0;
+        }
+
+        .interface-showcase:has(> .interface-image:first-child) {
+            grid-template-columns: minmax(400px, 1.4fr) minmax(280px, 1fr);
+        }
+
+        .interface-image {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+            width: 100%;
+            min-width: 0;
+            position: relative;
+        }
+        .interface-text h3 { font-size: 1.75rem; font-weight: 700; color: var(--dark); margin-bottom: 14px; }
+        .interface-text p { font-size: 1rem; color: var(--gray-600); margin-bottom: 20px; line-height: 1.6; }
+        .interface-features { list-style: none; padding: 0; }
+        .interface-features li {
+            color: var(--gray-700); margin-bottom: 10px;
+            display: flex; align-items: flex-start; gap: 10px; font-size: 0.95rem;
+        }
+        .interface-features li::before { content: '✓'; color: var(--success); font-weight: bold; }
+        .showcase-image {
+            width: 100%; max-width: 720px; height: auto;
+            object-fit: contain; object-position: center top;
+            border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+            background: var(--gray-100); border: 1px solid var(--gray-200);
+        }
+
+        .roles-section { padding: 72px 0; background: var(--gray-50); }
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .role-card {
+            background: var(--white); border: 1px solid var(--gray-200);
+            border-radius: 14px; padding: 20px;
+        }
+        .role-card h4 { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+        .role-card p { font-size: 0.85rem; color: var(--gray-600); line-height: 1.4; }
+
+        .development-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white; text-align: center;
+        }
+        .development-content h2 { font-size: 2.25rem; font-weight: 700; margin-bottom: 20px; }
+        .development-content p {
+            font-size: 1.1rem; margin-bottom: 36px; opacity: 0.92;
+            max-width: 860px; margin-left: auto; margin-right: auto;
+        }
+
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8); z-index: 2000;
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: var(--white); border-radius: 20px; padding: 32px;
+            max-width: 90vw; max-height: 90vh; position: relative; text-align: center;
+        }
+        .modal-close {
+            position: absolute; top: 16px; right: 16px;
+            background: none; border: none; font-size: 24px;
+            color: var(--gray-500); cursor: pointer;
+        }
+        .modal-content img {
+            max-width: 100%; max-height: 70vh;
+            border-radius: 12px; margin-bottom: 16px;
+        }
+        .modal-title { font-size: 1.35rem; font-weight: 700; color: var(--dark); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .hero-image-card { width: 280px; min-width: 280px; }
+            .hero-image-card img { height: 180px; }
+            .interface-showcase,
+            .interface-showcase:has(> .interface-image:first-child) { grid-template-columns: 1fr; gap: 32px; }
+            .module-detail-head { flex-wrap: wrap; }
+            .module-detail-tag { margin-left: 0; margin-top: 8px; }
+            .parts-showcase-grid { grid-template-columns: 1fr; }
+            .section-header h2 { font-size: 1.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display: none; align-items: center;">
+                    <i class="fas fa-desktop" style="margin-right: 12px; color: var(--primary); font-size: 24px;"></i>
+                    <div class="logo-text">Computer Dynamics</div>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#modules">Details</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
+                <a href="#" class="demo-btn" data-cd-demo-request><i class="fas fa-calendar-alt"></i> Request Demo</a>
+            </div>
+            <button class="mobile-menu-btn" type="button" aria-label="Menu"><i class="fas fa-bars"></i></button>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge"><i class="fas fa-clipboard-check"></i> RRMS</div>
+                <h1>Repair Report Management System</h1>
+                <p class="hero-subtitle">
+                    Your branded online portal for repair shops — repair tickets, customers, orders, parts, accounting, and counter POS in one place.
+                </p>
+                <p class="hero-tagline">Parts marketplace &bull; Modular menus &bull; Your logo &bull; Staff permissions</p>
+                <div class="hero-buttons">
+                    <a href="/login?demo=rrms&autostart=1&returnUrl=/rrsp" class="demo-button" data-cd-link-slot="rrms-learn-more/live-demo" data-cd-link-default="/login?demo=rrms&autostart=1&returnUrl=/rrsp"><i class="fas fa-play-circle"></i> Open Live Demo</a>
+                    <a href="#overview" class="demo-button"><i class="fas fa-th-large"></i> View Modules</a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in RRMS Repair Report Management System. Can I get a custom quote?" class="demo-button" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Get Quote</a>
+                </div>
+
+                <div class="hero-highlights-grid" aria-label="Platform highlights">
+                    <div class="platform-highlight"><div class="highlight-value">1 Login</div><h4>Owners &amp; Staff</h4><p>One branded shop portal for your whole team</p></div>
+                    <div class="platform-highlight"><div class="highlight-value">Brand</div><h4>Your Identity</h4><p>Logo, business info, optional SMTP email</p></div>
+                    <div class="platform-highlight"><div class="highlight-value">ACL</div><h4>Staff Access</h4><p>Roles and per-page permissions for each team member</p></div>
+                    <div class="platform-highlight"><div class="highlight-value">Demo</div><h4>Training Mode</h4><p>Sandbox walkthroughs without live jobs</p></div>
+                    <div class="platform-highlight"><div class="highlight-value">Online</div><h4>Web Portal</h4><p>Secure browser access — no shop server to maintain</p></div>
+                </div>
+
+                <div class="hero-gallery" id="hero-gallery">
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Dashboard" data-cd-slot="images/rrms/hero/dashboard.png" data-original-src="images/rrms/hero/dashboard.png" onerror="placeholderImg(this,'Shop Dashboard')">
+                        <span class="module-tag">Home</span>
+                        <h4>Shop Dashboard</h4>
+                        <p>Module launcher, ticket metrics, and recent repair activity</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Tickets" data-cd-slot="images/rrms/hero/tickets.png" data-original-src="images/rrms/hero/tickets.png" onerror="placeholderImg(this,'Shop Tickets')">
+                        <span class="module-tag">Repairs</span>
+                        <h4>Shop Tickets</h4>
+                        <p>Open, in progress, and resolved repair jobs with status breakdown</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Customers" data-cd-slot="images/rrms/hero/customers.png" data-original-src="images/rrms/hero/customers.png" onerror="placeholderImg(this,'Customers')">
+                        <span class="module-tag">CRM</span>
+                        <h4>Customers</h4>
+                        <p>Profiles, billing info, notes, and quick-create actions</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Orders" data-cd-slot="images/rrms/hero/orders.png" data-original-src="images/rrms/hero/orders.png" onerror="placeholderImg(this,'Shop Orders')">
+                        <span class="module-tag">Orders</span>
+                        <h4>Shop Orders</h4>
+                        <p>Parts and materials tied to customer repair work</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Parts" data-cd-slot="images/rrms/hero/parts.png" data-original-src="images/rrms/hero/parts.png" onerror="placeholderImg(this,'Shop Parts')">
+                        <span class="module-tag">Marketplace</span>
+                        <h4>Shop Parts</h4>
+                        <p>Inventory plus a parts marketplace — buy and sell across the network</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Accounting" data-cd-slot="images/rrms/hero/accounting.png" data-original-src="images/rrms/hero/accounting.png" onerror="placeholderImg(this,'Shop Accounting')">
+                        <span class="module-tag">Billing</span>
+                        <h4>Shop Accounting</h4>
+                        <p>Invoices and quotes linked to customers and POS sales</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop POS" data-cd-slot="images/rrms/hero/pos.png" data-original-src="images/rrms/hero/pos.png" onerror="placeholderImg(this,'Shop POS')">
+                        <span class="module-tag">Counter</span>
+                        <h4>Shop POS</h4>
+                        <p>Touch-friendly sell screen with products and parts stock</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="POS Inventory" data-cd-slot="images/rrms/hero/pos-inventory.png" data-original-src="images/rrms/hero/pos-inventory.png" onerror="placeholderImg(this,'POS Inventory')">
+                        <span class="module-tag">Catalog</span>
+                        <h4>POS Inventory</h4>
+                        <p>Manage counter products and sellable items</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Branding & Staff" data-cd-slot="images/rrms/hero/branding-staff.png" data-original-src="images/rrms/hero/branding-staff.png" onerror="placeholderImg(this,'Branding & Staff')">
+                        <span class="module-tag">Admin</span>
+                        <h4>Branding &amp; Staff</h4>
+                        <p>Logo, SMTP email, staff logins, and module access</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="portal-overview-section" id="overview">
+        <div class="container">
+            <div class="section-header">
+                <h2>Everything in One Portal</h2>
+                <p>RRMS brings repair intake, bench work, parts, billing, and checkout together in one branded online portal. Pick the shop modules you need — your menu stays focused, with no clutter from areas you do not use.</p>
+            </div>
+
+            <div class="marketplace-spotlight marketplace-spotlight-first" id="parts-marketplace">
+                <div class="marketplace-spotlight-head">
+                    <span class="parts-spotlight-badge"><i class="fas fa-star"></i> Key selling point</span>
+                    <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin: 12px 0 10px;">Shop Parts &amp; Marketplace</h3>
+                    <p style="font-size: 0.95rem; color: var(--gray-600); max-width: 720px; margin: 0 auto;">More than inventory on a spreadsheet — list stock, buy from other shops and technicians, and complete pickup or delivery with quotes, payment, and history built in.</p>
+                </div>
+
+                <div class="parts-pillar-grid">
+                    <div class="parts-pillar-card">
+                        <div class="pillar-icon"><i class="fas fa-warehouse"></i></div>
+                        <h4>Track your inventory</h4>
+                        <p>Add parts to <strong>My Stock</strong> with part numbers, brands, quantities, and prices. Control how much is available to sell versus held for bench work.</p>
+                    </div>
+                    <div class="parts-pillar-card">
+                        <div class="pillar-icon"><i class="fas fa-hand-holding-usd"></i></div>
+                        <h4>Sell from your stock</h4>
+                        <p>List available quantity so other technicians and repair companies can request your parts. Manage <strong>Incoming</strong> orders and get paid when buyers complete payment.</p>
+                    </div>
+                    <div class="parts-pillar-card">
+                        <div class="pillar-icon"><i class="fas fa-search-dollar"></i></div>
+                        <h4>Buy what you need</h4>
+                        <p>Browse the <strong>Marketplace</strong> — compare suppliers, prices, and distance. Track requests under <strong>Outgoing</strong> through delivery or pickup.</p>
+                    </div>
+                </div>
+
+                <div class="parts-workflow-strip" aria-label="Parts module tabs">
+                    <span class="parts-workflow-pill"><i class="fas fa-store"></i> Marketplace</span>
+                    <span class="parts-workflow-pill"><i class="fas fa-boxes"></i> My Stock</span>
+                    <span class="parts-workflow-pill"><i class="fas fa-paper-plane"></i> Outgoing</span>
+                    <span class="parts-workflow-pill"><i class="fas fa-inbox"></i> Incoming</span>
+                    <span class="parts-workflow-pill"><i class="fas fa-history"></i> History</span>
+                </div>
+
+                <p style="margin-top: 24px; text-align: center; font-size: 0.9rem; color: var(--gray-600);">
+                    Received parts go back into your stock. Listed parts can surface in <strong>Shop POS</strong> when marked available for sale.
+                </p>
+            </div>
+
+            <div class="overview-subhead">
+                <h3>Shop Modules</h3>
+                <p>Tickets, customers, orders, accounting, and POS — each module is optional.</p>
+            </div>
+
+            <div class="modules-list-grid">
+                <div class="module-list-card">
+                    <h4><i class="fas fa-ticket-alt" style="color: var(--primary); margin-right: 8px;"></i>Shop tickets</h4>
+                    <p>Repair job tracking — open, in progress, resolved, and dashboard stats.</p>
+                </div>
+                <div class="module-list-card">
+                    <h4><i class="fas fa-users" style="color: var(--primary); margin-right: 8px;"></i>Customers</h4>
+                    <p>Customer profiles, billing, notes, and communication history.</p>
+                </div>
+                <div class="module-list-card">
+                    <h4><i class="fas fa-clipboard-list" style="color: var(--primary); margin-right: 8px;"></i>Shop orders</h4>
+                    <p>Parts and materials orders tied to customer repair work.</p>
+                </div>
+                <div class="module-list-card">
+                    <h4><i class="fas fa-file-invoice-dollar" style="color: var(--primary); margin-right: 8px;"></i>Shop accounting</h4>
+                    <p>Invoices and quotes linked to customers and POS sales.</p>
+                </div>
+                <div class="module-list-card">
+                    <h4><i class="fas fa-cash-register" style="color: var(--primary); margin-right: 8px;"></i>Shop POS</h4>
+                    <p>Counter sales, product catalog, inventory, and touch-friendly checkout.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="module-details-intro" id="modules">
+        <div class="container">
+            <div class="section-header">
+                <h2>Module Details</h2>
+                <p>A closer look at each shop module. Admins can upload screenshots in every section below.</p>
+            </div>
+            <nav class="module-jump-nav" aria-label="Jump to module">
+                <a class="module-jump-link" href="#module-tickets"><i class="fas fa-ticket-alt"></i> Tickets</a>
+                <a class="module-jump-link" href="#module-customers"><i class="fas fa-users"></i> Customers</a>
+                <a class="module-jump-link" href="#module-orders"><i class="fas fa-clipboard-list"></i> Orders</a>
+                <a class="module-jump-link" href="#module-parts"><i class="fas fa-boxes"></i> Parts</a>
+                <a class="module-jump-link" href="#module-pos"><i class="fas fa-cash-register"></i> POS</a>
+                <a class="module-jump-link" href="#module-accounting"><i class="fas fa-file-invoice-dollar"></i> Accounting</a>
+            </nav>
+        </div>
+    </section>
+
+    <section class="module-detail-section" id="module-tickets">
+        <div class="container">
+            <div class="module-detail-panel">
+                <div class="module-detail-head">
+                    <span class="module-detail-index">1</span>
+                    <h3>Shop Tickets</h3>
+                    <span class="module-detail-tag">Repairs</span>
+                </div>
+                <div class="interface-showcase">
+                    <div class="interface-text">
+                        <p>Create and manage repair tickets for walk-in and repeat customers. See totals for open, in progress, and resolved jobs.</p>
+                        <ul class="interface-features">
+                            <li>Status workflow with breakdown charts</li>
+                            <li>Create tickets on behalf of customers at intake</li>
+                            <li>Recent tickets on the shop home dashboard</li>
+                            <li>Email notifications when SMTP is configured</li>
+                        </ul>
+                    </div>
+                    <div class="interface-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Tickets" class="showcase-image" data-cd-slot="images/rrms/modules/tickets.png" data-original-src="images/rrms/modules/tickets.png" onerror="placeholderImg(this,'Shop Tickets')">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="module-detail-section alt" id="module-customers">
+        <div class="container">
+            <div class="module-detail-panel">
+                <div class="module-detail-head">
+                    <span class="module-detail-index">2</span>
+                    <h3>Customers</h3>
+                    <span class="module-detail-tag">CRM</span>
+                </div>
+                <div class="interface-showcase">
+                    <div class="interface-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Customers" class="showcase-image" data-cd-slot="images/rrms/modules/customers.png" data-original-src="images/rrms/modules/customers.png" onerror="placeholderImg(this,'Customers')">
+                    </div>
+                    <div class="interface-text">
+                        <p>Your repair shop CRM — contact details, billing, service level, communication history, and quick-create links.</p>
+                        <ul class="interface-features">
+                            <li>Customer picker across tickets, orders, and accounting</li>
+                            <li>Quick actions: new ticket, order, or accounting entry</li>
+                            <li>Notes and communication history on each profile</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="module-detail-section" id="module-orders">
+        <div class="container">
+            <div class="module-detail-panel">
+                <div class="module-detail-head">
+                    <span class="module-detail-index">3</span>
+                    <h3>Shop Orders</h3>
+                    <span class="module-detail-tag">Orders</span>
+                </div>
+                <div class="interface-showcase">
+                    <div class="interface-text">
+                        <p>List and create orders for parts and job materials linked to customers.</p>
+                        <ul class="interface-features">
+                            <li>Customer picker on every order</li>
+                            <li>Optional cost fields for job materials</li>
+                            <li>Tied to specific repair work</li>
+                        </ul>
+                    </div>
+                    <div class="interface-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Orders" class="showcase-image" data-cd-slot="images/rrms/modules/orders.png" data-original-src="images/rrms/modules/orders.png" onerror="placeholderImg(this,'Shop Orders')">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="module-detail-section alt" id="module-parts">
+        <div class="container">
+            <div class="module-detail-panel featured-module">
+                <div class="module-detail-head">
+                    <span class="module-detail-index">4</span>
+                    <h3>Shop Parts &amp; Marketplace</h3>
+                    <span class="module-detail-tag">Marketplace</span>
+                </div>
+                <div class="interface-text" style="margin-bottom: 8px;">
+                    <p>The Shop Parts module combines <strong>private inventory</strong> with a <strong>shared marketplace</strong>. You are not limited to your own shelf — you can source parts from other shops when a job is urgent, and monetize surplus stock by listing it for others to buy.</p>
+                </div>
+                <ul class="interface-features">
+                    <li><strong>My Stock</strong> — create and edit listings (name, part number, brand, price, quantity, available to sell)</li>
+                    <li><strong>Marketplace</strong> — search catalog items from other sellers; see multiple suppliers, price range, and distance</li>
+                    <li><strong>Outgoing</strong> — track your buy requests from pending through delivery or pickup</li>
+                    <li><strong>Incoming</strong> — fulfill orders when someone buys from your listed stock</li>
+                    <li><strong>History</strong> — completed requests, routes, and billing status</li>
+                    <li>Quotes and online payment for delivery packages; cash-on-delivery option where supported</li>
+                    <li>Add received parts to your stock after delivery; sell marketplace-listed parts at the counter via Shop POS</li>
+                </ul>
+
+                <div class="parts-showcase-grid">
+                    <div class="parts-showcase-card">
+                        <h4><i class="fas fa-store" style="color: var(--primary); margin-right: 6px;"></i> Marketplace — browse &amp; request</h4>
+                        <div class="parts-showcase-image">
+                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Parts Marketplace" class="showcase-image" data-cd-slot="images/rrms/modules/parts-marketplace.png" data-original-src="images/rrms/modules/parts-marketplace.png" onerror="placeholderImg(this,'Parts Marketplace')">
+                        </div>
+                    </div>
+                    <div class="parts-showcase-card">
+                        <h4><i class="fas fa-boxes" style="color: var(--primary); margin-right: 6px;"></i> My Stock — your listings</h4>
+                        <div class="parts-showcase-image">
+                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="My Stock" class="showcase-image" data-cd-slot="images/rrms/modules/parts-my-stock.png" data-original-src="images/rrms/modules/parts-my-stock.png" onerror="placeholderImg(this,'My Stock')">
+                        </div>
+                    </div>
+                    <div class="parts-showcase-card">
+                        <h4><i class="fas fa-paper-plane" style="color: var(--primary); margin-right: 6px;"></i> Outgoing — your buy requests</h4>
+                        <div class="parts-showcase-image">
+                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Outgoing Requests" class="showcase-image" data-cd-slot="images/rrms/modules/parts-outgoing.png" data-original-src="images/rrms/modules/parts-outgoing.png" onerror="placeholderImg(this,'Outgoing Requests')">
+                        </div>
+                    </div>
+                    <div class="parts-showcase-card">
+                        <h4><i class="fas fa-inbox" style="color: var(--primary); margin-right: 6px;"></i> Incoming — orders to fulfill</h4>
+                        <div class="parts-showcase-image">
+                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Incoming Orders" class="showcase-image" data-cd-slot="images/rrms/modules/parts-incoming.png" data-original-src="images/rrms/modules/parts-incoming.png" onerror="placeholderImg(this,'Incoming Orders')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="module-detail-section alt" id="module-pos">
+        <div class="container">
+            <div class="module-detail-panel">
+                <div class="module-detail-head">
+                    <span class="module-detail-index">5</span>
+                    <h3>Shop POS</h3>
+                    <span class="module-detail-tag">Counter</span>
+                </div>
+                <div class="interface-showcase">
+                    <div class="interface-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop POS" class="showcase-image" data-cd-slot="images/rrms/modules/pos.png" data-original-src="images/rrms/modules/pos.png" onerror="placeholderImg(this,'Shop POS')">
+                    </div>
+                    <div class="interface-text">
+                        <p>Counter sales for accessories and parts — search products, cart, keypad for price and quantity, and invoice on completion.</p>
+                        <ul class="interface-features">
+                            <li>Grid and list product layouts</li>
+                            <li>POS inventory for your product catalog</li>
+                            <li>Touch-optimized for phones and tablets</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="module-detail-section" id="module-accounting">
+        <div class="container">
+            <div class="module-detail-panel">
+                <div class="module-detail-head">
+                    <span class="module-detail-index">6</span>
+                    <h3>Shop Accounting</h3>
+                    <span class="module-detail-tag">Billing</span>
+                </div>
+                <div class="interface-showcase">
+                    <div class="interface-text">
+                        <p>Invoices and quotes for repair work — linked to customers and completed POS sales.</p>
+                        <ul class="interface-features">
+                            <li>Create and manage invoices and quotes</li>
+                            <li>View invoice straight from a completed sale</li>
+                            <li>Branded outbound email when SMTP is set</li>
+                        </ul>
+                    </div>
+                    <div class="interface-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Shop Accounting" class="showcase-image" data-cd-slot="images/rrms/modules/accounting.png" data-original-src="images/rrms/modules/accounting.png" onerror="placeholderImg(this,'Shop Accounting')">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="roles-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Roles &amp; Access</h2>
+                <p>Owners appear as Admin and decide which pages each staff member can use.</p>
+            </div>
+            <div class="roles-grid">
+                <div class="role-card"><h4>Admin (Owner)</h4><p>Branding, SMTP, staff management, and full shop portal access</p></div>
+                <div class="role-card"><h4>Front Desk</h4><p>Tickets, customers, and POS — intake and checkout</p></div>
+                <div class="role-card"><h4>Bench Tech</h4><p>Tickets and parts — job updates and parts lookup</p></div>
+                <div class="role-card"><h4>Manager</h4><p>Orders and accounting — day-to-day operations</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="development-section" id="contact">
+        <div class="container">
+            <div class="development-content">
+                <h2>Get RRMS for Your Shop</h2>
+                <p>Request a demo, explore live modules, and see how RRMS fits your repair workflow — from intake to invoice.</p>
+                <div style="display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <a href="#" class="demo-button" data-cd-demo-request><i class="fas fa-calendar-alt"></i> Request Demo</a>
+                    <a href="/login?demo=rrms&autostart=1&returnUrl=/rrsp" class="demo-button" data-cd-link-slot="rrms-learn-more/live-demo" data-cd-link-default="/login?demo=rrms&autostart=1&returnUrl=/rrsp"><i class="fas fa-play-circle"></i> Open Live Demo</a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in RRMS Repair Report Management System. Can I get a custom quote?" class="demo-button" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Get Quote</a>
+                </div>
+                <p style="margin-top: 28px; font-size: 0.9rem; opacity: 0.85;">Computer Dynamics &bull; +1 (868) 316-8851 &bull; support@computerdynamicstt.com</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal-overlay" id="imageModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose" type="button" aria-label="Close"><i class="fas fa-times"></i></button>
+            <img id="modalImage" src="" alt="">
+            <h3 class="modal-title" id="modalTitle">Image Preview</h3>
+        </div>
+    </div>
+
+    <script>
+        function openModalFromCard(card) {
+            if (event.target.closest('.cd-mkt-edit-btn, .cd-mkt-adjust-btn, .cd-mkt-adjust-panel')) return;
+            const img = card.querySelector('img');
+            if (!img) return;
+            const title = (card.querySelector('h4') && card.querySelector('h4').textContent.trim()) || img.alt || 'Preview';
+            if (window.cdOpenMarketingLightbox) {
+                window.cdOpenMarketingLightbox(img, title);
+            }
+        }
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (!href || href === '#') return;
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        const menuBtn = document.querySelector('.mobile-menu-btn');
+        if (menuBtn) {
+            menuBtn.addEventListener('click', () => {
+                const navLinks = document.querySelector('.nav-links');
+                navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
+    </script>
+    <script src="/js/public-demo-request.js" defer></script>
+    <script src="/js/marketing-link-guard.js"></script>
+    <script src="/js/marketing-image-editor.js?v=20260828d" defer></script>
+    <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
+    <script src="/js/marketing-link-editor.js?v=20260818c" defer></script>
+</body>
+</html>

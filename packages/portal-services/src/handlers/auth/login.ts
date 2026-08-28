@@ -58,7 +58,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   // Bot / IDS / rate limits: Express `expressRequestGuard` (avoid double rate-limit).
 
   const body = ctx.body as Record<string, unknown>;
-  const { username, password, turnstileToken, captchaToken, website } = body;
+  const { username, password, turnstileToken, captchaToken, website, demoProduct } = body;
 
   if (website?.trim()) {
     await logLoginAttempt('blocked', ip, username ?? 'unknown');
@@ -90,9 +90,29 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
 
   try {
     const maintenanceMode = await SystemConfig.getConfig<boolean>('maintenance_mode', false);
-    const user = await User.findOne({
-      where: { [Op.or]: [{ username }, { email: username }] },
-    });
+    const { resolveRrspShopLoginUser } = await import('@web/lib/rrsp-shop-staff');
+
+    const rawUsername = String(username).trim();
+    const at = rawUsername.lastIndexOf('@');
+    const domainPart = at > 0 ? rawUsername.slice(at + 1) : '';
+    // shop@slug (no TLD) — resolve before generic email/username lookup
+    const looksLikeShopStaffLogin = at > 0 && domainPart && !domainPart.includes('.');
+
+    let user: InstanceType<typeof User> | null = null;
+
+    if (looksLikeShopStaffLogin) {
+      user = await resolveRrspShopLoginUser(rawUsername);
+    }
+
+    if (!user) {
+      user = await User.findOne({
+        where: { [Op.or]: [{ username: rawUsername }, { email: rawUsername }] },
+      });
+    }
+
+    if (!user && rawUsername.includes('@')) {
+      user = await resolveRrspShopLoginUser(rawUsername);
+    }
 
     if (maintenanceMode && (!user || user.role !== 'admin')) {
       return { status: 503, body: {
@@ -165,6 +185,22 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     }
 
     const token = signToken({ id: user.id, role: user.role, clearance: user.securityClearance });
+
+    const demoKey = String(demoProduct ?? '').trim().toLowerCase();
+    if (demoKey === 'rrms') {
+      try {
+        const { getClientRrspAccess } = await import('@web/lib/rrsp-access');
+        const { enableRrspShopDemo } = await import('@web/lib/rrsp-demo');
+        const access = await getClientRrspAccess(user.id);
+        const mspClientId = access.mspClientId;
+        if (mspClientId && (access.isShopOwner || access.isShopStaff)) {
+          await enableRrspShopDemo(mspClientId);
+        }
+      } catch (demoErr) {
+        console.error('[login] RRMS demo enable failed:', demoErr);
+      }
+    }
+
     return { status: 200, body: { success: true, user: publicUser(user) }, cookies: [{ name: COOKIE_NAME, value: token, httpOnly: true, sameSite: 'lax', path: '/', maxAge: SESSION_COOKIE_MAX_AGE_MS }] };
   } catch (error) {
     console.error('Login error:', error);

@@ -1,0 +1,8 @@
+{
+  "type": "migration-provision",
+  "version": "2.1.4",
+  "createdAt": "2026-08-03T01:14:42.534Z",
+  "sourceRoot": "F:\\Computer Dynamics System v2",
+  "liveDatabase": "computer_dynamics.live.db",
+  "includeBackups": false
+}

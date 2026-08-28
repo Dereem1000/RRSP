@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, authErrorResponse, requireRole, requireSession } from '@/lib/auth';
 import {
+  readMarketingImageDisplay,
   readMarketingImageOverrides,
+  saveMarketingImageDisplay,
   saveMarketingImageUpload,
+  type MarketingImageDisplay,
 } from '@/lib/marketing-images';
 
 export const runtime = 'nodejs';
@@ -13,6 +16,7 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     overrides: readMarketingImageOverrides(),
+    display: readMarketingImageDisplay(),
   });
 }
 
@@ -48,10 +52,37 @@ export async function POST(req: NextRequest) {
       slot: saved.slot,
       url: saved.url,
       overrides: readMarketingImageOverrides(),
+      display: readMarketingImageDisplay(),
     });
   } catch (error) {
     if (error instanceof AuthError) return authErrorResponse(error);
     const message = error instanceof Error ? error.message : 'Upload failed';
+    return NextResponse.json({ success: false, message }, { status: 400 });
+  }
+}
+
+/** Admin-only display tuning (crop position, size, fit) for a marketing image slot. */
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = requireSession(req);
+    requireRole(session, 'admin');
+
+    const body = (await req.json()) as { slot?: string; display?: MarketingImageDisplay | null };
+    const slot = String(body.slot ?? '');
+    const saved = saveMarketingImageDisplay({
+      slot,
+      display: body.display ?? null,
+    });
+
+    return NextResponse.json({
+      success: true,
+      slot: saved.slot,
+      display: saved.display,
+      displayMap: readMarketingImageDisplay(),
+    });
+  } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error);
+    const message = error instanceof Error ? error.message : 'Save failed';
     return NextResponse.json({ success: false, message }, { status: 400 });
   }
 }

@@ -12,10 +12,13 @@ import {
   Package,
   type LucideIcon,
 } from 'lucide-react';
-import type { RecentTicket, TicketStatusBreakdown } from '@/lib/dashboard';
+import type { RecentTicket, TicketStatusBreakdown, ClientProfile } from '@/lib/dashboard';
 import type { RrspModule } from '@/lib/rrsp';
 import { RecentTicketsTable } from '@/components/dashboard/RecentTicketsTable';
 import { TicketBreakdown } from '@/components/dashboard/TicketBreakdown';
+import { RecentNoticesCard } from '@/components/dashboard/RecentNoticesCard';
+import { ClientServiceCard } from '@/components/dashboard/ClientServiceCard';
+import { ClientLicenseStatusCard } from '@/components/dashboard/ClientLicenseStatusCard';
 
 type LegacyStats = {
   totalTickets: number;
@@ -75,6 +78,7 @@ export function ClientHybridDashboardCards({
   supportBreakdown,
   shopTickets,
   shopBreakdown,
+  clientProfile,
 }: {
   legacy: LegacyStats;
   shop: ShopStats;
@@ -83,6 +87,7 @@ export function ClientHybridDashboardCards({
   supportBreakdown: TicketStatusBreakdown[];
   shopTickets: RecentTicket[];
   shopBreakdown: TicketStatusBreakdown[];
+  clientProfile?: ClientProfile | null;
 }) {
   const moduleSet = new Set(modules);
   const hasTickets = moduleSet.has('tickets');
@@ -264,6 +269,18 @@ export function ClientHybridDashboardCards({
               title={showShopTicketPanels ? 'Shop tickets by status' : 'Tickets by status'}
             />
           </div>
+        </div>
+      )}
+
+      {showSupportTicketPanels && (
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <RecentNoticesCard showScopeBadges />
+          {clientProfile && (
+            <>
+              <ClientServiceCard profile={clientProfile} />
+              <ClientLicenseStatusCard />
+            </>
+          )}
         </div>
       )}
     </div>

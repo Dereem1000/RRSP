@@ -48,6 +48,7 @@ GUI_LICENSE_FEATURE_KEY_TO_LABEL = {
     'distribution_system': 'Distribution System',
     'customer_management': 'Event Sponsor CRM',
     'rrsp_online': 'Repair Report Service Platform (RRSP)',
+    'medical_records_management': 'Medical Records Management',
     'inventory_management': 'Inventory Management',
     'reporting_analytics': 'Reporting & Analytics',
     'multi_location': 'Multi-Location Support',
@@ -70,6 +71,7 @@ BUSINESS_LICENSE_FEATURE_KEYS = (
     'distribution_system',
     'customer_management',
     'rrsp_online',
+    'medical_records_management',
 )
 
 
@@ -703,7 +705,7 @@ Issue "Add Device License" for a second register, PC, or browser profile."""
 • Kitchen display systems
 • Restaurant analytics and reporting""",
             
-            'Document Management': f"""Document Management License Features:
+            'Document Management': f"""Document Management License Features (Law Firm Management System):
 • Digital filing and organization
 • Workflow automation
 • Secure document storage
@@ -865,6 +867,7 @@ Issue "Add Device License" for a second register, PC, or browser profile."""
                     'reporting_analytics': selected_feature_key == 'reporting_analytics',
                     'customer_management': selected_feature_key == 'customer_management',
                     'rrsp_online': selected_feature_key == 'rrsp_online',
+                    'medical_records_management': selected_feature_key == 'medical_records_management',
                     'multi_location': selected_feature_key == 'multi_location',
                 }
                 
@@ -1012,6 +1015,7 @@ License Details:
                         'reporting_analytics': False,
                         'customer_management': False,
                         'rrsp_online': False,
+                        'medical_records_management': False,
                     })
                 )
                 
@@ -1086,6 +1090,7 @@ License Details:
                     'distribution_system': 'distribution',
                     'customer_management': 'crm',
                     'rrsp_online': 'rrsp',
+                    'medical_records_management': 'medical',
                 }
                 serial_number = ensure_unique_license_serial(
                     db.session,

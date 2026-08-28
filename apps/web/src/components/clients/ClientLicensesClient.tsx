@@ -33,10 +33,12 @@ export function ClientLicensesClient({
   client: initial,
   isAdmin,
   isStaff = false,
+  pathPrefix = '',
 }: {
   client: ClientData;
   isAdmin: boolean;
   isStaff?: boolean;
+  pathPrefix?: string;
 }) {
   const router = useRouter();
   const [client, setClient] = useState(initial);
@@ -96,7 +98,7 @@ export function ClientLicensesClient({
 
   return (
     <div className="space-y-6">
-      <Link href="/clients" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600">
+      <Link href={`${pathPrefix}/clients`} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600">
         <ArrowLeft className="h-4 w-4" />
         Back to clients
       </Link>
@@ -106,7 +108,7 @@ export function ClientLicensesClient({
         {client.companyName && <p className="mt-1 text-sm text-slate-500">{client.companyName}</p>}
       </div>
 
-      <ClientDetailNav clientId={client.id} />
+      <ClientDetailNav clientId={client.id} pathPrefix={pathPrefix} />
 
       {(error || message) && (
         <div className={`rounded-xl px-4 py-3 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>

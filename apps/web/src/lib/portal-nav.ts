@@ -3,6 +3,7 @@ import {
   Bot,
   Boxes,
   CalendarDays,
+  FileText,
   LayoutDashboard,
   Package,
   PieChart,
@@ -124,6 +125,13 @@ export const PORTAL_NAV: PortalNavItem[] = [
   },
 ];
 
+export const WEB_PLATFORM_DELIVERABLES_NAV: PortalNavItem = {
+  href: '/deliverables',
+  label: 'Web Platform Deliverables',
+  icon: FileText,
+  roles: ['client'],
+};
+
 const RRSP_NAV_ICONS: Record<RrspModule, LucideIcon> = {
   tickets: Ticket,
   orders: Package,
@@ -138,6 +146,7 @@ export const PORTAL_NAV_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/tickets': 'Tickets',
   '/billing': 'Billing',
+  '/deliverables': 'Web Platform Deliverables',
   '/orders': 'Orders',
   '/parts': 'Parts',
   '/pos': 'POS',
@@ -153,6 +162,7 @@ export const PORTAL_NAV_LABELS: Record<string, string> = {
   '/mini': 'Mini',
   '/settings': 'Settings',
   '/settings/security/events': 'Security events',
+  '/rrsp': 'Shop dashboard',
   ...Object.fromEntries(
     (Object.keys(RRSP_MODULE_HREF) as RrspModule[]).map((m) => [
       RRSP_MODULE_HREF[m],
@@ -188,12 +198,54 @@ export function getPortalNavForRole(
   role: string,
   options?: {
     miniDockActive?: boolean;
-    rrsp?: { featureEnabled?: boolean; enabled: boolean; modules: string[] } | null;
+    rrsp?: {
+      featureEnabled?: boolean;
+      enabled: boolean;
+      modules: string[];
+      isShopStaff?: boolean;
+      isShopOwner?: boolean;
+    } | null;
+    clientPlatformLicenses?: boolean;
   },
 ): PortalNavItem[] {
+  // Shop staff: RRSP home + assigned modules only — no CD portal routes.
+  if (role === 'client' && options?.rrsp?.isShopStaff && options.rrsp.enabled) {
+    const rrspItems: PortalNavItem[] = [
+      {
+        href: '/rrsp',
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+        roles: ['client'],
+        mobileTab: { client: true },
+      },
+    ];
+    for (const module of options.rrsp.modules as RrspModule[]) {
+      const href = RRSP_MODULE_HREF[module];
+      if (!href) continue;
+      rrspItems.push({
+        href,
+        label: RRSP_MODULE_LABELS[module],
+        icon: RRSP_NAV_ICONS[module],
+        roles: ['client'],
+        mobileTab: rrspItems.length < 4 ? { client: true } : undefined,
+      });
+    }
+    return rrspItems;
+  }
+
   let visible = PORTAL_NAV.filter((item) => item.roles.includes(role));
 
-  // RRSP: keep legacy CD support pages; append shop module links under /rrsp/*
+  if (role === 'client' && options?.clientPlatformLicenses) {
+    const billingIdx = visible.findIndex((i) => i.href === '/billing');
+    const insertAt = billingIdx >= 0 ? billingIdx + 1 : visible.length;
+    visible = [
+      ...visible.slice(0, insertAt),
+      WEB_PLATFORM_DELIVERABLES_NAV,
+      ...visible.slice(insertAt),
+    ];
+  }
+
+  // RRSP: keep legacy CD support pages together; append shop module links under /rrsp/*
   if (role === 'client' && options?.rrsp?.featureEnabled && options.rrsp.enabled) {
     const rrspItems: PortalNavItem[] = [];
     for (const module of options.rrsp.modules as RrspModule[]) {
@@ -207,15 +259,18 @@ export function getPortalNavForRole(
         section: rrspItems.length === 0 ? 'RRSP' : undefined,
       });
     }
-    // Insert RRSP block after billing (or after orders if billing missing)
-    const billingIdx = visible.findIndex((i) => i.href === '/billing');
+    // Insert after My orders so CD support nav (tickets, billing, orders) stays above RRSP.
     const ordersIdx = visible.findIndex((i) => i.href === '/orders');
+    const deliverablesIdx = visible.findIndex((i) => i.href === '/deliverables');
+    const billingIdx = visible.findIndex((i) => i.href === '/billing');
     const at =
-      billingIdx >= 0
-        ? billingIdx + 1
-        : ordersIdx >= 0
-          ? ordersIdx + 1
-          : visible.length;
+      ordersIdx >= 0
+        ? ordersIdx + 1
+        : deliverablesIdx >= 0
+          ? deliverablesIdx + 1
+          : billingIdx >= 0
+            ? billingIdx + 1
+            : visible.length;
     visible = [...visible.slice(0, at), ...rrspItems, ...visible.slice(at)];
   }
 
@@ -230,7 +285,14 @@ export function getMobilePrimaryNav(
   role: string,
   options?: {
     miniDockActive?: boolean;
-    rrsp?: { featureEnabled?: boolean; enabled: boolean; modules: string[] } | null;
+    rrsp?: {
+      featureEnabled?: boolean;
+      enabled: boolean;
+      modules: string[];
+      isShopStaff?: boolean;
+      isShopOwner?: boolean;
+    } | null;
+    clientPlatformLicenses?: boolean;
   },
 ): PortalNavItem[] {
   const nav = getPortalNavForRole(role, options);
@@ -253,11 +315,24 @@ export function getPortalRouteRoles(pathname: string): string[] | null {
   }
 
   if (path === '/mini' || path.startsWith('/mini/')) return ['admin'];
+  if (path === '/deliverables' || path.startsWith('/deliverables/')) return ['client'];
 
   return null;
 }
 
 export function getPortalPageLabel(pathname: string | null, role?: string): string {
+  if (pathname?.startsWith('/rrsp/clients/')) {
+    return 'Customers';
+  }
+  if (pathname?.startsWith('/rrsp/tickets/') && pathname !== '/rrsp/tickets') {
+    return 'Shop tickets';
+  }
+  if (pathname?.startsWith('/rrsp/sales/') && pathname !== '/rrsp/sales') {
+    return 'Shop sales';
+  }
+  if (pathname === '/rrsp') {
+    return PORTAL_NAV_LABELS['/rrsp'];
+  }
   if (pathname?.startsWith('/rrsp/')) {
     return PORTAL_NAV_LABELS[pathname] ?? 'RRSP';
   }
@@ -272,6 +347,9 @@ export function getPortalPageLabel(pathname: string | null, role?: string): stri
   }
   if (pathname?.startsWith('/settings/')) {
     return PORTAL_NAV_LABELS[pathname] ?? 'Settings';
+  }
+  if (pathname === '/deliverables') {
+    return PORTAL_NAV_LABELS['/deliverables'];
   }
   const base = pathname ?? '/dashboard';
   if (role) {

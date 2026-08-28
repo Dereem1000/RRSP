@@ -579,10 +579,21 @@ class ModernLicenseGUI:
             return
         dialog = tk.Toplevel(self.root)
         dialog.title('New license')
-        dialog.geometry('480x360')
+        dialog.geometry('480x420')
         dialog.transient(self.root)
         dialog.grab_set()
-        ttk.Label(dialog, text='Select company', style='Section.TLabel').pack(anchor='w', padx=16, pady=(16, 8))
+        product_row = ttk.Frame(dialog)
+        product_row.pack(fill='x', padx=16, pady=(16, 8))
+        ttk.Label(product_row, text='Product', style='Section.TLabel', width=10).pack(side='left')
+        product_var = tk.StringVar(value=BUSINESS_PRODUCT_OPTIONS[0])
+        ttk.Combobox(
+            product_row,
+            textvariable=product_var,
+            values=BUSINESS_PRODUCT_OPTIONS,
+            state='readonly',
+            width=36,
+        ).pack(side='left', fill='x', expand=True)
+        ttk.Label(dialog, text='Select company', style='Section.TLabel').pack(anchor='w', padx=16, pady=(8, 8))
         tree = ttk.Treeview(dialog, columns=('name', 'contact'), show='headings', height=10)
         tree.heading('name', text='Company')
         tree.heading('contact', text='Contact')
@@ -598,7 +609,7 @@ class ModernLicenseGUI:
                 messagebox.showwarning('Select company', 'Choose a company.')
                 return
             try:
-                serial = self.service.add_license_for_company(int(sel[0]))
+                serial = self.service.add_license_for_company(int(sel[0]), product_var.get())
                 messagebox.showinfo('Created', f'Pending license:\n{serial}')
                 dialog.destroy()
                 self.refresh_licenses()

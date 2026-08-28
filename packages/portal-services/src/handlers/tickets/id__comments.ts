@@ -121,8 +121,8 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       isActive: 1,
     });
 
-    const newStatus = TicketComment.getStatusFromCommentType(
-      comment.commentType as Parameters<typeof TicketComment.getStatusFromCommentType>[0]
+    const newStatus = getTicketCommentModel().getStatusFromCommentType(
+      comment.commentType as any
     );
 
     const ticketUpdates: Record<string, unknown> = { lastUpdated: now };

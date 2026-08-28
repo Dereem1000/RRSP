@@ -79,10 +79,12 @@ export function SalesGuidedClient({
   opportunity: initial,
   clients,
   isAdmin,
+  pathPrefix = '',
 }: {
   opportunity: Opportunity;
   clients: ClientPickerOption[];
   isAdmin: boolean;
+  pathPrefix?: string;
 }) {
   const router = useRouter();
   const [opp, setOpp] = useState(initial);
@@ -256,7 +258,7 @@ export function SalesGuidedClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to defer prospect');
-      router.push('/sales');
+      router.push(`${pathPrefix}/sales`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to defer prospect');
@@ -319,7 +321,7 @@ export function SalesGuidedClient({
       const res = await fetch(`/api/sales/${opp.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to delete');
-      router.push('/sales');
+      router.push(`${pathPrefix}/sales`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
@@ -334,7 +336,7 @@ export function SalesGuidedClient({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Link
-            href="/sales"
+            href={`${pathPrefix}/sales`}
             className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -425,7 +427,7 @@ export function SalesGuidedClient({
             {(linkedClient ?? emailMatchClient)?.email ? ` · ${(linkedClient ?? emailMatchClient)?.email}` : ''}
           </p>
           {linkedClient && (
-            <Link href={`/clients/${linkedClient.id}`} className="mt-2 inline-block text-sm font-medium text-emerald-700 underline">
+            <Link href={`${pathPrefix}/clients/${linkedClient.id}`} className="mt-2 inline-block text-sm font-medium text-emerald-700 underline">
               Open client record
             </Link>
           )}
@@ -782,7 +784,7 @@ export function SalesGuidedClient({
           <div className="flex flex-wrap gap-2">
             {opp.quoteId && (
               <Link
-                href={`/accounting?quote=${opp.quoteId}`}
+                href={`${pathPrefix}/accounting?quote=${opp.quoteId}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
               >
                 <Receipt className="h-4 w-4" />
@@ -791,7 +793,7 @@ export function SalesGuidedClient({
             )}
             {opp.clientId && (
               <Link
-                href={`/clients/${opp.clientId}`}
+                href={`${pathPrefix}/clients/${opp.clientId}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Client record
@@ -828,7 +830,7 @@ export function SalesGuidedClient({
           <p className="mt-1 text-sm text-emerald-800">Onboarding in progress. Finish setup on the client record.</p>
           {opp.clientId && (
             <Link
-              href={`/clients/${opp.clientId}`}
+              href={`${pathPrefix}/clients/${opp.clientId}`}
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               Open client

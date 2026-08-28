@@ -1,0 +1,90 @@
+{
+  "releases": [
+    {
+      "version": "1.2.6",
+      "date": "2026-08-18",
+      "summary": "Fix per-demo CPU stuck at 0.0% for PM2 and port-based stacks",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Include demo port listener PIDs in resource sampling (PM2 node processes no longer missed)"
+        },
+        {
+          "type": "fix",
+          "text": "More reliable Windows CPU reads for process trees in the resource monitor"
+        }
+      ]
+    },
+    {
+      "version": "1.2.5",
+      "date": "2026-08-18",
+      "summary": "Fix vault clashes when Start all runs multiple PM2 provision demos",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Override extra_ports 3333 when demo uses MultiServer port block (Law Firm vs Auto.M)"
+        },
+        {
+          "type": "fix",
+          "text": "Serialize PM2 launches on Start all and poll vault port before starting server"
+        }
+      ]
+    },
+    {
+      "version": "1.2.4",
+      "date": "2026-08-18",
+      "summary": "Fix PM2 vault port clashes when multiple provision demos run together",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Assign master-vault to demo_port+1 when extra_ports is empty so Law Firm and Medical Records can run side by side"
+        },
+        {
+          "type": "fix",
+          "text": "Auto-detect and Assign ports populate extra_ports for pm2-ecosystem stacks"
+        },
+        {
+          "type": "improvement",
+          "text": "Port validation includes inferred vault ports to catch duplicate 3333 assignments before start"
+        }
+      ]
+    },
+    {
+      "version": "1.2.2",
+      "date": "2026-08-13",
+      "summary": "Detect Law Firm provision installs (provision-ecosystem.config.js) at the extracted live root",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Recognize provision-ecosystem.config.js at the live extract root (Platforms/Document.M LawFirm), not ecosystem.config.js or a nested app/ folder"
+        },
+        {
+          "type": "fix",
+          "text": "Reject provision packages and package/app as the demo path; install-provision.bat extracts app/ flat onto the install root"
+        },
+        {
+          "type": "improvement",
+          "text": "Resolve repair workspaces to working/ when that folder is the live tree"
+        }
+      ]
+    },
+    {
+      "version": "1.2.1",
+      "date": "2026-06-01",
+      "summary": "Host mode to dedicate the PC to MultiServer demos",
+      "changes": [
+        { "type": "feature", "text": "Host mode closes other user apps and raises demo process priority" }
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "date": "2026-05-31",
+      "summary": "Dark desktop UI, resource monitoring, and Mini integration",
+      "changes": [
+        { "type": "feature", "text": "Modern dark desktop UI" },
+        { "type": "feature", "text": "Host and per-demo CPU/RAM monitoring" },
+        { "type": "feature", "text": "Mini integration for Update Library pull/apply" }
+      ]
+    }
+  ]
+}

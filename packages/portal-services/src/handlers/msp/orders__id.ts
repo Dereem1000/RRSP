@@ -15,7 +15,7 @@ import { emitMiniCdEvent } from '@web/lib/mini-cd-events.server';
 import { processOrderShipmentUpdate } from '@web/lib/order-email-monitoring-run';
 import { createOrderNotPreAlertedNotice } from '@web/lib/order-notices';
 import { deleteOrder, getOrderById, updateOrder } from '@web/lib/orders';
-import { getRequestPublicOriginFromCtx } from '../../http-helpers';
+import { getRequestPublicOriginFromCtx, orderIncludeCost, requireStaffOrRrspShopOperator } from '../../http-helpers';
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -32,10 +32,10 @@ function searchParamsFrom(ctx: ApiContext): URLSearchParams {
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin', 'technician');
+    requireStaffOrRrspShopOperator(session, 'read');
 
     const { id } = ctx.params;
-    const order = await getOrderById(id, { includeCost: session.role === 'admin' });
+    const order = await getOrderById(id, { includeCost: orderIncludeCost(session) });
     if (!order) {
       return { status: 404, body: { success: false, message: 'Order not found' } };
     }
@@ -49,7 +49,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin');
+    requireStaffOrRrspShopOperator(session, 'write');
 
     const { id } = ctx.params;
     const body = ctx.body as Record<string, unknown>;
@@ -131,7 +131,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
-    requireRole(session, 'admin');
+    requireStaffOrRrspShopOperator(session, 'write');
 
     const { id } = ctx.params;
     const deleted = await deleteOrder(id);

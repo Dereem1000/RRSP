@@ -3,6 +3,7 @@ import { requirePortalUser } from '@/lib/session';
 import { requireRrspModule } from '@/lib/rrsp-access';
 import { withOptionalRrspDb } from '@/lib/rrsp-page';
 import { getShopClientModel } from '@/lib/rrsp-db';
+import { ensureShopDemoAccounting, isRrspShopDemoActive } from '@/lib/rrsp-demo';
 import { CLIENT_PICKER_ATTRIBUTES, mapClientToPickerOption } from '@/lib/client-picker';
 import { AccountingPageClient } from '@/components/accounting/AccountingPageClient';
 
@@ -19,6 +20,10 @@ export default async function RrspAccountingPage() {
   const gate = await requireRrspModule(user, 'accounting');
 
   return withOptionalRrspDb(gate, async () => {
+    if (gate.mspClientId && (await isRrspShopDemoActive(gate.mspClientId))) {
+      await ensureShopDemoAccounting(gate.mspClientId);
+    }
+
     const ShopClient = getShopClientModel();
     const clients = await ShopClient.findAll({
       attributes: [...CLIENT_PICKER_ATTRIBUTES],
@@ -33,7 +38,7 @@ export default async function RrspAccountingPage() {
         </div>
         <Suspense fallback={<AccountingLoading />}>
           <AccountingPageClient
-            isAdmin={false}
+            isAdmin
             clients={clients.map((c) => mapClientToPickerOption(c as never))}
             apiBase="/api/rrsp"
             portalPathPrefix="/rrsp"

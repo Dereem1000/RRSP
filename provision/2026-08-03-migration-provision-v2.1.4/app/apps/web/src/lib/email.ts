@@ -1,0 +1,442 @@
+import nodemailer from 'nodemailer';
+import type { Attachment } from 'nodemailer/lib/mailer';
+import { SystemConfig } from '@cd-v2/database';
+import {
+  escapeHtml,
+  getEmailBrand,
+  infoRow,
+  infoTable,
+  paragraph,
+  primaryButton,
+  renderEmailLayout,
+} from '@/lib/email-templates';
+import { notifyEmailSendFailure } from '@/lib/email-failure-notice';
+import { logEmailEntry, type EmailLogMeta } from '@/lib/email-log';
+import { getRrspContext } from '@/lib/rrsp-db';
+import {
+  getRrspEmailSettingsForClient,
+  rrspEmailIsReady,
+  type RrspEmailSettings,
+} from '@/lib/rrsp-branding';
+
+export { buildPortalUrl } from '@/lib/site-url';
+
+export type EmailConfig = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  password: string;
+  fromName: string;
+  fromEmail: string;
+  companyName: string;
+  companyPhone: string;
+  companyWebsite: string;
+};
+
+let transporter: nodemailer.Transporter | null = null;
+let isConfigured = false;
+let lastInitError: unknown = null;
+
+export async function getEmailConfig(): Promise<EmailConfig> {
+  const [enabled, host, port, secure, user, password, fromName, fromEmail, companyName, companyPhone, companyWebsite] =
+    await Promise.all([
+      SystemConfig.getConfig<boolean>('email_enabled', false),
+      SystemConfig.getConfig<string>('email_host', ''),
+      SystemConfig.getConfig<number>('email_port', 587),
+      SystemConfig.getConfig<boolean>('email_secure', false),
+      SystemConfig.getConfig<string>('email_user', ''),
+      SystemConfig.getConfig<string>('email_password', ''),
+      SystemConfig.getConfig<string>('email_from_name', 'Computer Dynamics'),
+      SystemConfig.getConfig<string>('email_from_email', ''),
+      SystemConfig.getConfig<string>('email_company_name', 'Computer Dynamics'),
+      SystemConfig.getConfig<string>('email_company_phone', '+1-868-316-8851'),
+      SystemConfig.getConfig<string>('email_company_website', ''),
+    ]);
+
+  return {
+    enabled: Boolean(enabled),
+    host: host ?? '',
+    port: Number(port) || 587,
+    secure: Boolean(secure),
+    user: user ?? '',
+    password: password ?? '',
+    fromName: fromName ?? 'Computer Dynamics',
+    fromEmail: fromEmail ?? user ?? '',
+    companyName: companyName ?? 'Computer Dynamics',
+    companyPhone: companyPhone ?? '+1-868-316-8851',
+    companyWebsite: companyWebsite ?? '',
+  };
+}
+
+export async function initializeEmail(): Promise<boolean> {
+  try {
+    const config = await getEmailConfig();
+    if (!config.enabled || !config.host || !config.user || !config.password) {
+      isConfigured = false;
+      transporter = null;
+      lastInitError = 'Email service is disabled or missing required SMTP settings';
+      return false;
+    }
+
+    transporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth: { user: config.user, pass: config.password },
+      tls: { rejectUnauthorized: false },
+      // Avoid hanging portal API calls (and Next→Express proxy 503s) on bad SMTP.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
+    });
+
+    await transporter.verify();
+    isConfigured = true;
+    lastInitError = null;
+    return true;
+  } catch (error) {
+    console.error('[EMAIL] Failed to initialize:', error);
+    isConfigured = false;
+    transporter = null;
+    lastInitError = error;
+    return false;
+  }
+}
+
+async function reportEmailFailure({
+  to,
+  subject,
+  error,
+  reason,
+  skipFailureNotice,
+}: {
+  to: string;
+  subject: string;
+  error?: unknown;
+  reason: 'send' | 'init';
+  skipFailureNotice?: boolean;
+}) {
+  if (skipFailureNotice || subject.startsWith('[TEST]')) return;
+
+  const config = await getEmailConfig();
+  if (!config.enabled) return;
+
+  await notifyEmailSendFailure({ to, subject, error, reason });
+}
+
+export type SendEmailWithConfigResult = { ok: true } | { ok: false; error: string };
+
+function smtpTransportOptions(
+  config: Pick<
+    EmailConfig | RrspEmailSettings,
+    'host' | 'port' | 'secure' | 'user' | 'password'
+  >
+) {
+  const port = Number(config.port) || 587;
+  // Critical: `secure: true` = TLS from the first byte (SMTPS, almost always port 465).
+  // Port 587/25 speak plain SMTP first, then upgrade with STARTTLS — using secure:true
+  // there causes OpenSSL "wrong version number".
+  const implicitTls = port === 465 || port === 8465;
+  const secure = implicitTls ? true : false;
+  return {
+    host: config.host,
+    port,
+    secure,
+    // On submission ports, still encrypt via STARTTLS when the shop asked for TLS
+    // or whenever we are on the standard submission port.
+    requireTLS: !secure && (Boolean(config.secure) || port === 587 || port === 2525),
+    auth: { user: config.user, pass: config.password },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  };
+}
+
+/** Send using an explicit SMTP config (e.g. RRSP shop outbound mail). */
+export async function sendEmailWithConfigDetailed(
+  config: Pick<
+    EmailConfig | RrspEmailSettings,
+    'enabled' | 'host' | 'port' | 'secure' | 'user' | 'password' | 'fromName' | 'fromEmail'
+  >,
+  {
+    to,
+    subject,
+    html,
+    attachments = [],
+    skipFailureNotice = false,
+    log,
+    /** When true, allow send even if `enabled` is false (profile test button). */
+    allowDisabled = false,
+  }: {
+    to: string;
+    subject: string;
+    html: string;
+    attachments?: Attachment[];
+    skipFailureNotice?: boolean;
+    log?: EmailLogMeta;
+    allowDisabled?: boolean;
+  }
+): Promise<SendEmailWithConfigResult> {
+  if ((!config.enabled && !allowDisabled) || !config.host || !config.user || !config.password) {
+    const error = 'Email service is disabled or missing required SMTP settings';
+    await logEmailEntry({
+      to,
+      subject,
+      status: 'failed',
+      errorMessage: error,
+      meta: log,
+    }).catch((err) => console.error('[EMAIL LOG]', err));
+    return { ok: false, error };
+  }
+
+  try {
+    const transport = nodemailer.createTransport(smtpTransportOptions(config));
+    try {
+      await transport.verify();
+    } catch (verifyError) {
+      let message =
+        verifyError instanceof Error
+          ? verifyError.message
+          : String(verifyError);
+      if (/wrong version number/i.test(message)) {
+        message =
+          'SMTP TLS mismatch: use port 587 without SSL (STARTTLS), or port 465 with SSL. ' +
+          `Current port ${Number(config.port) || 587} was opened with the wrong encryption mode.`;
+      }
+      const error = `SMTP connection failed: ${message}`;
+      console.error('[EMAIL] Verify failed:', verifyError);
+      await logEmailEntry({
+        to,
+        subject,
+        status: 'failed',
+        errorMessage: error,
+        meta: log,
+      }).catch((err) => console.error('[EMAIL LOG]', err));
+      return { ok: false, error };
+    }
+
+    const fromEmail = config.fromEmail || config.user;
+    const fromName = config.fromName || fromEmail;
+    const result = await transport.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject,
+      html,
+      attachments,
+    });
+    console.log(`[EMAIL] Sent to ${to}: ${result.messageId}`);
+    await logEmailEntry({ to, subject, status: 'sent', meta: log }).catch((err) =>
+      console.error('[EMAIL LOG]', err)
+    );
+    return { ok: true };
+  } catch (error) {
+    console.error('[EMAIL] Send failed:', error);
+    if (!skipFailureNotice && !subject.startsWith('[TEST]')) {
+      await notifyEmailSendFailure({ to, subject, error, reason: 'send' });
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    await logEmailEntry({
+      to,
+      subject,
+      status: 'failed',
+      errorMessage: message,
+      meta: log,
+    }).catch((err) => console.error('[EMAIL LOG]', err));
+    return { ok: false, error: message };
+  }
+}
+
+export async function sendEmailWithConfig(
+  config: Pick<
+    EmailConfig | RrspEmailSettings,
+    'enabled' | 'host' | 'port' | 'secure' | 'user' | 'password' | 'fromName' | 'fromEmail'
+  >,
+  options: {
+    to: string;
+    subject: string;
+    html: string;
+    attachments?: Attachment[];
+    skipFailureNotice?: boolean;
+    log?: EmailLogMeta;
+    allowDisabled?: boolean;
+  }
+): Promise<boolean> {
+  const result = await sendEmailWithConfigDetailed(config, options);
+  return result.ok;
+}
+
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  attachments = [],
+  skipFailureNotice = false,
+  log,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: Attachment[];
+  skipFailureNotice?: boolean;
+  log?: EmailLogMeta;
+}): Promise<boolean> {
+  const rrsp = getRrspContext();
+  if (rrsp?.mspClientId) {
+    const rrspEmail = await getRrspEmailSettingsForClient(rrsp.mspClientId);
+    if (rrspEmail && rrspEmailIsReady(rrspEmail)) {
+      return sendEmailWithConfig(rrspEmail, {
+        to,
+        subject,
+        html,
+        attachments,
+        skipFailureNotice,
+        log,
+      });
+    }
+  }
+
+  if (!isConfigured) {
+    const ready = await initializeEmail();
+    if (!ready) {
+      await reportEmailFailure({
+        to,
+        subject,
+        error: lastInitError,
+        reason: 'init',
+        skipFailureNotice,
+      });
+      await logEmailEntry({
+        to,
+        subject,
+        status: 'failed',
+        errorMessage: lastInitError instanceof Error ? lastInitError.message : String(lastInitError ?? 'Email not configured'),
+        meta: log,
+      }).catch((err) => console.error('[EMAIL LOG]', err));
+      return false;
+    }
+  }
+
+  try {
+    const config = await getEmailConfig();
+    const result = await transporter!.sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
+      to,
+      subject,
+      html,
+      attachments,
+    });
+    console.log(`[EMAIL] Sent to ${to}: ${result.messageId}`);
+    await logEmailEntry({ to, subject, status: 'sent', meta: log }).catch((err) =>
+      console.error('[EMAIL LOG]', err)
+    );
+    return true;
+  } catch (error) {
+    console.error('[EMAIL] Send failed:', error);
+    await reportEmailFailure({
+      to,
+      subject,
+      error,
+      reason: 'send',
+      skipFailureNotice,
+    });
+    await logEmailEntry({
+      to,
+      subject,
+      status: 'failed',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      meta: log,
+    }).catch((err) => console.error('[EMAIL LOG]', err));
+    return false;
+  }
+}
+
+export async function buildWelcomeEmailHtml({
+  contactPerson,
+  username,
+  tempPassword,
+  portalUrl,
+  origin,
+  test,
+}: {
+  contactPerson?: string | null;
+  username: string;
+  tempPassword: string;
+  portalUrl: string;
+  origin?: string;
+  test?: boolean;
+}) {
+  const brand = await getEmailBrand();
+  const name = escapeHtml(contactPerson || 'Valued Client');
+
+  const bodyHtml = [
+    paragraph(`Dear ${name},`),
+    paragraph('Your client portal account has been created. You can now access your IT services online.'),
+    infoTable(
+      [
+        infoRow('Portal URL', `<a href="${escapeHtml(portalUrl)}" style="color:#4f46e5;font-weight:600;">${escapeHtml(portalUrl)}</a>`),
+        infoRow('Username', `<strong>${escapeHtml(username)}</strong>`),
+        infoRow('Temporary password', `<code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${escapeHtml(tempPassword)}</code>`),
+      ].join('')
+    ),
+    `<div style="margin:16px 0;padding:14px 16px;background:#eef2ff;border-radius:10px;color:#3730a3;font-size:14px;"><strong>Important:</strong> You will be prompted to set a new password on your first login.</div>`,
+    paragraph('<strong>What you can do in the portal</strong>'),
+    `<ul style="margin:0 0 16px;padding-left:20px;color:#334155;font-size:14px;line-height:1.8;">
+      <li>View and manage support tickets</li>
+      <li>Access invoices and payment information</li>
+      <li>Monitor service usage</li>
+      <li>Update your profile</li>
+    </ul>`,
+    primaryButton('Open client portal', portalUrl),
+  ].join('');
+
+  const prefix = test ? '[TEST] ' : '';
+  const rendered = await renderEmailLayout({
+    brand,
+    origin,
+    eyebrow: 'Client portal',
+    title: 'Welcome to your client portal',
+    preheader: `Your ${brand.companyName} portal account is ready`,
+    bodyHtml,
+  });
+  return {
+    subject: `${prefix}Welcome to ${brand.companyName} — Your Client Portal Access`,
+    ...rendered,
+  };
+}
+
+export async function sendClientWelcomeEmail({
+  to,
+  contactPerson,
+  username,
+  tempPassword,
+  portalUrl,
+  origin,
+}: {
+  to: string;
+  contactPerson?: string | null;
+  username: string;
+  tempPassword: string;
+  portalUrl: string;
+  origin?: string;
+}) {
+  const { subject, html, attachments } = await buildWelcomeEmailHtml({
+    contactPerson,
+    username,
+    tempPassword,
+    portalUrl,
+    origin,
+  });
+
+  return sendEmail({ to, subject, html, attachments, log: { category: 'welcome' } });
+}
+
+export async function testEmailConnection() {
+  const ready = await initializeEmail();
+  if (!ready) {
+    return { success: false, message: 'Email service is disabled or not configured' };
+  }
+  return { success: true, message: 'Email connection verified' };
+}

@@ -1,1 +1,1 @@
-export type RestoreType = 'full' | 'database' | 'files' | 'license';
+export type RestoreType = 'standard' | 'full' | 'system' | 'database' | 'files' | 'license';

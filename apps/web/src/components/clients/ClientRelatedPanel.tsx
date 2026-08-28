@@ -41,6 +41,7 @@ const tabs = ['tickets', 'activities', 'invoices', 'orders', 'quotes'] as const;
 export function ClientRelatedPanel({
   clientId,
   tickets,
+  pathPrefix = '',
 }: {
   clientId: string;
   tickets: Array<{
@@ -49,6 +50,7 @@ export function ClientRelatedPanel({
     issue: string;
     status: string;
   }>;
+  pathPrefix?: string;
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>('tickets');
   const [data, setData] = useState<RelatedData | null>(null);
@@ -93,7 +95,7 @@ export function ClientRelatedPanel({
                 className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3"
               >
                 <div>
-                  <TicketLink id={t.id} label={t.ticketNumber} />
+                  <TicketLink id={t.id} label={t.ticketNumber} pathPrefix={pathPrefix} />
                   <p className="text-sm text-slate-800">{t.issue}</p>
                 </div>
                 <TicketStatusBadge status={t.status} />
@@ -129,7 +131,7 @@ export function ClientRelatedPanel({
             data.invoices.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                 <div>
-                  <InvoiceLink id={inv.id} label={inv.invoice_number} />
+                  <InvoiceLink id={inv.id} label={inv.invoice_number} pathPrefix={pathPrefix} />
                   <p className="text-sm text-slate-800">TTD {inv.amount}</p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize text-slate-600">{inv.status}</span>
@@ -145,7 +147,7 @@ export function ClientRelatedPanel({
             data.orders.map((o) => (
               <div key={o.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                 <div>
-                  <OrderLink id={o.id} label={o.orderNumber} />
+                  <OrderLink id={o.id} label={o.orderNumber} pathPrefix={pathPrefix} />
                   <p className="text-sm text-slate-800">{o.title}</p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize text-slate-600">{o.status}</span>
@@ -161,7 +163,7 @@ export function ClientRelatedPanel({
             data.quotes.map((q) => (
               <div key={q.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                 <div>
-                  <QuoteLink id={q.id} label={q.quote_number} />
+                  <QuoteLink id={q.id} label={q.quote_number} pathPrefix={pathPrefix} />
                   <p className="text-sm text-slate-800">{q.title}</p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize text-slate-600">{q.status}</span>

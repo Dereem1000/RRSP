@@ -18,6 +18,15 @@ MSP_FEATURE_LONG_CODES: dict[str, str] = {
     'crm': 'EVENTSPONSORCRM',
     'customer': 'EVENTSPONSORCRM',
     'rrsp': 'RRSPONLINE',
+    'medical': 'MEDICALRECORDS',
+}
+
+# Legacy aliases — lawfirm product uses document_management in CD portal (not a separate license key).
+LICENSE_FEATURE_ALIASES: dict[str, str] = {
+    'lawfirm': 'document_management',
+    'lawfirm_management': 'document_management',
+    'medicalrecords': 'medical_records_management',
+    'medical_records': 'medical_records_management',
 }
 
 # Legacy short codes — parsed for existing DB rows only; never generated for new serials.
@@ -32,9 +41,13 @@ LICENSE_KEY_TO_CODE: dict[str, str] = {
     'distribution_system': 'DISTRIBUTION',
     'customer_management': 'EVENTSPONSORCRM',
     'rrsp_online': 'RRSPONLINE',
+    'medical_records_management': 'MEDICALRECORDS',
 }
 
 CODE_TO_LICENSE_KEY: dict[str, str] = {code: key for key, code in LICENSE_KEY_TO_CODE.items()}
+
+# Canonical long system tokens in CD-LIC serials (includes DOCUMENT/ECOMMERCE < 10 chars).
+VALID_LONG_SYSTEM_CODES = frozenset(LICENSE_KEY_TO_CODE.values())
 
 # Portal / legacy feature tokens that may appear in features JSON instead of license keys.
 MSP_FEATURE_TO_LICENSE_KEY: dict[str, str] = {
@@ -47,6 +60,9 @@ MSP_FEATURE_TO_LICENSE_KEY: dict[str, str] = {
     'crm': 'customer_management',
     'customer': 'customer_management',
     'rrsp': 'rrsp_online',
+    'lawfirm': 'document_management',
+    'medical': 'medical_records_management',
+    'medicalrecords': 'medical_records_management',
 }
 
 BUSINESS_LICENSE_FEATURE_KEYS = tuple(LICENSE_KEY_TO_CODE.keys())
@@ -80,15 +96,23 @@ def feature_code_for_msp_feature(msp_feature: str) -> str:
 
 def parse_license_features(raw: Any) -> dict[str, bool]:
     if isinstance(raw, dict):
-        return {str(k): bool(v) for k, v in raw.items()}
-    if isinstance(raw, str) and raw.strip():
+        features = {str(k): bool(v) for k, v in raw.items()}
+    elif isinstance(raw, str) and raw.strip():
         try:
             parsed = json.loads(raw)
             if isinstance(parsed, dict):
-                return {str(k): bool(v) for k, v in parsed.items()}
+                features = {str(k): bool(v) for k, v in parsed.items()}
+            else:
+                return {}
         except json.JSONDecodeError:
-            pass
-    return {}
+            return {}
+    else:
+        return {}
+
+    for alias, canonical in LICENSE_FEATURE_ALIASES.items():
+        if features.get(alias):
+            features[canonical] = True
+    return features
 
 
 def resolve_license_feature_key(features_raw: Any, serial: Optional[str] = None) -> Optional[str]:
@@ -174,9 +198,10 @@ def is_legacy_short_license_serial(serial: str) -> bool:
         parsed = _parse_cd_lic_serial(serial)
         if not parsed:
             return True
-        if parsed['system_code'] in LEGACY_SHORT_FEATURE_CODES:
+        system_code = parsed['system_code'].upper()
+        if system_code in LEGACY_SHORT_FEATURE_CODES:
             return True
-        if len(parsed['system_code']) < 10:
+        if system_code not in VALID_LONG_SYSTEM_CODES:
             return True
         if len(parsed['client_ref']) < MIN_CLIENT_REF_LEN:
             return True

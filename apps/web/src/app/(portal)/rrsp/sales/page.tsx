@@ -41,6 +41,7 @@ export default async function RrspSalesPage() {
             opportunities={opportunities as import('@/components/sales/SalesPipelineClient').OpportunityRow[]}
             stats={stats}
             clients={clients.map((c) => mapClientToPickerOption(c as never))}
+            pathPrefix="/rrsp"
           />
         </Suspense>
       </div>

@@ -3,15 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto System - Field Operations Automation | Computer Dynamics</title>
+    <title>AutoM Platform - Custom Business Automation | Computer Dynamics</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        window.placeholderImg = function placeholderImg(img, label) {
+            if (!img) return;
+            var slot = img.dataset.cdSlot || img.getAttribute('data-original-src') ||
+                ('images/auto-system/' + String(label || img.alt || 'Screenshot').toLowerCase().replace(/ /g, '-') + '.png');
+            var text = encodeURIComponent((label || img.alt || 'Screenshot') + ' — add screenshot');
+            var pathHint = encodeURIComponent(slot);
+            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='240'%3E%3Crect fill='%23e2e8f0' width='400' height='240'/%3E%3Ctext fill='%2364748b' font-family='Inter,sans-serif' font-size='14' x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle'%3E" + text + "%3C/text%3E%3Ctext fill='%2394a3b8' font-family='Inter,sans-serif' font-size='11' x='50%25' y='58%25' text-anchor='middle'%3E" + pathHint + "%3C/text%3E%3C/svg%3E";
+            img.onerror = function () { placeholderImg(img, label || img.alt || 'Screenshot'); };
+        };
+
+        (function () {
+            function legacyFlatSlot(slot) {
+                var hero = slot && slot.match(/^images\/auto-system\/hero\/(.+)$/);
+                if (hero) return 'images/auto-system/' + hero[1];
+                var mod = slot && slot.match(/^images\/auto-system\/modules\/(.+)$/);
+                if (mod) return 'images/auto-system/' + mod[1];
+                return null;
+            }
+            function lookupOverride(slot, overrides) {
+                if (!slot || !overrides) return '';
+                if (overrides[slot]) return overrides[slot];
+                var legacy = legacyFlatSlot(slot);
+                return legacy && overrides[legacy] ? overrides[legacy] : '';
+            }
+            var pendingData = null;
+            var applied = false;
+            window.__cdMarketingImagesPromise = fetch('/api/marketing-images', { credentials: 'same-origin' })
+                .then(function (res) { return res.ok ? res.json() : null; })
+                .catch(function () { return null; });
+            window.__cdMarketingImagesPromise.then(function (data) {
+                pendingData = data;
+                if (data) window.__cdMarketingImagesData = data;
+                tryApplyMarketingImages();
+            });
+            function tryApplyMarketingImages() {
+                if (applied || !pendingData || !document.body) return;
+                var overrides = pendingData.overrides || {};
+                document.querySelectorAll('img[data-cd-slot], img[data-original-src]').forEach(function (img) {
+                    if (img.closest('.header, header, .nav, nav, .logo')) return;
+                    var slot = img.dataset.cdSlot || img.getAttribute('data-original-src');
+                    if (!slot) return;
+                    var url = lookupOverride(slot, overrides);
+                    if (url) {
+                        img.src = url;
+                        img.onerror = function () { placeholderImg(img, img.alt || 'Screenshot'); };
+                    } else {
+                        placeholderImg(img, img.alt || 'Screenshot');
+                    }
+                });
+                applied = true;
+                window.__cdMarketingImagesApplied = true;
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', tryApplyMarketingImages);
+            } else {
+                tryApplyMarketingImages();
+            }
+        })();
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --primary: #6366f1;
@@ -50,562 +106,406 @@
             padding: 0 clamp(24px, 4vw, 64px);
         }
 
-        /* Header */
         .header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--gray-200);
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             z-index: 1000;
             padding: 16px 0;
-            transition: all 0.3s ease;
         }
 
-        .nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+        .nav { display: flex; align-items: center; justify-content: space-between; }
 
         .logo {
-            display: flex;
-            align-items: center;
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary);
-            text-decoration: none;
+            display: flex; align-items: center;
+            font-size: 24px; font-weight: 800;
+            color: var(--primary); text-decoration: none;
         }
 
-        .logo img {
-            height: 50px;
-            width: auto;
-            max-width: 200px;
-            margin-right: 12px;
-            object-fit: contain;
-        }
+        .logo img { height: 50px; width: auto; max-width: 200px; margin-right: 12px; object-fit: contain; }
 
         .logo-text {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 800;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; font-weight: 800;
         }
 
-        .nav-links {
-            display: flex;
-            list-style: none;
-            gap: 32px;
-        }
+        .nav-links { display: flex; list-style: none; gap: 28px; flex-wrap: wrap; }
 
         .nav-links a {
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
+            color: var(--gray-700); text-decoration: none;
+            font-weight: 500; transition: color 0.3s ease; font-size: 0.95rem;
         }
 
-        .nav-links a:hover {
-            color: var(--primary);
-        }
+        .nav-links a:hover { color: var(--primary); }
 
         .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--gray-700);
-            cursor: pointer;
+            display: none; background: none; border: none;
+            font-size: 24px; color: var(--gray-700); cursor: pointer;
         }
 
-        /* Hero Section */
         .hero {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            padding: 120px 0 80px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
+            color: white; padding: 120px 0 80px; text-align: center;
+            position: relative; overflow: hidden;
         }
 
         .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            content: ''; position: absolute; inset: 0;
             background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
             opacity: 0.3;
         }
 
-        .hero-content {
-            position: relative;
-            z-index: 2;
+        .hero-content { position: relative; z-index: 2; }
+
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.15); padding: 10px 20px;
+            border-radius: 50px; font-size: 0.875rem; font-weight: 600;
+            margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.25);
         }
 
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 24px;
-            line-height: 1.2;
-        }
+        .hero h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 24px; line-height: 1.2; }
 
         .hero-subtitle {
-            font-size: 1.25rem;
-            margin-bottom: 40px;
-            opacity: 0.9;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
+            font-size: 1.25rem; margin-bottom: 16px; opacity: 0.95;
+            max-width: 920px; margin-left: auto; margin-right: auto;
+        }
+
+        .hero-note {
+            font-size: 0.95rem; opacity: 0.85; max-width: 800px;
+            margin: 0 auto 12px; font-style: italic;
         }
 
         .hero-tagline {
-            font-size: 1rem;
-            opacity: 0.8;
+            font-size: 1rem; opacity: 0.85; margin-bottom: 24px; font-weight: 500;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
             margin-bottom: 40px;
-            font-weight: 500;
         }
 
         .hero-gallery {
-            display: flex;
-            gap: 20px;
-            margin-top: 60px;
-            max-width: 100%;
-            overflow-x: auto;
-            padding: 20px 0;
+            display: flex; gap: 16px; margin-top: 48px;
+            max-width: 100%; overflow-x: auto; padding: 16px 0;
             scroll-behavior: smooth;
         }
 
-        .hero-gallery::-webkit-scrollbar {
-            height: 8px;
-        }
-
-        .hero-gallery::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-
-        .hero-gallery::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-        }
+        .hero-gallery::-webkit-scrollbar { height: 8px; }
+        .hero-gallery::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .hero-gallery::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
 
         .hero-image-card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            flex-shrink: 0;
-            width: 400px;
-            min-width: 400px;
+            background: rgba(255,255,255,0.1); border-radius: 16px; padding: 16px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease; cursor: pointer; flex-shrink: 0;
+            width: 340px; min-width: 340px; text-align: left;
         }
 
         .hero-image-card:hover {
-            transform: translateY(-8px);
-            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-6px); background: rgba(255,255,255,0.15);
         }
 
         .hero-image-card img {
-            width: 100%;
-            height: 240px;
-            object-fit: cover;
-            border-radius: 12px;
-            margin-bottom: 12px;
+            width: 100%; height: 220px; object-fit: cover;
+            object-position: center top;
+            border-radius: 10px; margin-bottom: 0;
+            background: rgba(255,255,255,0.08);
         }
 
-        .hero-image-card h4 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 8px;
+        .hero-image-card .cd-mkt-img-frame {
+            margin-bottom: 10px;
         }
+
+        .hero-image-card .module-tag {
+            display: inline-block; font-size: 0.7rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            background: rgba(255,255,255,0.2); padding: 3px 8px;
+            border-radius: 6px; margin-bottom: 6px;
+        }
+
+        .hero-image-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
 
         .hero-image-card p {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            line-height: 1.4;
+            font-size: 0.8rem; opacity: 0.85; line-height: 1.35;
         }
 
-        /* Features Section */
-        .features-section {
-            padding: 80px 0;
-            background: var(--gray-50);
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
+        .section-header { text-align: center; margin-bottom: 48px; }
 
         .section-header h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 16px;
+            font-size: 2.25rem; font-weight: 700; color: var(--dark); margin-bottom: 16px;
         }
 
         .section-header p {
-            font-size: 1.125rem;
-            color: var(--gray-600);
-            max-width: 900px;
-            margin: 0 auto;
+            font-size: 1.05rem; color: var(--gray-600);
+            max-width: 900px; margin: 0 auto;
         }
+
+        .stats-section { padding: 72px 0; background: var(--white); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: var(--gray-50); border: 1px solid var(--gray-200);
+            border-radius: 16px; padding: 24px; text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.75rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;
+        }
+
+        .stat-card h4 { font-size: 0.95rem; font-weight: 600; color: var(--dark); margin-bottom: 6px; }
+
+        .stat-card p { font-size: 0.85rem; color: var(--gray-600); line-height: 1.4; }
+
+        .features-section { padding: 72px 0; background: var(--gray-50); }
 
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 32px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 28px;
         }
 
         .feature-card {
-            background: var(--white);
-            border-radius: 20px;
-            padding: 32px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            border: 1px solid var(--gray-200);
+            background: var(--white); border-radius: 18px; padding: 28px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            border: 1px solid var(--gray-200); transition: all 0.3s ease;
         }
 
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-        }
+        .feature-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(0,0,0,0.12); }
 
         .feature-icon {
-            width: 80px;
-            height: 80px;
+            width: 56px; height: 56px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 24px;
+            border-radius: 14px; display: flex; align-items: center; justify-content: center;
+            margin-bottom: 18px;
         }
 
-        .feature-icon i {
-            font-size: 32px;
-            color: white;
-        }
+        .feature-icon i { font-size: 24px; color: white; }
 
-        .feature-card h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 16px;
-        }
+        .feature-card h3 { font-size: 1.2rem; font-weight: 700; color: var(--dark); margin-bottom: 12px; }
 
-        .feature-card p {
-            color: var(--gray-600);
-            margin-bottom: 24px;
-            line-height: 1.6;
-        }
+        .feature-card p { color: var(--gray-600); margin-bottom: 16px; font-size: 0.95rem; line-height: 1.55; }
 
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
+        .feature-list { list-style: none; padding: 0; }
 
         .feature-list li {
-            color: var(--gray-600);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 0.95rem;
+            color: var(--gray-600); margin-bottom: 8px; display: flex;
+            align-items: flex-start; gap: 10px; font-size: 0.9rem;
         }
 
         .feature-list li::before {
-            content: '✓';
-            color: var(--success);
-            font-weight: bold;
-            font-size: 1.1rem;
+            content: '✓'; color: var(--success); font-weight: bold; flex-shrink: 0;
         }
 
-        /* Interface Showcase Sections */
-        .interface-section {
-            padding: 80px 0;
-            background: var(--white);
+        .fit-section { padding: 72px 0; background: var(--white); }
+
+        .fit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
         }
+
+        .fit-card {
+            border: 1px solid var(--gray-200); border-radius: 16px;
+            padding: 24px; background: var(--gray-50);
+        }
+
+        .fit-card h4 { font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+
+        .fit-card p { font-size: 0.9rem; color: var(--gray-600); margin-bottom: 12px; }
+
+        .fit-card .fit-demo {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.8rem; font-weight: 600; color: var(--success);
+        }
+
+        .interface-section { padding: 72px 0; background: var(--white); }
+        .interface-section.alt { background: var(--gray-50); }
 
         .interface-showcase {
             display: grid;
-            grid-template-columns: minmax(280px, 1fr) minmax(480px, 2fr);
-            gap: clamp(40px, 5vw, 80px);
-            align-items: center;
+            grid-template-columns: minmax(280px, 1fr) minmax(400px, 1.4fr);
+            gap: clamp(32px, 4vw, 64px);
+            align-items: center; margin-bottom: 64px;
         }
+
+        .interface-showcase:last-child { margin-bottom: 0; }
 
         .interface-showcase:has(> .interface-image:first-child) {
-            grid-template-columns: minmax(480px, 2fr) minmax(280px, 1fr);
+            grid-template-columns: minmax(400px, 1.4fr) minmax(280px, 1fr);
         }
 
-        .interface-content {
-            display: flex;
-            flex-direction: column;
-            gap: 32px;
-        }
+        .interface-text h3 { font-size: 1.75rem; font-weight: 700; color: var(--dark); margin-bottom: 14px; }
 
-        .interface-text h3 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 16px;
-        }
+        .interface-text p { font-size: 1rem; color: var(--gray-600); margin-bottom: 20px; line-height: 1.6; }
 
-        .interface-text p {
-            font-size: 1.125rem;
-            color: var(--gray-600);
-            margin-bottom: 24px;
-            line-height: 1.6;
-        }
-
-        .interface-features {
-            list-style: none;
-            padding: 0;
-        }
+        .interface-features { list-style: none; padding: 0; }
 
         .interface-features li {
-            color: var(--gray-700);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1rem;
+            color: var(--gray-700); margin-bottom: 10px;
+            display: flex; align-items: flex-start; gap: 10px; font-size: 0.95rem;
         }
 
-        .interface-features li::before {
-            content: '✓';
-            color: var(--success);
-            font-weight: bold;
-            font-size: 1.2rem;
+        .interface-features li::before { content: '✓'; color: var(--success); font-weight: bold; }
+
+        .interface-image { display: flex; justify-content: center; align-items: flex-start; width: 100%; min-width: 0; }
+
+        .interface-showcase .interface-text {
+            padding-top: 8px;
+            padding-bottom: 4px;
+            position: relative;
+            z-index: 1;
         }
 
-        .interface-image {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            text-align: center;
+        .interface-showcase .interface-image {
+            position: relative;
+            z-index: 0;
+        }
+
+        .interface-image.cd-mkt-host {
+            padding: 8px 10px 6px;
+            align-self: start;
+            overflow: hidden;
             width: 100%;
         }
 
         .showcase-image {
-            width: auto;
-            max-width: 100%;
-            height: auto;
-            max-height: min(780px, 85vh);
+            width: 100%; max-width: 720px; height: auto;
             object-fit: contain;
-            object-position: center;
-            display: block;
-            margin: 0 auto;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            transition: transform 0.3s ease;
+            object-position: center top;
+            border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+            background: var(--gray-100); border: 1px solid var(--gray-200);
         }
 
-        .showcase-image:hover {
-            transform: scale(1.02);
+        .productivity-section { padding: 72px 0; background: var(--gray-50); }
+
+        .roles-section { padding: 72px 0; background: var(--white); }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
         }
 
-        /* Development Status */
+        .role-card {
+            background: var(--gray-50); border: 1px solid var(--gray-200);
+            border-radius: 14px; padding: 20px;
+        }
+
+        .role-card h4 { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+
+        .role-card .role-user { font-size: 0.8rem; color: var(--gray-500); margin-bottom: 8px; }
+
+        .role-card p { font-size: 0.85rem; color: var(--gray-600); line-height: 1.4; }
+
+        .steps-section { padding: 72px 0; background: var(--gray-50); }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 24px;
+        }
+
+        .step-card { text-align: center; padding: 24px 16px; }
+
+        .step-number {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white; font-weight: 800; font-size: 1.25rem;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
+        }
+
+        .step-card h4 { font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+
+        .step-card p { font-size: 0.875rem; color: var(--gray-600); line-height: 1.45; }
+
         .development-section {
             padding: 80px 0;
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            text-align: center;
+            color: white; text-align: center;
         }
 
-        .development-content h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 24px;
-        }
+        .development-content h2 { font-size: 2.25rem; font-weight: 700; margin-bottom: 20px; }
 
         .development-content p {
-            font-size: 1.25rem;
-            margin-bottom: 40px;
-            opacity: 0.9;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
+            font-size: 1.1rem; margin-bottom: 36px; opacity: 0.92;
+            max-width: 860px; margin-left: auto; margin-right: auto;
         }
 
         .demo-button {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 16px 32px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.125rem;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.2); color: white;
+            padding: 14px 28px; border-radius: 50px; text-decoration: none;
+            font-weight: 600; font-size: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.3s ease; backdrop-filter: blur(10px);
         }
 
         .demo-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5); transform: translateY(-2px);
         }
 
-        .cd-live-demo-slot {
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .cd-live-demo-btn {
-            background: var(--primary);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .cd-live-demo-btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-
-        /* WhatsApp Button */
         .btn-whatsapp {
             background: linear-gradient(135deg, #25D366, #128C7E);
-            color: white;
-            border: none;
-            padding: 18px;
-            border-radius: 16px;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.3);
-            text-decoration: none;
-            width: 60px;
-            height: 60px;
+            color: white; padding: 14px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            text-decoration: none; width: 52px; height: 52px;
+            box-shadow: 0 8px 25px rgba(37,211,102,0.3);
         }
 
-        .btn-whatsapp:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(37, 211, 102, 0.4);
-            color: white;
-        }
+        .btn-whatsapp:hover { transform: translateY(-2px); color: white; }
 
-        .btn-whatsapp i {
-            font-size: 24px;
-        }
-
-        /* Modal */
         .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8); z-index: 2000;
+            align-items: center; justify-content: center;
         }
 
         .modal-content {
-            background: var(--white);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 90vw;
-            max-height: 90vh;
-            position: relative;
-            text-align: center;
+            background: var(--white); border-radius: 20px; padding: 32px;
+            max-width: 90vw; max-height: 90vh; position: relative; text-align: center;
         }
 
         .modal-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--gray-500);
-            cursor: pointer;
+            position: absolute; top: 16px; right: 16px;
+            background: none; border: none; font-size: 24px;
+            color: var(--gray-500); cursor: pointer;
         }
 
         .modal-content img {
-            max-width: 100%;
-            max-height: 70vh;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            max-width: 100%; max-height: 70vh;
+            border-radius: 12px; margin-bottom: 16px;
         }
 
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--dark);
-            margin-bottom: 16px;
-        }
+        .modal-title { font-size: 1.35rem; font-weight: 700; color: var(--dark); }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-
-            .mobile-menu-btn {
-                display: block;
-            }
-
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero-subtitle {
-                font-size: 1.125rem;
-            }
-
-            .hero-gallery {
-                gap: 16px;
-                padding: 16px 0;
-            }
-
-            .hero-image-card {
-                width: 320px;
-                min-width: 320px;
-            }
-
-            .hero-image-card img {
-                height: 160px;
-            }
-
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .hero h1 { font-size: 2.25rem; }
+            .hero-subtitle { font-size: 1.05rem; }
+            .hero-image-card { width: 280px; min-width: 280px; }
+            .hero-image-card img { height: 180px; }
             .interface-showcase,
-            .interface-showcase:has(> .interface-image:first-child) {
-                grid-template-columns: 1fr;
-                gap: 40px;
-            }
-
-            .showcase-image {
-                max-height: min(560px, 70vh);
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
+            .interface-showcase:has(> .interface-image:first-child) { grid-template-columns: 1fr; gap: 32px; }
+            .section-header h2 { font-size: 1.75rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <nav class="nav container">
             <a href="/" class="logo">
@@ -617,381 +517,431 @@
             </a>
             <ul class="nav-links">
                 <li><a href="/">Home</a></li>
+                <li><a href="#at-a-glance">Overview</a></li>
                 <li><a href="#features">Features</a></li>
-                <li><a href="#interfaces">Interfaces</a></li>
-                <li><a href="#development">Status</a></li>
+                <li><a href="#modules">Modules</a></li>
+                <li><a href="#portal">Portal</a></li>
+                <li><a href="#contact">Contact</a></li>
             </ul>
-            <button class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </button>
+            <button class="mobile-menu-btn" type="button" aria-label="Menu"><i class="fas fa-bars"></i></button>
         </nav>
     </header>
 
-    <!-- Hero Section -->
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <h1>Auto System</h1>
-                <p class="hero-subtitle">Comprehensive automotive business management system for service centers with corporate clients</p>
-                <p class="hero-tagline">Complete workflow automation • Multi-role interfaces • Real-time tracking</p>
-                
+                <div class="hero-badge"><i class="fas fa-flask"></i> Sales demo v0.4.11 — reference build, not a product SKU</div>
+                <h1>AutoM Platform</h1>
+                <p class="hero-subtitle">A custom vehicle inspection and insurance administration platform — inspections, policies, compliance documents, client billing, customer self-service, and staff collaboration in one modern web application.</p>
+                <p class="hero-note">Live sales demo v0.4.11 built by Computer Dynamics. Each major area includes a Live Demo button.</p>
+                <p class="hero-tagline">Live sales demo &bull; 10 compliance categories &bull; Client portal &bull; On-premises deployment</p>
+
+                <div class="hero-buttons">
+                    <a href="#" class="demo-button" target="_blank" rel="noopener noreferrer" data-cd-link-slot="auto-system/live-demo" data-cd-link-default="#"><i class="fas fa-play-circle"></i> Open Live Demo</a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the AutoM Platform. Can I get a custom quote?" class="demo-button" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Get Quote</a>
+                </div>
+
                 <div class="hero-gallery">
-                    <div class="hero-image-card" onclick="openModal('images/auto-system/Admin Dashboard.png', 'Admin Dashboard')">
-                        <img src="images/auto-system/Admin Dashboard.png" alt="Admin Dashboard">
-                        <h4>Admin Dashboard</h4>
-                        <p>Complete system oversight and management</p>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Dashboard" data-cd-slot="images/auto-system/hero/dashboard.png" data-original-src="images/auto-system/hero/dashboard.png" onerror="placeholderImg(this,'Dashboard')">
+                        <span class="module-tag">Admin</span>
+                        <h4>Dashboard</h4>
+                        <p>Expiry status cards, near-expiry table, inspector and provider home views</p>
                     </div>
-                    <div class="hero-image-card" onclick="openModal('images/auto-system/Client Dashboard.png', 'Client Dashboard')">
-                        <img src="images/auto-system/Client Dashboard.png" alt="Client Dashboard">
-                        <h4>Client Dashboard</h4>
-                        <p>Real-time vehicle status tracking</p>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Vehicles" data-cd-slot="images/auto-system/hero/vehicles.png" data-original-src="images/auto-system/hero/vehicles.png" onerror="placeholderImg(this,'Vehicles')">
+                        <span class="module-tag">Fleet</span>
+                        <h4>Vehicles</h4>
+                        <p>Central registry linked to owners, inspections, insurance, and certified copies</p>
                     </div>
-                    <div class="hero-image-card" onclick="openModal('images/auto-system/Mobile technician Dashboard.png', 'Mobile Technician Dashboard')">
-                        <img src="images/auto-system/Mobile technician Dashboard.png" alt="Mobile Technician Dashboard">
-                        <h4>Mobile Technician</h4>
-                        <p>Touch-friendly field operations</p>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Inspections" data-cd-slot="images/auto-system/hero/inspections.png" data-original-src="images/auto-system/hero/inspections.png" onerror="placeholderImg(this,'Inspections')">
+                        <span class="module-tag">Field</span>
+                        <h4>Inspections</h4>
+                        <p>Full lifecycle with renewals, hard-copy uploads, OCR scan, and charge flow</p>
                     </div>
-                    <div class="hero-image-card" onclick="openModal('images/auto-system/mobile Technician Vehicles management .png', 'Vehicle Management')">
-                        <img src="images/auto-system/mobile Technician Vehicles management .png" alt="Vehicle Management">
-                        <h4>Vehicle Management</h4>
-                        <p>Complete vehicle tracking and service</p>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Insurance" data-cd-slot="images/auto-system/hero/insurance.png" data-original-src="images/auto-system/hero/insurance.png" onerror="placeholderImg(this,'Insurance')">
+                        <span class="module-tag">Policies</span>
+                        <h4>Insurance</h4>
+                        <p>Policies, surcharges, provider workflow, and flexible policy holder billing</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Clients" data-cd-slot="images/auto-system/hero/clients.png" data-original-src="images/auto-system/hero/clients.png" onerror="placeholderImg(this,'Clients')">
+                        <span class="module-tag">Directory</span>
+                        <h4>Clients</h4>
+                        <p>Standing scores, link-tree view, portal moderation, and wallet on profile</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Documents Hub" data-cd-slot="images/auto-system/hero/documents.png" data-original-src="images/auto-system/hero/documents.png" onerror="placeholderImg(this,'Documents')">
+                        <span class="module-tag">Compliance</span>
+                        <h4>Documents Hub</h4>
+                        <p>10 expiry-tracked categories with OCR, life bars, and renewal history</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Accounts" data-cd-slot="images/auto-system/hero/accounts.png" data-original-src="images/auto-system/hero/accounts.png" onerror="placeholderImg(this,'Accounts')">
+                        <span class="module-tag">Billing</span>
+                        <h4>Accounts &amp; Wallets</h4>
+                        <p>Payment requests, wallet-first allocation, and charge confirmation dialogs</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Support Inbox" data-cd-slot="images/auto-system/hero/support.png" data-original-src="images/auto-system/hero/support.png" onerror="placeholderImg(this,'Support')">
+                        <span class="module-tag">Messaging</span>
+                        <h4>Support Inbox</h4>
+                        <p>Per-client threads, floating admin inbox, and portal chat widget</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Team & Settings" data-cd-slot="images/auto-system/hero/team.png" data-original-src="images/auto-system/hero/team.png" onerror="placeholderImg(this,'Team')">
+                        <span class="module-tag">Admin</span>
+                        <h4>Team &amp; Settings</h4>
+                        <p>Role matrix, company branding, email, backups, and staff profiles</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Customer Portal" data-cd-slot="images/auto-system/hero/portal-dashboard.png" data-original-src="images/auto-system/hero/portal-dashboard.png" onerror="placeholderImg(this,'Portal')">
+                        <span class="module-tag">Portal</span>
+                        <h4>Customer Portal</h4>
+                        <p>Vehicle picker, coverage cards, wallet, payment requests, and messages</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Universal Search" data-cd-slot="images/auto-system/hero/universal-search.png" data-original-src="images/auto-system/hero/universal-search.png" onerror="placeholderImg(this,'Search')">
+                        <span class="module-tag">Productivity</span>
+                        <h4>Universal Search</h4>
+                        <p>Ctrl+K jump to clients, vehicles, compliance, inspections, or policies</p>
+                    </div>
+                    <div class="hero-image-card" onclick="openModalFromCard(this)">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Pin Board" data-cd-slot="images/auto-system/hero/pin-board.png" data-original-src="images/auto-system/hero/pin-board.png" onerror="placeholderImg(this,'Pin Board')">
+                        <span class="module-tag">Productivity</span>
+                        <h4>Pin Board</h4>
+                        <p>Side-by-side document previews while entering data in any module</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Features Section -->
+    <section class="stats-section" id="at-a-glance">
+        <div class="container">
+            <div class="section-header">
+                <h2>At a Glance — This Demo Instance</h2>
+                <p>Everything listed below is included in this demo instance — connected modules, expiry intelligence, wallets, moderation, OCR, pin board, universal search, and a branded client portal.</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-value">10</div><h4>Compliance Categories</h4><p>Permits, IDs, inspection, insurance, vehicle docs, and more — all expiry-tracked</p></div>
+                <div class="stat-card"><div class="stat-value">5</div><h4>Staff Roles</h4><p>Admin, manager, inspector, provider, and client with configurable module matrix</p></div>
+                <div class="stat-card"><div class="stat-value">10+</div><h4>Admin Modules</h4><p>Dashboard through settings — cohesive workspace, not disconnected screens</p></div>
+                <div class="stat-card"><div class="stat-value">Portal</div><h4>Customer Self-Service</h4><p>Onboarding, coverage cards, wallet, uploads, and support messaging</p></div>
+                <div class="stat-card"><div class="stat-value">OCR</div><h4>Scan-to-Form</h4><p>Field-level OCR on clients, vehicles, inspections, insurance, and compliance</p></div>
+                <div class="stat-card"><div class="stat-value">Wallets</div><h4>Billing Built In</h4><p>Client wallets, payment requests, wallet-first allocation, charge previews</p></div>
+                <div class="stat-card"><div class="stat-value">DMS</div><h4>Backups &amp; Restore</h4><p>Scheduled snapshots, manual backup, and one-click restore</p></div>
+                <div class="stat-card"><div class="stat-value">Local</div><h4>On-Premises Data</h4><p>SQLite on your infrastructure — no daily cloud dependency for operations</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="fit-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Workflows Covered in This Demo</h2>
+                <p>Inspection, insurance, compliance, billing, and customer self-service — all connected in one platform.</p>
+            </div>
+            <div class="fit-grid">
+                <div class="fit-card"><h4>Inspection Stations</h4><p>Inspection records, renewals, hard-copy uploads, inspector defaults, and billing integration.</p><span class="fit-demo"><i class="fas fa-check-circle"></i> Full inspection module + charge flow</span></div>
+                <div class="fit-card"><h4>Insurance Brokers</h4><p>Policies, holders, surcharges, provider-only workflows, and charge confirmation dialogs.</p><span class="fit-demo"><i class="fas fa-check-circle"></i> Insurance module + provider role</span></div>
+                <div class="fit-card"><h4>Fleet &amp; Compliance</h4><p>Permits, IDs, certificates, vehicle-linked docs, and dashboard expiry intelligence.</p><span class="fit-demo"><i class="fas fa-check-circle"></i> Documents hub + expiry cards</span></div>
+                <div class="fit-card"><h4>Operations &amp; Management</h4><p>Roles, branding, team accounts, support inbox, moderation, and disaster recovery.</p><span class="fit-demo"><i class="fas fa-check-circle"></i> Settings, team, DMS backups</span></div>
+                <div class="fit-card"><h4>End Customers</h4><p>Branded portal with onboarding, wallet, payment requests, uploads, and messaging.</p><span class="fit-demo"><i class="fas fa-check-circle"></i> Full customer portal</span></div>
+            </div>
+        </div>
+    </section>
+
     <section class="features-section" id="features">
         <div class="container">
             <div class="section-header">
-                <h2>Automotive Business Management Features</h2>
-                <p>Streamlined workflow automation for automotive service centers with specialized interfaces for administrators, technicians, and corporate clients</p>
+                <h2>Platform Capabilities</h2>
+                <p>Core strengths built into this AutoM demo — connected data, expiry tracking, billing, access control, and productivity tools.</p>
             </div>
-
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-car"></i>
-                    </div>
-                    <h3>Vehicle Management</h3>
-                    <p>Complete vehicle registration, tracking, and service history management with photo documentation and PO management.</p>
-                    <ul class="feature-list">
-                        <li>Vehicle registration and customer assignment</li>
-                        <li>Service history tracking</li>
-                        <li>Photo upload for vehicle condition</li>
-                        <li>PO (Purchase Order) management</li>
-                        <li>Initial damage assessment</li>
-                    </ul>
+                    <div class="feature-icon"><i class="fas fa-cogs"></i></div>
+                    <h3>Modular Admin Workspace</h3>
+                    <p>Ten admin modules plus customer portal — dashboard, vehicles, inspections, insurance, accounts, clients, documents, support, team, and settings.</p>
+                    <ul class="feature-list"><li>Category-specific compliance forms and reference fields</li><li>Portal and staff profile moderation workflows</li><li>Company branding on admin and portal auth surfaces</li><li>Role-aware sidebar — each user sees only permitted modules</li></ul>
                 </div>
-
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h3>Multi-Role Interface</h3>
-                    <p>Specialized dashboards for administrators, technicians, and corporate clients with role-based access control.</p>
-                    <ul class="feature-list">
-                        <li>Admin: Complete system oversight</li>
-                        <li>Technician: Mobile-friendly field operations</li>
-                        <li>Client: Real-time status tracking</li>
-                        <li>Role-based permissions</li>
-                        <li>Secure authentication</li>
-                    </ul>
+                    <div class="feature-icon"><i class="fas fa-project-diagram"></i></div>
+                    <h3>One Platform, Connected Data</h3>
+                    <p>Vehicles, clients, inspections, insurance, and compliance share one data model — enter once, visible everywhere.</p>
+                    <ul class="feature-list"><li>Client link-tree across person docs and fleet</li><li>Vehicle tied to inspection, insurance, certified copy</li><li>Deep links from search and profile context</li><li>Renewal history preserved — not overwritten silently</li></ul>
                 </div>
-
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-cogs"></i>
-                    </div>
-                    <h3>Service Workflow</h3>
-                    <p>Complete service process from inspection to invoice with automated estimates and work order management.</p>
-                    <ul class="feature-list">
-                        <li>Vehicle inspection and recommendations</li>
-                        <li>Automated estimate generation</li>
-                        <li>Work order creation and tracking</li>
-                        <li>Progress monitoring</li>
-                        <li>Invoice generation</li>
-                    </ul>
+                    <div class="feature-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <h3>Expiry Intelligence</h3>
+                    <p>Dashboard surfaces what's expiring soon across ten categories with configurable windows per user.</p>
+                    <ul class="feature-list"><li>Near-expiry counts and sortable table</li><li>Windows: 7 days through 1 year per category</li><li>Document life bars with color-coded segments</li><li>Renewal shortcuts from dashboard and lists</li></ul>
                 </div>
-
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
-                    <h3>Mobile Operations</h3>
-                    <p>Touch-friendly mobile interface for technicians with offline capability and real-time synchronization.</p>
-                    <ul class="feature-list">
-                        <li>Mobile technician dashboard</li>
-                        <li>Touch-friendly interface</li>
-                        <li>Offline capability</li>
-                        <li>Real-time sync</li>
-                        <li>Photo documentation</li>
-                    </ul>
+                    <div class="feature-icon"><i class="fas fa-wallet"></i></div>
+                    <h3>Billing Transparency</h3>
+                    <p>Wallets, payment requests, and charge confirmation dialogs shared across inspections and policies.</p>
+                    <ul class="feature-list"><li>Wallet-first allocation with outstanding shown</li><li>Line-item surcharges and fees itemized</li><li>Charge preview before any save or send</li><li>One-time fees for non-directory names</li></ul>
                 </div>
-
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3>Reporting & Analytics</h3>
-                    <p>Comprehensive business insights with financial reporting, technician productivity, and customer satisfaction metrics.</p>
-                    <ul class="feature-list">
-                        <li>Financial performance tracking</li>
-                        <li>Technician productivity metrics</li>
-                        <li>Service completion statistics</li>
-                        <li>Customer satisfaction tracking</li>
-                        <li>Revenue analysis</li>
-                    </ul>
+                    <div class="feature-icon"><i class="fas fa-user-shield"></i></div>
+                    <h3>Role-Based Access</h3>
+                    <p>Five roles with an editable per-module permission matrix in Settings → Accounts.</p>
+                    <ul class="feature-list"><li>Admin, manager, inspector, provider, client</li><li>Provider-scoped insurance views</li><li>Portal moderation for profile changes</li><li>Separate staff and client auth surfaces</li></ul>
                 </div>
-
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <h3>Security & Compliance</h3>
-                    <p>Enterprise-grade security with JWT authentication, role-based access control, and data protection.</p>
-                    <ul class="feature-list">
-                        <li>JWT-based authentication</li>
-                        <li>Role-based access control</li>
-                        <li>Data encryption</li>
-                        <li>Audit logging</li>
-                        <li>Secure file uploads</li>
-                    </ul>
+                    <div class="feature-icon"><i class="fas fa-magic"></i></div>
+                    <h3>Productivity &amp; Intelligence</h3>
+                    <p>Cross-module tools included in this demo.</p>
+                    <ul class="feature-list"><li>Universal search (Ctrl+K) with pin-to-board</li><li>OCR scan-to-form on permits and certificates</li><li>Standing scores and client status flags</li><li>Prefetching navigation for instant page loads</li></ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Admin Interface Section -->
-    <section class="interface-section" id="interfaces">
+    <section class="productivity-section">
         <div class="container">
             <div class="section-header">
-                <h2>Admin Interface</h2>
-                <p>Complete system oversight and management dashboard for administrators</p>
+                <h2>Admin Experience — Shell &amp; Navigation</h2>
+                <p>A cohesive workspace — role-aware sidebar, universal search, pin board dock, and consistent split layout (form + live document preview) across modules.</p>
             </div>
-
-            <div class="interface-showcase">
-                <div class="interface-content">
-                    <div class="interface-text">
-                        <h3>Administrative Dashboard</h3>
-                        <p>Comprehensive admin interface providing complete system oversight, user management, financial reporting, and business analytics.</p>
-                        <ul class="interface-features">
-                            <li>System-wide business overview metrics</li>
-                            <li>User management with role-based permissions</li>
-                            <li>Financial reporting and revenue tracking</li>
-                            <li>Inventory oversight and parts management</li>
-                            <li>System configuration and settings</li>
-                            <li>Analytics and performance insights</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="interface-image">
-                    <img src="images/auto-system/Admin Dashboard.png" alt="Admin Dashboard" class="showcase-image">
-                </div>
+            <div class="features-grid">
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-search"></i></div><h3>Universal Search</h3><p>Jump to clients, vehicles, compliance records, inspections, or policies from anywhere. Filter by type and pin results to the side board.</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-thumbtack"></i></div><h3>Pin Board Dock</h3><p>Keep document previews open beside forms — compare a scan while entering data. Auto-expiry timer and search-to-pin.</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-columns"></i></div><h3>Split Module Layout</h3><p>Form on the left, live preview on the right — consistent across clients, compliance, inspections, and insurance.</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="fas fa-bell"></i></div><h3>Operational Awareness</h3><p>Update banners, database health warnings, blacklisted-client notices, and in-app changelog with unseen-version indicator.</p></div>
             </div>
         </div>
     </section>
 
-    <!-- Client Interface Section -->
-    <section class="interface-section" style="background: var(--gray-50);">
+    <section class="interface-section" id="modules">
         <div class="container">
+            <div class="section-header">
+                <h2>Module Guide</h2>
+                <p>Each section maps to a live area in this demo. Use the Live Demo button on each page to walk through the real interface.</p>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-text">
+                    <h3>Dashboard</h3>
+                    <p>Operational command center with expiry status cards across ten categories, configurable windows, sortable expiring-soon table, and role-specific home views for inspectors and providers.</p>
+                    <ul class="interface-features">
+                        <li>Near-expiry counts: permits, IDs, inspection, insurance, and more</li>
+                        <li>Per-category expiry presets persisted per user</li>
+                        <li>Quick add client and assignment cards with renewal shortcuts</li>
+                        <li>Mobile toggle between status cards and expiring list</li>
+                    </ul>
+                </div>
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Dashboard" class="showcase-image" data-cd-slot="images/auto-system/modules/dashboard.png" data-original-src="images/auto-system/modules/dashboard.png" onerror="placeholderImg(this,'Dashboard')">
+                </div>
+            </div>
+
             <div class="interface-showcase">
                 <div class="interface-image">
-                    <img src="images/auto-system/Client Dashboard.png" alt="Client Dashboard" class="showcase-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Vehicles" class="showcase-image" data-cd-slot="images/auto-system/modules/vehicles.png" data-original-src="images/auto-system/modules/vehicles.png" onerror="placeholderImg(this,'Vehicles')">
                 </div>
-                <div class="interface-content">
-                    <div class="interface-text">
-                        <h3>Corporate Client Portal</h3>
-                        <p>Real-time vehicle status tracking and management portal for corporate clients with appointment scheduling and payment processing.</p>
-                        <ul class="interface-features">
-                            <li>Live vehicle status updates</li>
-                            <li>Online appointment booking</li>
-                            <li>Digital estimate approval</li>
-                            <li>Payment processing integration</li>
-                            <li>Service history and documentation</li>
-                            <li>Direct communication channels</li>
-                        </ul>
-                    </div>
+                <div class="interface-text">
+                    <h3>Vehicles</h3>
+                    <p>Central fleet registry with plate, VIN, make, model, registered vs current owner, and cross-module status for inspection, insurance, and certified copy.</p>
+                    <ul class="interface-features">
+                        <li>Searchable list with model age display from year</li>
+                        <li>OCR from certified copy to populate vehicle fields</li>
+                        <li>Client–vehicle linking and duplicate certified-copy guard</li>
+                        <li>Technical fields: fuel type, engine CC, tare, MGW, tire size</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-text">
+                    <h3>Inspections</h3>
+                    <p>End-to-end inspection lifecycle: create, renew, attach hard-copy uploads, OCR scan autofill, and Save &amp; charge with wallet preview dialog.</p>
+                    <ul class="interface-features">
+                        <li>Status workflow: pending, in progress, pass, failed</li>
+                        <li>Inspector combobox with garage and VTS defaults</li>
+                        <li>Terms: 6 weeks, 1 year, 2 years — expiry auto-calculated</li>
+                        <li>Front, back, sticker photo, and sticker scan upload slots</li>
+                    </ul>
+                </div>
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Inspections" class="showcase-image" data-cd-slot="images/auto-system/modules/inspections.png" data-original-src="images/auto-system/modules/inspections.png" onerror="placeholderImg(this,'Inspections')">
+                </div>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Insurance" class="showcase-image" data-cd-slot="images/auto-system/modules/insurance.png" data-original-src="images/auto-system/modules/insurance.png" onerror="placeholderImg(this,'Insurance')">
+                </div>
+                <div class="interface-text">
+                    <h3>Insurance</h3>
+                    <p>Policy administration for brokers and providers — coverage types, flexible policy holders, seven auto-suggested surcharge lines, and Save &amp; send charge flow.</p>
+                    <ul class="interface-features">
+                        <li>Bill registered owner, linked client, or free-text holder</li>
+                        <li>Provider role with insurance-focused dashboard</li>
+                        <li>Surcharges: engine size, owner mismatch, under 25, and more</li>
+                        <li>Renewal flow with collapsible prior-term history</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-text">
+                    <h3>Clients</h3>
+                    <p>Deep client directory — not a simple contact list. Standing scores, link-tree visualization, portal moderation, and wallet on the same profile.</p>
+                    <ul class="interface-features">
+                        <li>JSD reference, status filters, and standing flag icons</li>
+                        <li>Person-level compliance plus per-vehicle document cards</li>
+                        <li>Visual link-tree: person docs → vehicles → compliance</li>
+                        <li>Portal provisioning, upload moderation, welcome email resend</li>
+                    </ul>
+                </div>
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Clients" class="showcase-image" data-cd-slot="images/auto-system/modules/clients.png" data-original-src="images/auto-system/modules/clients.png" onerror="placeholderImg(this,'Clients')">
+                </div>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Documents Hub" class="showcase-image" data-cd-slot="images/auto-system/modules/documents.png" data-original-src="images/auto-system/modules/documents.png" onerror="placeholderImg(this,'Documents')">
+                </div>
+                <div class="interface-text">
+                    <h3>Documents / Compliance Hub</h3>
+                    <p>Ten expiry-tracked categories — each with tailored forms, reference numbers, renewal history, OCR scan autofill, and document life bars.</p>
+                    <ul class="interface-features">
+                        <li>Driver's permit, national ID, passport, taxi badge, defensive driving</li>
+                        <li>Inspection, insurance, certified copy, tint exemption, battery warranty</li>
+                        <li>National ID dual-sided front/back upload slots</li>
+                        <li>Feeds dashboard expiry cards and expiring-soon table</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-text">
+                    <h3>Accounts &amp; Payments</h3>
+                    <p>Unified billing ledger across insurance and inspections with wallet-first allocation and transparent charge confirmation before any debit.</p>
+                    <ul class="interface-features">
+                        <li>Payment requests: draft → sent → paid → cancelled</li>
+                        <li>Line-item breakdown: premium, surcharges, and fees</li>
+                        <li>Admin wallet top-up and color-coded balance display</li>
+                        <li>Client wallet section on profile ties into charge flows</li>
+                    </ul>
+                </div>
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Accounts" class="showcase-image" data-cd-slot="images/auto-system/modules/accounts.png" data-original-src="images/auto-system/modules/accounts.png" onerror="placeholderImg(this,'Accounts')">
+                </div>
+            </div>
+
+            <div class="interface-showcase">
+                <div class="interface-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Support Inbox" class="showcase-image" data-cd-slot="images/auto-system/modules/support.png" data-original-src="images/auto-system/modules/support.png" onerror="placeholderImg(this,'Support')">
+                </div>
+                <div class="interface-text">
+                    <h3>Support</h3>
+                    <p>Built-in messaging — per-client conversation threads, floating admin inbox, and portal chat widget for end customers.</p>
+                    <ul class="interface-features">
+                        <li>Unread badges on inbox nav and floating button</li>
+                        <li>Full thread view with client context</li>
+                        <li>Portal messages page plus floating chat on other pages</li>
+                        <li>Support contact block configurable in settings</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Mobile Technician Section -->
-    <section class="interface-section">
+    <section class="interface-section alt" id="portal">
         <div class="container">
+            <div class="section-header">
+                <h2>Customer Portal</h2>
+                <p>Separate branded experience for vehicle owners and fleet clients — onboarding, dashboard, account, and messages.</p>
+            </div>
             <div class="interface-showcase">
-                <div class="interface-content">
-                    <div class="interface-text">
-                        <h3>Mobile Technician Interface</h3>
-                        <p>Touch-friendly mobile interface designed for field operations with offline capability and real-time synchronization.</p>
-                        <ul class="interface-features">
-                            <li>Mobile-optimized dashboard</li>
-                            <li>Touch-friendly interface design</li>
-                            <li>Vehicle inspection and service recommendations</li>
-                            <li>Work order management and progress tracking</li>
-                            <li>Photo documentation capabilities</li>
-                            <li>Offline capability with sync</li>
-                        </ul>
-                    </div>
+                <div class="interface-text">
+                    <h3>Portal Dashboard &amp; Account</h3>
+                    <p>First-login onboarding, vehicle picker with coverage cards, wallet balance, outstanding payment requests, and profile changes submitted for staff approval.</p>
+                    <ul class="interface-features">
+                        <li>Coverage cards with document life bars per vehicle</li>
+                        <li>Linked team-shared records and client uploads when enabled</li>
+                        <li>Full wallet view, transaction history, and top-up</li>
+                        <li>Messages page and floating support chat</li>
+                    </ul>
                 </div>
                 <div class="interface-image">
-                    <img src="images/auto-system/Mobile technician Dashboard.png" alt="Mobile Technician Dashboard" class="showcase-image">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Customer Portal" class="showcase-image" data-cd-slot="images/auto-system/modules/portal-dashboard.png" data-original-src="images/auto-system/modules/portal-dashboard.png" onerror="placeholderImg(this,'Portal')">
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Vehicle Management Section -->
-    <section class="interface-section" style="background: var(--gray-50);">
+    <section class="roles-section">
         <div class="container">
-            <div class="interface-showcase">
-                <div class="interface-image">
-                    <img src="images/auto-system/mobile Technician Vehicles management .png" alt="Vehicle Management" class="showcase-image">
-                </div>
-                <div class="interface-content">
-                    <div class="interface-text">
-                        <h3>Vehicle Management System</h3>
-                        <p>Complete vehicle tracking and service management with detailed records, service history, and real-time status updates.</p>
-                        <ul class="interface-features">
-                            <li>Complete vehicle registration and tracking</li>
-                            <li>Service history and documentation</li>
-                            <li>Photo upload for vehicle condition</li>
-                            <li>PO (Purchase Order) management</li>
-                            <li>Real-time status updates</li>
-                            <li>Customer assignment and communication</li>
-                        </ul>
-                    </div>
-                </div>
+            <div class="section-header">
+                <h2>Roles in This Demo</h2>
+                <p>Five staff and client roles with a configurable per-module permission matrix in Settings → Accounts.</p>
+            </div>
+            <div class="roles-grid">
+                <div class="role-card"><h4>Admin</h4><div class="role-user">Owner, IT lead</div><p>All modules plus settings, team, accounts, and backups</p></div>
+                <div class="role-card"><h4>Manager</h4><div class="role-user">Office manager</div><p>Operations modules, portal moderation — no settings access</p></div>
+                <div class="role-card"><h4>Inspector</h4><div class="role-user">Field inspector</div><p>Dashboard, vehicles, inspections, insurance, clients, documents, support</p></div>
+                <div class="role-card"><h4>Provider</h4><div class="role-user">Insurance agent</div><p>Dashboard and insurance-focused views with provider scoping</p></div>
+                <div class="role-card"><h4>Client</h4><div class="role-user">Vehicle owner</div><p>Customer portal only — dashboard, account, messages</p></div>
             </div>
         </div>
     </section>
 
-    <!-- Development Status Section -->
-    <section class="development-section" id="development">
+    <section class="development-section" id="contact">
         <div class="container">
             <div class="development-content">
-                <h2>Currently in Development</h2>
-                <p>Our Auto System is currently under active development. We're building a comprehensive automotive business management solution that will revolutionize how service centers operate.</p>
-                <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                    <a href="#" class="demo-button" data-cd-demo-request>Request Demo</a>
-                    <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
-                    <a href="https://wa.me/18683168851" target="_blank" class="btn-whatsapp" title="WhatsApp Chat">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
+                <h2>Live Sales Demo</h2>
+                <p>Explore this live demo module by module — dashboard expiry cards, client link-tree, inspection renew &amp; charge, insurance surcharges, documents hub with OCR, universal search, pin board, and portal coverage cards. Use the Live Demo button on each page to walk through the real system.</p>
+                <div style="display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                    <a href="#" class="demo-button" target="_blank" rel="noopener noreferrer" data-cd-link-slot="auto-system/live-demo" data-cd-link-default="#"><i class="fas fa-play-circle"></i> Open Live Demo</a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the AutoM Platform. Can I get a custom quote?" class="demo-button" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Get Quote</a>
                 </div>
+                <p style="margin-top: 28px; font-size: 0.9rem; opacity: 0.85;">Computer Dynamics &bull; +1 (868) 316-8851 &bull; support@computerdynamicstt.com</p>
             </div>
         </div>
     </section>
 
-    <!-- Image Modal -->
     <div class="modal-overlay" id="imageModal">
         <div class="modal-content">
-            <button class="modal-close" id="modalClose">
-                <i class="fas fa-times"></i>
-            </button>
+            <button class="modal-close" id="modalClose" type="button" aria-label="Close"><i class="fas fa-times"></i></button>
             <img id="modalImage" src="" alt="">
             <h3 class="modal-title" id="modalTitle">Image Preview</h3>
         </div>
     </div>
 
-    <!-- Demo Modal -->
-    <div class="modal-overlay" id="demoModal">
-        <div class="modal-content">
-            <button class="modal-close" id="demoClose">
-                <i class="fas fa-times"></i>
-            </button>
-            <h3 class="modal-title">Currently in Development</h3>
-            <p style="color: var(--gray-600); margin-bottom: 24px;">Our Auto System is currently under active development. We're building a comprehensive automotive business management solution that will revolutionize how service centers operate.</p>
-            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                <button class="demo-button" onclick="closeDemoModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // Image modal functionality
-        const imageModal = document.getElementById('imageModal');
-        const modalImage = document.getElementById('modalImage');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalClose = document.getElementById('modalClose');
-        const imageCards = document.querySelectorAll('.hero-image-card');
-
-        function openModal(src, title) {
-            modalImage.src = src;
-            modalTitle.textContent = title;
-            imageModal.style.display = 'flex';
-        }
-
-        function closeModal() {
-            imageModal.style.display = 'none';
-        }
-
-        modalClose.addEventListener('click', closeModal);
-        imageModal.addEventListener('click', (e) => {
-            if (e.target === imageModal) {
-                closeModal();
+        function openModalFromCard(card) {
+            if (event.target.closest('.cd-mkt-edit-btn, .cd-mkt-adjust-btn, .cd-mkt-adjust-panel')) return;
+            const img = card.querySelector('img');
+            if (!img) return;
+            const title = (card.querySelector('h4') && card.querySelector('h4').textContent.trim()) || img.alt || 'Preview';
+            if (window.cdOpenMarketingLightbox) {
+                window.cdOpenMarketingLightbox(img, title);
             }
-        });
-
-        // Demo modal functionality
-        const demoModal = document.getElementById('demoModal');
-        const demoClose = document.getElementById('demoClose');
-
-        function openDemoModal() {
-            demoModal.style.display = 'flex';
         }
 
-        function closeDemoModal() {
-            demoModal.style.display = 'none';
-        }
-
-        demoClose.addEventListener('click', closeDemoModal);
-        demoModal.addEventListener('click', (e) => {
-            if (e.target === demoModal) {
-                closeDemoModal();
-            }
-        });
-
-        // Smooth scrolling for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
 
-        // Mobile menu toggle
-        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-        const navLinks = document.querySelector('.nav-links');
-
-        mobileMenuBtn.addEventListener('click', () => {
+        document.querySelector('.mobile-menu-btn').addEventListener('click', () => {
+            const navLinks = document.querySelector('.nav-links');
             navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
         });
     </script>
-    <script src="/js/public-captcha.js"></script>
-    <script src="/js/public-phone-input.js"></script>
-    <script src="/js/public-demo-request.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            CDDemoRequest.init({
-                product: 'Auto System',
-                subtitle: 'Our Auto System is in active development. Leave your details and we will contact you when a demo is available.',
-            });
-        });
-    </script>
-    <script src="/js/multiserver-demos.js" defer></script>
-    <script src="/js/marketing-image-editor.js?v=20260721b" defer></script>
+    <script src="/js/marketing-link-guard.js"></script>
+    <script src="/js/marketing-image-editor.js?v=20260824g" defer></script>
+    <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
+    <script src="/js/marketing-link-editor.js?v=20260818c" defer></script>
 </body>
 </html>
-
-
-
-

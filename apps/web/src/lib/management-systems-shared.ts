@@ -9,6 +9,9 @@ export type FeatureLicenseDisplayStatus =
   | 'Not synced'
   | 'Unavailable';
 
+export type GateStatus = 'none' | 'running' | 'passed' | 'failed' | 'passed_with_warnings';
+export type DeliverableStatus = 'none' | 'draft' | 'sent';
+
 export type ManagementSystemClientRow = {
   clientId: string;
   clientName: string;
@@ -19,6 +22,13 @@ export type ManagementSystemClientRow = {
   licenseType: string | null;
   expirationDate: string | null;
   activationDate: string | null;
+  provisionStatus?: GateStatus;
+  installStatus?: GateStatus;
+  deliverableStatus?: DeliverableStatus;
+  provisionRunId?: string;
+  installRunId?: string;
+  provisionAt?: string;
+  installAt?: string;
 };
 
 export type ManagementSystemOverview = {
@@ -55,6 +65,13 @@ export type ClientSystemActivation = {
   serialNumber: string | null;
   licenseType: string | null;
   expirationDate: string | null;
+  provisionStatus?: GateStatus;
+  installStatus?: GateStatus;
+  deliverableStatus?: DeliverableStatus;
+  provisionRunId?: string;
+  installRunId?: string;
+  provisionAt?: string;
+  installAt?: string;
 };
 
 export type GroupedManagementClient = {
@@ -66,7 +83,7 @@ export type GroupedManagementClient = {
 };
 
 export function buildGroupedManagementClients(
-  systems: ManagementSystemOverview[]
+  systems: ManagementSystemOverview[],
 ): GroupedManagementClient[] {
   const map = new Map<string, GroupedManagementClient>();
 
@@ -91,6 +108,13 @@ export function buildGroupedManagementClients(
         serialNumber: row.serialNumber,
         licenseType: row.licenseType,
         expirationDate: row.expirationDate,
+        provisionStatus: row.provisionStatus,
+        installStatus: row.installStatus,
+        deliverableStatus: row.deliverableStatus,
+        provisionRunId: row.provisionRunId,
+        installRunId: row.installRunId,
+        provisionAt: row.provisionAt,
+        installAt: row.installAt,
       });
     }
   }

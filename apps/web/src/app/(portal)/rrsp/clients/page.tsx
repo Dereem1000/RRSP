@@ -39,8 +39,10 @@ export default async function RrspClientsPage() {
           clients={clients.map(
             (c) => serializeClient(c as never) as import('@/components/clients/ClientsPageClient').ClientRow
           )}
-          licenseMap={{}}
           userRole={user.role}
+          pathPrefix="/rrsp"
+          shopOperator
+          showLicenseColumn={false}
         />
       </div>
     );

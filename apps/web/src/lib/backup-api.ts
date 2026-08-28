@@ -20,7 +20,13 @@ export async function requireBackupAdmin(req: NextRequest): Promise<TokenPayload
 }
 
 export function requireCls1ForFullRestore(session: TokenPayload, restoreType: string, overwrite?: boolean) {
-  if (restoreType === 'full' || restoreType === 'license' || overwrite) {
+  if (
+    restoreType === 'full' ||
+    restoreType === 'standard' ||
+    restoreType === 'system' ||
+    restoreType === 'license' ||
+    overwrite
+  ) {
     if (session.clearance !== 'S-CLS1') {
       throw new AuthError('S-CLS1 clearance required for full restore or overwrite', 403);
     }

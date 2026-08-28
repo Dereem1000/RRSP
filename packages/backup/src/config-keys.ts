@@ -18,7 +18,7 @@ export type AutoBackupConfig = {
   time?: string;
   day?: number;
   retention?: number;
-  type?: 'full' | 'database' | 'files';
+  type?: 'standard' | 'full' | 'database' | 'files' | 'system';
   notes?: string;
   lastRun?: string | null;
   nextRun?: string | null;
@@ -36,6 +36,6 @@ export const DEFAULT_AUTO_BACKUP_CONFIG: Omit<AutoBackupConfig, 'nextRun' | 'las
   enabled: true,
   frequency: 'daily',
   time: '02:00',
-  type: 'full',
+  type: 'standard',
   retention: 30,
 };

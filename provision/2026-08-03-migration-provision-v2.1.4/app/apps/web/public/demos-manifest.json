@@ -1,0 +1,44 @@
+{
+  "generated_by": "MultiServer",
+  "version": "1.1.0",
+  "base_domain": "https://www.computerdynamicstt.com",
+  "url_path_prefix": "/demo",
+  "demos": [
+    {
+      "id": "cabb6ce6-face-4837-9cb4-d2abc6ec83a2",
+      "name": "Lawfirm Deployment 20260416 004524   Demo",
+      "slug": "lawfirm",
+      "local_url": "http://localhost:8100/",
+      "public_url": "https://www.computerdynamicstt.com/demo/lawfirm/",
+      "demo_port": 8100,
+      "client_port": 8100,
+      "server_port": 8100,
+      "working_dir": "F:/Computer Dynamics System v2/Management Systems/Document Manager/lawfirm-deployment-20260416_004524 - Demo",
+      "ngrok_enabled": false
+    },
+    {
+      "id": "dd0de1c5-a44e-48fe-b9f7-32a4d451d548",
+      "name": "Restaurant Deployment 20260422 094910",
+      "slug": "repair-restaurant",
+      "local_url": "http://localhost:8110/",
+      "public_url": "https://www.computerdynamicstt.com/demo/repair-restaurant/",
+      "demo_port": 8110,
+      "client_port": 8110,
+      "server_port": 8110,
+      "working_dir": "F:/Computer Dynamics System v2/Management Systems/Restaurant System/restaurant-deployment-20260422_094910",
+      "ngrok_enabled": false
+    },
+    {
+      "id": "7f414e2c-f3e8-466c-b0f1-57e0f2e49d91",
+      "name": "Pos 2026 05 27 Demo",
+      "slug": "pos-2026-05-27-demo",
+      "local_url": "http://localhost:8120/",
+      "public_url": "https://www.computerdynamicstt.com/demo/pos-2026-05-27-demo/",
+      "demo_port": 8120,
+      "client_port": 8120,
+      "server_port": 8121,
+      "working_dir": "F:/Computer Dynamics System v2/Management Systems/POS System/POS-2026-05-27-Demo",
+      "ngrok_enabled": false
+    }
+  ]
+}

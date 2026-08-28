@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import {
   Users,
   Building2,
@@ -32,6 +33,9 @@ export default async function DashboardPage() {
   const isClient = user.role === 'client';
 
   const rrspAccess = isClient ? await getClientRrspAccess(user.id) : null;
+  if (rrspAccess?.isShopStaff) {
+    redirect('/rrsp');
+  }
   const rrspOverview =
     rrspAccess?.enabled && rrspAccess.mspClientId
       ? await getRrspDashboardOverview(rrspAccess.mspClientId).catch(() => null)
@@ -69,6 +73,7 @@ export default async function DashboardPage() {
         <ClientHybridDashboardCards
           shop={rrspOverview}
           modules={rrspAccess?.modules ?? []}
+          clientProfile={data.clientProfile}
           legacy={{
             totalTickets: stats.totalTickets,
             openTickets: stats.openTickets,
@@ -208,21 +213,11 @@ export default async function DashboardPage() {
         </>
       )}
 
-      {isClient && rrspOverview ? (
-        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          <RecentNoticesCard showScopeBadges />
-          {data.clientProfile && (
-            <>
-              <ClientServiceCard profile={data.clientProfile} />
-              <ClientLicenseStatusCard />
-            </>
-          )}
-        </div>
-      ) : (
+      {isClient && !rrspOverview && (
         <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
           <RecentNoticesCard />
           {isStaff && data.security && <SecurityStatusCard security={data.security} />}
-          {isClient && data.clientProfile && (
+          {data.clientProfile && (
             <>
               <ClientServiceCard profile={data.clientProfile} />
               <ClientLicenseStatusCard />

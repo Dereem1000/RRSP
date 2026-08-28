@@ -2,6 +2,8 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import { getSequelizeForModelInit } from '../connection';
 
 export type BackupType =
+  | 'standard'
+  | 'system'
   | 'full'
   | 'incremental'
   | 'database'

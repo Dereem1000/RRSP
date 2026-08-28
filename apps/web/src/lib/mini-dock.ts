@@ -324,7 +324,7 @@ export async function isMiniDockOnline(): Promise<boolean> {
 
 const MINI_PROXY_TIMEOUT_MS = 18_000;
 /** Health probes should tolerate a busy Mini host without false offline flips. */
-const MINI_HEALTH_PROBE_TIMEOUT_MS = 10_000;
+const MINI_HEALTH_PROBE_TIMEOUT_MS = 30_000;
 /** Dashboard, chat-feed, and event reads can be slow when Mini is busy (LLM cycle, hydration). */
 export const MINI_READ_PROXY_TIMEOUT_MS = 45_000;
 /** Project Guard scan and policy approval (live reads / small writes). */
@@ -336,9 +336,12 @@ export const MINI_CHAT_PROXY_TIMEOUT_MS = 120_000;
 /** Portal telemetry (page views) — short timeout, failures are acceptable. */
 export const MINI_CD_EVENT_PROXY_TIMEOUT_MS = 8_000;
 export const MINI_PROVISIONING_RUN_TIMEOUT_MS = 900_000;
+/** Async run start should return quickly; audit continues on Mini. */
+export const MINI_PROVISIONING_RUN_START_TIMEOUT_MS = 60_000;
+export const MINI_PROVISIONING_RUN_STATUS_TIMEOUT_MS = 30_000;
 export const MINI_PROVISIONING_PICK_TIMEOUT_MS = 320_000;
-/** Listing registered systems + checklist can be slow when Mini is busy. */
-export const MINI_PROVISIONING_READ_TIMEOUT_MS = 45_000;
+/** Listing registered systems + checklist can be slow when Mini is busy (audit/build on same host). */
+export const MINI_PROVISIONING_READ_TIMEOUT_MS = 120_000;
 export const MINI_KIT_PUSH_TIMEOUT_MS = 900_000;
 const MINI_ONLINE_CACHE_MS = 45_000;
 /** Consecutive reachability failures before CD treats Mini as offline. */
@@ -825,13 +828,9 @@ export async function getMiniProvisioningGateError(): Promise<string | null> {
   if (!(await isMiniDockConfigured())) {
     return 'Mini integration is not configured. Open Settings → Integrations and dock Mini first.';
   }
-  invalidateMiniOnlineCache();
-  const settings = await getMiniDockSettings();
-  const base = resolveMiniLocalBaseUrl(settings);
-  const probe = await probeMiniHealth();
-  if (!probe.ok) {
-    return `Cannot reach Mini at ${base}. ${probe.message} Confirm Mini is running and Settings → Integrations → Local Mini URL matches runtime/dashboard.url in the Mini install folder.`;
-  }
+  // Do not health-probe here. A busy Mini (provision-audit / package build) can miss a short
+  // /api/health probe while still accepting the real /api/provisioning request. Let the proxy
+  // call fail with its own timeout/connection error instead of a false "Mini offline".
   return null;
 }
 

@@ -323,6 +323,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            height: 420px; /* fixed card height to equalize gallery cards */
         }
 
         .hero-image-card:hover {
@@ -332,9 +333,9 @@
 
         .hero-image-card img {
             width: 100%;
-            height: auto;
-            max-height: 480px;
-            object-fit: contain;
+            height: 220px;
+            max-height: 220px;
+            object-fit: cover; /* crop taller images to match others */
             object-position: center top;
             border-radius: 12px;
             margin-bottom: 12px;
@@ -351,6 +352,12 @@
             font-size: 0.9rem;
             opacity: 0.8;
             line-height: 1.4;
+        }
+
+        .hero-image-card p.hero-extra {
+            margin-top: auto; /* push extra text to the bottom of the card */
+            font-size: 0.85rem;
+            opacity: 0.85;
         }
 
         /* Features Section */
@@ -870,7 +877,7 @@
                 <a href="#" class="demo-btn" data-cd-demo-request>
                     <i class="fas fa-calendar-alt"></i> Request Demo
                 </a>
-                <a href="https://wa.me/18683168851?text=Hi! I'm interested in learning more about the POS System." class="demo-btn" target="_blank">
+                <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="demo-btn" target="_blank" rel="noopener noreferrer">
                     <i class="fab fa-whatsapp"></i> Get Quote
                 </a>
             </div>
@@ -883,27 +890,23 @@
             <div class="hero-content">
                 <div class="hero-main">
                     <div class="hero-text">
-                        <h1>Computer Dynamics Cloud POS</h1>
+                        <h1>Computer Dynamics POS System</h1>
                         <p class="hero-subtitle">
-                            The only locally-developed, cloud-based POS system designed specifically for Trinidad and Tobago businesses.
+                            A complete retail management platform for mini-marts, grocery stores, and convenience shops. Fast checkout, deep inventory control, cash drawer management, and powerful reporting — all on your own Windows PC.
                         </p>
                         <p class="hero-tagline">
-                            Enterprise features at competitive pricing with unmatched local support.
+                            Run your store smarter — from checkout to closing count.
                         </p>
                         <div class="hero-buttons">
-                            <a href="http://190.213.252.119:3000" class="btn btn-primary" target="_blank">
+                            <a href="http://190.213.252.119:3000" class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-cd-link-slot="pos-system-learn-more/access-pos">
                                 <i class="fas fa-sign-in-alt"></i> Access POS System
                             </a>
-                            <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn btn-secondary" target="_blank">
-                                <i class="fas fa-comments"></i> Request Quote
+                            <a href="#modules" class="btn btn-secondary">
+                                <i class="fas fa-info-circle"></i> View Modules
                             </a>
-                            <a href="#" class="btn btn-secondary" data-cd-demo-request>
-                                <i class="fas fa-calendar-alt"></i> Request Demo
+                            <a href="https://dev6.computerdynamicstt.com/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer" data-cd-link-slot="pos-system-learn-more/live-demo" data-cd-link-default="https://dev6.computerdynamicstt.com/">
+                                <i class="fas fa-play-circle"></i> Open Live Demo
                             </a>
-                <a href="#modules" class="btn btn-secondary">
-                    <i class="fas fa-info-circle"></i> View Modules
-                </a>
-                            <span id="openLiveDemoAnchor" class="cd-live-demo-slot"></span>
                         </div>
                     </div>
                     <div class="hero-dashboard">
@@ -917,76 +920,91 @@
                         <img src="images/pos-system/POS admin home.JPG" alt="Admin Dashboard" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EAdmin Home%3C/text%3E%3C/svg%3E';">
                         <h4>Admin Dashboard</h4>
                         <p>Complete system overview</p>
+                        <p class="hero-extra">See KPIs, quick links, and system alerts at a glance.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory.JPG', 'Inventory Management')">
                         <img src="images/pos-system/POS inventory.JPG" alt="Inventory" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EInventory%3C/text%3E%3C/svg%3E';">
                         <h4>Inventory</h4>
                         <p>Real-time stock tracking</p>
+                        <p class="hero-extra">Manage SKUs, pricing, and reorder points with live availability.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS cash balancing report.JPG', 'Cash Balancing Report')">
                         <img src="images/pos-system/POS cash balancing report.JPG" alt="Cash Balancing" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECash Balancing%3C/text%3E%3C/svg%3E';">
                         <h4>Cash Balancing</h4>
                         <p>Professional cash management</p>
+                        <p class="hero-extra">Quick reconciliation tools reduce end-of-day errors.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS Reports.JPG', 'Sales Reports')">
                         <img src="images/pos-system/POS Reports.JPG" alt="Reports" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EReports%3C/text%3E%3C/svg%3E';">
                         <h4>Sales Reports</h4>
                         <p>Comprehensive analytics</p>
+                        <p class="hero-extra">Drill into sales by product, period, and payment method.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory valuation.JPG', 'Inventory Valuation')">
                         <img src="images/pos-system/POS inventory valuation.JPG" alt="Valuation" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EValuation%3C/text%3E%3C/svg%3E';">
                         <h4>Inventory Valuation</h4>
                         <p>Cost and profit analysis</p>
+                        <p class="hero-extra">Understand cost, profit, and margins by item and category.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS User Managment module.JPG', 'User Management')">
                         <img src="images/pos-system/POS User Managment module.JPG" alt="User Management" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EUser Management%3C/text%3E%3C/svg%3E';">
                         <h4>User Management</h4>
                         <p>Role-based access control</p>
+                        <p class="hero-extra">Create roles, PINs, and session policies to protect tills and settings.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS cash balancing Cashier transactions-sessions.JPG', 'Cashier Transactions')">
                         <img src="images/pos-system/POS cash balancing Cashier transactions-sessions.JPG" alt="Cashier Transactions" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECashier Transactions%3C/text%3E%3C/svg%3E';">
                         <h4>Cashier Sessions</h4>
                         <p>Transaction tracking</p>
+                        <p class="hero-extra">Track each cashier's sessions, totals, and activity for accountability.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS cash balancing CashierJPG.JPG', 'Cashier Interface')">
                         <img src="images/pos-system/POS cash balancing CashierJPG.JPG" alt="Cashier Interface" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECashier Interface%3C/text%3E%3C/svg%3E';">
                         <h4>Cashier Interface</h4>
                         <p>Shift management</p>
+                        <p class="hero-extra">Touch-friendly layout for fast scans, quick payments, and minimal downtime.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS end of shift balance from float .JPG', 'End of Shift')">
                         <img src="images/pos-system/POS end of shift balance from float .JPG" alt="End of Shift" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EEnd of Shift%3C/text%3E%3C/svg%3E';">
                         <h4>End of Shift</h4>
                         <p>Balance reconciliation</p>
+                        <p class="hero-extra">Counted totals reconcile with expected sales and payout transactions.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS float setup Start of shift .JPG', 'Start of Shift')">
                         <img src="images/pos-system/POS float setup Start of shift .JPG" alt="Start of Shift" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EStart of Shift%3C/text%3E%3C/svg%3E';">
                         <h4>Start of Shift</h4>
                         <p>Float setup</p>
+                        <p class="hero-extra">Set opening float amounts and assign till responsibilities before service.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory history.JPG', 'Inventory History')">
                         <img src="images/pos-system/POS inventory history.JPG" alt="Inventory History" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EInventory History%3C/text%3E%3C/svg%3E';">
                         <h4>Inventory History</h4>
                         <p>Complete audit trail</p>
+                        <p class="hero-extra">Full movement log from sales, POs, and manual adjustments for traceability.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS inventory stock adjustment.JPG', 'Stock Adjustments')">
                         <img src="images/pos-system/POS inventory stock adjustment.JPG" alt="Stock Adjustments" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EStock Adjustments%3C/text%3E%3C/svg%3E';">
                         <h4>Stock Adjustments</h4>
                         <p>Inventory corrections</p>
+                        <p class="hero-extra">Document reason codes and tie adjustments to users for accountability.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS Cashout.JPG', 'Cashout')">
                         <img src="images/pos-system/POS Cashout.JPG" alt="Cashout" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ECashout%3C/text%3E%3C/svg%3E';">
                         <h4>Cashout</h4>
                         <p>Payment processing</p>
+                        <p class="hero-extra">Process refunds, captures, and payouts with clear audit records.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS Pin.JPG', 'PIN Protection')">
                         <img src="images/pos-system/POS Pin.JPG" alt="PIN Protection" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EPIN Protection%3C/text%3E%3C/svg%3E';">
                         <h4>PIN Protection</h4>
                         <p>Secure authentication</p>
+                        <p class="hero-extra">Fast PIN unlocks for cashiers backed by secure hashing and session controls.</p>
                     </div>
                     <div class="hero-image-card" onclick="openModal('images/pos-system/POS User selector.JPG', 'User Selector')">
                         <img src="images/pos-system/POS User selector.JPG" alt="User Selector" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%23f1f5f9%22 width=%22200%22 height=%22120%22/%3E%3Ctext fill=%22%2364758b%22 font-family=%22sans-serif%22 font-size=%2212%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EUser Selector%3C/text%3E%3C/svg%3E';">
                         <h4>User Selector</h4>
                         <p>Quick user switching</p>
+                        <p class="hero-extra">Switch staff between tills quickly without a full logout between shifts.</p>
                     </div>
                 </div>
             </div>
@@ -998,7 +1016,7 @@
         <div class="container">
             <div class="section-header">
                 <h2>Core Features</h2>
-                <p>Essential features included with every POS system installation</p>
+                <p>Everything your mini-mart or grocery store needs — checkout, inventory, cash control, and reports in one fast, local POS.</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
@@ -1006,12 +1024,14 @@
                         <i class="fas fa-cash-register"></i>
                     </div>
                     <h3>Point of Sale</h3>
-                    <p>Fast and intuitive checkout process with support for multiple payment methods and receipt printing.</p>
+                    <p>Fast product search by name, barcode, or category with desktop and mobile checkout layouts.</p>
                     <ul class="feature-list">
-                        <li>Quick item lookup and scanning</li>
+                        <li>Fast product search by name, barcode, or category</li>
+                        <li>Desktop and mobile checkout layouts</li>
                         <li>Multiple payment methods</li>
-                        <li>Receipt printing</li>
-                        <li>Discount and promotion support</li>
+                        <li>Receipt printing and customizable headers</li>
+                        <li>Real-time cart totals with tax support</li>
+                        <li>Pack and unit sales with unit-aware cost of goods</li>
                     </ul>
                 </div>
                 <div class="feature-card">
@@ -1019,44 +1039,41 @@
                         <i class="fas fa-boxes"></i>
                     </div>
                     <h3>Inventory Management</h3>
-                    <p>Basic inventory tracking with product management and stock level monitoring.</p>
+                    <p>Product catalog with images, categories, barcodes, and pricing — plus valuation, adjustments, purchase orders, and low-stock alerts.</p>
                     <ul class="feature-list">
-                        <li>Product catalog management</li>
-                        <li>Real-time stock tracking</li>
-                        <li>Automatic stock updates from sales</li>
-                        <li>Basic inventory reports</li>
+                        <li>Product catalog with images, categories, barcodes, and pricing</li>
+                        <li>Inventory Valuation Report — cost, profit, and margin</li>
+                        <li>Stock Adjustments with reason codes and audit trail</li>
+                        <li>Purchase Orders with multi-supplier interface</li>
+                        <li>Low Stock Alerts</li>
+                        <li>Inventory History — complete movement log</li>
                     </ul>
-                    <div class="feature-note">
-                        <strong>Note:</strong> Advanced features like inventory valuation, stock adjustments, purchase orders, and inventory history require additional modules.
-                    </div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-dollar-sign"></i>
                     </div>
-                    <h3>Cash Management</h3>
-                    <p>Basic cash handling with transaction processing and payment management.</p>
+                    <h3>Cash &amp; Shift Management</h3>
+                    <p>Track drawer sessions, opening float, expected vs. actual cash, and discrepancy detection with shift workflows.</p>
                     <ul class="feature-list">
-                        <li>Cash payment processing</li>
-                        <li>Transaction recording</li>
-                        <li>Basic cash drawer functionality</li>
-                        <li>Payment method tracking</li>
+                        <li>Cash Balancing — drawer sessions and discrepancy detection</li>
+                        <li>Cashier Shift Workflow — open/close at login/logout</li>
+                        <li>End-of-shift enforcement</li>
+                        <li>Opening float setup</li>
+                        <li>Cashier transaction logs per session</li>
                     </ul>
-                    <div class="feature-note">
-                        <strong>Note:</strong> Advanced cash balancing features like shift workflows, float management, discrepancy detection, and cashier session reports are included in the base system.
-                    </div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-chart-bar"></i>
                     </div>
-                    <h3>Basic Sales Reports</h3>
-                    <p>Essential sales reporting to track your business performance.</p>
+                    <h3>Reporting &amp; Analytics</h3>
+                    <p>Built-in sales and summary reports with local calendar date filtering and CSV export.</p>
                     <ul class="feature-list">
                         <li>Daily, weekly, monthly sales summaries</li>
-                        <li>Basic sales transaction reports</li>
+                        <li>Dashboard stats on the home screen</li>
+                        <li>CSV export for external analysis</li>
                         <li>Payment method tracking</li>
-                        <li>Basic export functionality</li>
                     </ul>
                     <div class="feature-note">
                         <strong>Note:</strong> Advanced reporting features like product performance analytics, customer behavior analytics, period comparisons, and enhanced filtering require the <strong>Advanced Reporting Module</strong>.
@@ -1066,29 +1083,31 @@
                     <div class="feature-icon">
                         <i class="fas fa-users"></i>
                     </div>
-                    <h3>Basic User System</h3>
-                    <p>Essential user management for system access and authentication.</p>
+                    <h3>Role-Based Security</h3>
+                    <p>Admin, Manager, and Cashier roles with settings locking, PIN authentication, and automatic lock screen.</p>
                     <ul class="feature-list">
-                        <li>User login and authentication</li>
-                        <li>Basic user accounts</li>
-                        <li>User session management</li>
-                        <li>Basic access control</li>
+                        <li>Admin, Manager, and Cashier roles</li>
+                        <li>PIN authentication for quick unlock</li>
+                        <li>Automatic lock screen after inactivity</li>
+                        <li>Settings locking by role</li>
+                        <li>Secure sessions and audit trails</li>
                     </ul>
                     <div class="feature-note">
-                        <strong>Note:</strong> Advanced user management features like role-based access control (Admin/Manager/Cashier), PIN authentication, automatic lock screen, and settings locking require the <strong>User Management Module</strong>.
+                        <strong>Note:</strong> The optional <strong>User Management Module</strong> adds extended controls for staff administration and permissions.
                     </div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-cloud"></i>
                     </div>
-                    <h3>Cloud-Based</h3>
-                    <p>Access your POS system from anywhere with secure cloud storage and automatic backups.</p>
+                    <h3>Local &amp; Multi-Location Ready</h3>
+                    <p>Your sales and inventory stay on your machine — not a vendor cloud. Scale from one shop to many with separate data per store.</p>
                     <ul class="feature-list">
-                        <li>Access from anywhere</li>
-                        <li>Automatic backups</li>
-                        <li>Secure cloud storage</li>
-                        <li>Multi-device support</li>
+                        <li>Local data ownership on your Windows PC</li>
+                        <li>No internet dependency for daily operations</li>
+                        <li>Multi-location ready — separate data per store</li>
+                        <li>Responsive design for desktop, tablet, and mobile</li>
+                        <li>Live demo available — one click to try the full system</li>
                     </ul>
                 </div>
             </div>
@@ -1102,16 +1121,15 @@
                 <div class="interface-content">
                     <div class="interface-text">
                         <h3>Inventory Management</h3>
-                        <p>Core inventory functionality with product management and stock tracking. Manage your product catalog and monitor stock levels in real-time.</p>
+                        <p>Product catalog with images, categories, barcodes, and pricing — plus valuation, adjustments, purchase orders, and low-stock alerts.</p>
                         <ul class="interface-features">
-                            <li>Product catalog management</li>
-                            <li>Real-time stock tracking and updates</li>
-                            <li>Automatic stock updates from sales</li>
-                            <li>Basic inventory reporting</li>
+                            <li>Product catalog with images, categories, barcodes, and pricing</li>
+                            <li>Inventory Valuation Report — cost, profit, and margin</li>
+                            <li>Stock Adjustments with reason codes and audit trail</li>
+                            <li>Purchase Orders with multi-supplier interface</li>
+                            <li>Low Stock Alerts</li>
+                            <li>Inventory History — complete movement log</li>
                         </ul>
-                        <div class="feature-note" style="margin-top: 24px;">
-                            <strong>Note:</strong> Advanced inventory features like inventory valuation, stock adjustments, purchase orders, inventory history, and low stock alerts are included in the base system.
-                        </div>
                     </div>
                 </div>
                 <div class="interface-image">
@@ -1378,13 +1396,13 @@
         <div class="container">
             <div class="cta-content">
                 <h2>Ready to Transform Your Business?</h2>
-                <p>Get started with Computer Dynamics Cloud POS today and experience the difference that local expertise makes.</p>
+                <p>Click Try Live Demo to explore checkout, inventory, reports, and settings — or contact us to get started.</p>
                 <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                    <a href="http://190.213.252.119:3000" class="btn-white" target="_blank">
+                    <a href="http://190.213.252.119:3000" class="btn-white" target="_blank" rel="noopener noreferrer" data-cd-link-slot="pos-system-learn-more/access-pos">
                         <i class="fas fa-sign-in-alt"></i> Access POS System
                     </a>
-                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn-white" target="_blank" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);">
-                        <i class="fab fa-whatsapp"></i> Request a Quote
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn-white" target="_blank" rel="noopener noreferrer" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);">
+                        <i class="fab fa-whatsapp"></i> Get Quote
                     </a>
                 </div>
             </div>
@@ -1423,11 +1441,14 @@
             }
         });
 
-        // Smooth scrolling for navigation links
+        // Smooth scrolling for navigation links (defensive: only handle true hash anchors)
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
+                const href = this.getAttribute('href') || '';
+                if (!href || href.charAt(0) !== '#') return;
+                const id = href.slice(1);
+                const target = id ? document.getElementById(id) : null;
                 if (target) {
                     target.scrollIntoView({
                         behavior: 'smooth',
@@ -1438,15 +1459,17 @@
         });
     </script>
     <script src="/js/public-captcha.js"></script>
+    <script src="/js/marketing-link-guard.js"></script>
     <script src="/js/public-phone-input.js"></script>
     <script src="/js/public-demo-request.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            CDDemoRequest.init({ product: 'Cloud POS System' });
+            CDDemoRequest.init({ product: 'POS System' });
         });
     </script>
-    <script src="/js/multiserver-demos.js" defer></script>
     <script src="/js/marketing-image-editor.js?v=20260721b" defer></script>
+    <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
+    <script src="/js/marketing-link-editor.js?v=20260818c" defer></script>
 </body>
 </html>
 

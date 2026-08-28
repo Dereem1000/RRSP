@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation';
-import { Client } from '@/lib/db';
+import { Client, User } from '@/lib/db';
+import type { Client as ClientModel } from '@cd-v2/database';
 import { getClientLicenseSnapshot } from '@/lib/license-service';
 import { resolveClientActivationFeatures } from '@/lib/clients';
 import {
   getRrspModules,
   normalizeServicePlanData,
   RRSP_HREF_TO_MODULE,
+  RRSP_MODULE_HREF,
   type RrspModule,
 } from '@/lib/rrsp';
 import {
@@ -13,6 +15,13 @@ import {
   isRrspContactComplete,
   type RrspContactField,
 } from '@/lib/rrsp-contact';
+import {
+  filterStaffModules,
+  getPortalDisplayRole,
+  parseRrspShopStaffPreferences,
+  parseRrspShopStaffSettings,
+  type RrspShopStaffSettings,
+} from '@/lib/rrsp-shop-staff';
 
 export type ClientRrspAccess = {
   /** MSP client has the `rrsp` activation feature selected (or license-inferred). */
@@ -27,6 +36,13 @@ export type ClientRrspAccess = {
   missingContactFields: RrspContactField[];
   /** RRSP license is usable except contact details are incomplete — prompt on login. */
   needsContact: boolean;
+  /** Primary RRSP shop account (MSP client portal user). */
+  isShopOwner?: boolean;
+  /** Shop staff sub-account — RRSP pages only. */
+  isShopStaff?: boolean;
+  staffRoleLabel?: string | null;
+  portalDisplayRole?: string;
+  staffSettings?: RrspShopStaffSettings | null;
 };
 
 function emptyAccess(overrides?: Partial<ClientRrspAccess>): ClientRrspAccess {
@@ -43,14 +59,26 @@ function emptyAccess(overrides?: Partial<ClientRrspAccess>): ClientRrspAccess {
   };
 }
 
-export async function getClientRrspAccess(userId: number): Promise<ClientRrspAccess> {
-  const client = await Client.findOne({
-    where: { userId },
-    attributes: ['id', 'features', 'servicePlanData', 'name', 'companyName', 'email', 'phone', 'address'],
-  });
-  if (!client) {
-    return emptyAccess();
+async function buildMspClientRrspAccess(
+  client: {
+    id: string;
+    features: unknown;
+    servicePlanData: unknown;
+    name: string;
+    companyName?: string | null;
+    email: string;
+    phone?: string | null;
+    address?: string | null;
+    update: (values: Record<string, unknown>) => Promise<unknown>;
+  },
+  options?: {
+    isShopOwner?: boolean;
+    isShopStaff?: boolean;
+    staffRoleLabel?: string | null;
+    staffModules?: RrspModule[];
+    staffSettings?: RrspShopStaffSettings | null;
   }
+): Promise<ClientRrspAccess> {
 
   const missingContactFields = getMissingRrspContactFields({
     email: client.email,
@@ -64,7 +92,7 @@ export async function getClientRrspAccess(userId: number): Promise<ClientRrspAcc
   });
 
   // Persist license-inferred features (e.g. RRSP license → `rrsp` on MSP client).
-  const resolvedFeatures = await resolveClientActivationFeatures(client);
+  const resolvedFeatures = await resolveClientActivationFeatures(client as ClientModel);
   const storedFeatures = Array.isArray(client.features) ? client.features : [];
   if (JSON.stringify(resolvedFeatures) !== JSON.stringify(storedFeatures)) {
     await client.update({ features: resolvedFeatures });
@@ -77,9 +105,21 @@ export async function getClientRrspAccess(userId: number): Promise<ClientRrspAcc
     await client.update({ servicePlanData: plan });
   }
 
-  const modules = Object.entries(getRrspModules(plan))
+  const licensedModules = Object.entries(getRrspModules(plan))
     .filter(([, on]) => on)
     .map(([key]) => key as RrspModule);
+
+  const modules =
+    options?.isShopStaff && options.staffModules
+      ? filterStaffModules(licensedModules, options.staffModules)
+      : licensedModules;
+
+  const portalDisplayRole = getPortalDisplayRole({
+    role: 'client',
+    isShopOwner: options?.isShopOwner,
+    isShopStaff: options?.isShopStaff,
+    staffRoleLabel: options?.staffRoleLabel,
+  });
 
   if (!featureEnabled) {
     return emptyAccess({
@@ -87,6 +127,11 @@ export async function getClientRrspAccess(userId: number): Promise<ClientRrspAcc
       mspClientId: client.id,
       contactComplete,
       missingContactFields,
+      isShopOwner: options?.isShopOwner,
+      isShopStaff: options?.isShopStaff,
+      staffRoleLabel: options?.staffRoleLabel,
+      portalDisplayRole,
+      staffSettings: options?.staffSettings ?? null,
     });
   }
 
@@ -102,22 +147,74 @@ export async function getClientRrspAccess(userId: number): Promise<ClientRrspAcc
       licenseActive: false,
       contactComplete,
       missingContactFields,
+      isShopOwner: options?.isShopOwner,
+      isShopStaff: options?.isShopStaff,
+      staffRoleLabel: options?.staffRoleLabel,
+      portalDisplayRole,
+      staffSettings: options?.staffSettings ?? null,
     });
   }
 
-  const needsContact = !contactComplete;
+  const needsContact = !contactComplete && !options?.isShopStaff;
 
   return {
     featureEnabled: true,
-    // Incomplete contact blocks RRSP features until filled.
-    enabled: contactComplete,
+    // Incomplete contact blocks RRSP features until filled (shop owner only).
+    enabled: options?.isShopStaff ? modules.length > 0 : contactComplete,
     mspClientId: client.id,
     modules,
     licenseActive: true,
     contactComplete,
     missingContactFields,
     needsContact,
+    isShopOwner: options?.isShopOwner,
+    isShopStaff: options?.isShopStaff,
+    staffRoleLabel: options?.staffRoleLabel,
+    portalDisplayRole,
+    staffSettings: options?.staffSettings ?? null,
   };
+}
+
+export async function getClientRrspAccess(userId: number): Promise<ClientRrspAccess> {
+  const user = await User.findByPk(userId, { attributes: ['id', 'role', 'preferences'] });
+  const staffPref = user ? parseRrspShopStaffPreferences(user.preferences) : null;
+
+  if (staffPref) {
+    const client = await Client.findByPk(staffPref.mspClientId, {
+      attributes: [
+        'id',
+        'features',
+        'servicePlanData',
+        'name',
+        'companyName',
+        'email',
+        'phone',
+        'address',
+      ],
+    });
+    if (!client) return emptyAccess();
+    const staffSettings = parseRrspShopStaffSettings(client.servicePlanData, client);
+    return buildMspClientRrspAccess(client, {
+      isShopStaff: true,
+      staffRoleLabel: staffPref.roleLabel,
+      staffModules: staffPref.modules,
+      staffSettings,
+    });
+  }
+
+  const client = await Client.findOne({
+    where: { userId },
+    attributes: ['id', 'features', 'servicePlanData', 'name', 'companyName', 'email', 'phone', 'address'],
+  });
+  if (!client) {
+    return emptyAccess();
+  }
+
+  const staffSettings = parseRrspShopStaffSettings(client.servicePlanData, client);
+  return buildMspClientRrspAccess(client, {
+    isShopOwner: true,
+    staffSettings,
+  });
 }
 
 export async function clientHasRrspModule(userId: number, module: RrspModule): Promise<boolean> {
@@ -125,22 +222,26 @@ export async function clientHasRrspModule(userId: number, module: RrspModule): P
   return access.enabled && access.modules.includes(module);
 }
 
-/** Staff always pass. Client users need RRSP license + module toggle (RRSP routes only). */
+/** CD staff redirect away. Shop owner/staff need RRSP license + module access. */
 export async function requireRrspModule(
   user: { id: number; role: string },
   module: RrspModule
 ): Promise<{ mspClientId: string | null; rrsp: boolean }> {
   if (user.role !== 'client') {
-    // Staff do not use /rrsp/* shop DBs in this phase.
     redirect('/dashboard');
   }
 
   const access = await getClientRrspAccess(user.id);
   if (!access.enabled || !access.mspClientId || !access.modules.includes(module)) {
-    redirect('/dashboard');
+    redirect(access.isShopStaff ? firstRrspModuleHref(access.modules) : '/dashboard');
   }
 
   return { mspClientId: access.mspClientId, rrsp: true };
+}
+
+export function firstRrspModuleHref(modules: RrspModule[]): string {
+  if (modules.length > 0) return '/rrsp';
+  return '/rrsp/tickets';
 }
 
 export function rrspModuleForPathname(pathname: string | null): RrspModule | null {

@@ -3,7 +3,7 @@ import { Op, QueryTypes } from 'sequelize';
 import { Client as MspClient } from '@cd-v2/database';
 import { SERVICE_LEVELS } from '@/lib/client-constants';
 import { ensureInvoiceLinksTable } from '@/lib/accounting-schema';
-import { getOperationalSequelize as getSequelize } from '@/lib/rrsp-db';
+import { getOperationalSequelize as getSequelize, isRrspDbActive } from '@/lib/rrsp-db';
 
 export type InvoiceRow = {
   id: string;
@@ -369,19 +369,19 @@ export async function getAccountingSummary(): Promise<AccountingSummary> {
 
   let totalRevenue = Math.round(Number(invoiceStats?.totalRevenue ?? 0) * 100) / 100;
 
-  // Parts catalog buyer invoices: only CD profit (markup + delivery) counts as revenue —
-  // not platform stock cost and not amounts remitted to external sellers.
-  try {
-    const {
-      backfillPartsPackageCdRevenue,
-    } = await import('@/lib/parts-seller-payables');
-    await backfillPartsPackageCdRevenue();
+  // Parts catalog buyer invoices: MSP portal only (not RRSP shop DB).
+  if (!isRrspDbActive()) {
+    try {
+      const {
+        backfillPartsPackageCdRevenue,
+      } = await import('@/lib/parts-seller-payables');
+      await backfillPartsPackageCdRevenue();
 
-    const [partsAdj] = await sequelize.query<{
-      partsInvoiceTotal: number;
-      partsCdRevenue: number;
-    }>(
-      `
+      const [partsAdj] = await sequelize.query<{
+        partsInvoiceTotal: number;
+        partsCdRevenue: number;
+      }>(
+        `
         SELECT
           COALESCE(SUM(i.amount), 0) AS partsInvoiceTotal,
           COALESCE(SUM(COALESCE(p.cdRevenueAmount, 0)), 0) AS partsCdRevenue
@@ -391,16 +391,17 @@ export async function getAccountingSummary(): Promise<AccountingSummary> {
           AND TRIM(p.invoiceId) != ''
           AND i.status = 'paid'
       `,
-      { type: QueryTypes.SELECT }
-    );
+        { type: QueryTypes.SELECT }
+      );
 
-    const partsInvoiceTotal = Number(partsAdj?.partsInvoiceTotal ?? 0);
-    const partsCdRevenue = Number(partsAdj?.partsCdRevenue ?? 0);
-    if (partsInvoiceTotal > 0 || partsCdRevenue > 0) {
-      totalRevenue = Math.round((totalRevenue - partsInvoiceTotal + partsCdRevenue) * 100) / 100;
+      const partsInvoiceTotal = Number(partsAdj?.partsInvoiceTotal ?? 0);
+      const partsCdRevenue = Number(partsAdj?.partsCdRevenue ?? 0);
+      if (partsInvoiceTotal > 0 || partsCdRevenue > 0) {
+        totalRevenue = Math.round((totalRevenue - partsInvoiceTotal + partsCdRevenue) * 100) / 100;
+      }
+    } catch (error) {
+      console.error('Failed to adjust parts catalog revenue in accounting summary', error);
     }
-  } catch (error) {
-    console.error('Failed to adjust parts catalog revenue in accounting summary', error);
   }
 
   return {

@@ -11,10 +11,11 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { createBackupJob } from '@cd-v2/backup';
+import { createBackupJob, VALID_BACKUP_TYPES } from '@cd-v2/backup';
 import type { BackupType } from '@cd-v2/database';
-import { authErrorResponse, requireBackupAdmin } from '@web/lib/backup-api';
-import { requireBackupAdmin, requireCls1ForFullRestore } from '../../backup-helpers';
+import { requireBackupAdmin } from '../../backup-helpers';
+
+const VALID = VALID_BACKUP_TYPES;
 
 
 function searchParamsFrom(ctx: ApiContext): URLSearchParams {
@@ -32,7 +33,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     await requireBackupAdmin(ctx);
     const body = ctx.body as Record<string, unknown>;
-    const backupType = (body.backupType ?? 'full') as BackupType;
+    const backupType = (body.backupType ?? 'standard') as BackupType;
     if (!VALID.includes(backupType as (typeof VALID)[number])) {
       return { status: 400, body: { success: false, message: 'Invalid backup type' } };
     }

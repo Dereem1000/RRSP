@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { FileText, Package, Receipt, Ticket } from 'lucide-react';
 
+/** CD MSP client quick actions — staff only. Shop customers use RrspShopCustomerActions. */
 export function ClientQuickActions({
   clientId,
   userRole,

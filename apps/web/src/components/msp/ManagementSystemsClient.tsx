@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, Fragment } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Boxes,
@@ -11,6 +12,7 @@ import {
   Clock,
   Loader2,
   RefreshCw,
+  Settings,
   Users,
   XCircle,
 } from 'lucide-react';
@@ -26,6 +28,10 @@ import {
   useLicenseSerialReveal,
 } from '@/components/licenses/LicenseSerialUnlockPanel';
 import type { ActivationFeature } from '@/lib/license-constants';
+import type { ProductCatalog } from '@/lib/management-system-product-config';
+import { ProductConfigModal } from '@/components/msp/ProductConfigModal';
+import { DeliverableEditorModal } from '@/components/msp/DeliverableEditorModal';
+import { ProvisionRowActions } from '@/components/msp/ProvisionRowActions';
 
 export const ALL_CLIENTS_VIEW = '__all_clients__' as const;
 export type ManagementSystemsView = ActivationFeature | typeof ALL_CLIENTS_VIEW;
@@ -138,10 +144,16 @@ function ClientTable({
   system,
   scrollable = false,
   serialsRevealed = false,
+  productCatalog,
+  onOpenDeliverable,
+  highlightClientId = '',
 }: {
   system: ManagementSystemOverview;
   scrollable?: boolean;
   serialsRevealed?: boolean;
+  productCatalog: ProductCatalog;
+  onOpenDeliverable: (clientId: string, clientName: string, feature: ActivationFeature) => void;
+  highlightClientId?: string;
 }) {
   if (system.clients.length === 0) {
     return (
@@ -178,7 +190,14 @@ function ClientTable({
       </thead>
       <tbody className="divide-y divide-slate-100 bg-white">
         {system.clients.map((row) => (
-          <tr key={row.clientId} className="hover:bg-slate-50/80">
+          <tr
+            key={row.clientId}
+            className={`hover:bg-slate-50/80 ${
+              highlightClientId && row.clientId === highlightClientId
+                ? 'bg-indigo-50/60 ring-1 ring-inset ring-indigo-200'
+                : ''
+            }`}
+          >
             <td className="px-4 py-3">
               <Link
                 href={`/clients/${row.clientId}`}
@@ -210,12 +229,22 @@ function ClientTable({
             </td>
             <td className="px-4 py-3 text-slate-600">{formatDate(row.expirationDate)}</td>
             <td className="px-4 py-3 text-right">
-              <Link
-                href={`/clients/${row.clientId}/licenses`}
-                className="text-xs font-medium text-indigo-600 hover:underline"
-              >
-                Licenses
-              </Link>
+              <ProvisionRowActions
+                clientId={row.clientId}
+                clientName={row.clientName}
+                feature={system.feature}
+                projectRoot={productCatalog[system.feature]?.projectRoot || ''}
+                provisionStatus={row.provisionStatus}
+                installStatus={row.installStatus}
+                deliverableStatus={row.deliverableStatus}
+                provisionRunId={row.provisionRunId}
+                installRunId={row.installRunId}
+                provisionAt={row.provisionAt}
+                installAt={row.installAt}
+                onOpenDeliverable={() =>
+                  onOpenDeliverable(row.clientId, row.clientName, system.feature)
+                }
+              />
             </td>
           </tr>
         ))}
@@ -246,10 +275,14 @@ function GroupedClientTable({
   clients,
   scrollable = false,
   serialsRevealed = false,
+  productCatalog,
+  onOpenDeliverable,
 }: {
   clients: GroupedManagementClient[];
   scrollable?: boolean;
   serialsRevealed?: boolean;
+  productCatalog: ProductCatalog;
+  onOpenDeliverable: (clientId: string, clientName: string, feature: ActivationFeature) => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -377,13 +410,36 @@ function GroupedClientTable({
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/clients/${client.clientId}/licenses`}
-                    className="text-xs font-medium text-indigo-600 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Licenses
-                  </Link>
+                  {multi ? (
+                    <Link
+                      href={`/clients/${client.clientId}/licenses`}
+                      className="text-xs font-medium text-indigo-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Licenses
+                    </Link>
+                  ) : (
+                    <ProvisionRowActions
+                      clientId={client.clientId}
+                      clientName={client.clientName}
+                      feature={client.systems[0]!.feature}
+                      projectRoot={productCatalog[client.systems[0]!.feature]?.projectRoot || ''}
+                      provisionStatus={client.systems[0]?.provisionStatus}
+                      installStatus={client.systems[0]?.installStatus}
+                      deliverableStatus={client.systems[0]?.deliverableStatus}
+                      provisionRunId={client.systems[0]?.provisionRunId}
+                      installRunId={client.systems[0]?.installRunId}
+                      provisionAt={client.systems[0]?.provisionAt}
+                      installAt={client.systems[0]?.installAt}
+                      onOpenDeliverable={() =>
+                        onOpenDeliverable(
+                          client.clientId,
+                          client.clientName,
+                          client.systems[0]!.feature
+                        )
+                      }
+                    />
+                  )}
                 </td>
               </tr>
               {multi &&
@@ -410,9 +466,7 @@ function GroupedClientTable({
                       {system.licenseType && (
                         <p className="mt-0.5 text-xs text-slate-400">{system.licenseType}</p>
                       )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <p className="font-mono text-xs text-slate-600">
+                      <p className="mt-1 font-mono text-xs text-slate-500">
                         {displaySerial(
                           system.serialNumber,
                           serialsRevealed,
@@ -422,6 +476,24 @@ function GroupedClientTable({
                       <p className="text-xs text-slate-500">
                         Expires {formatDate(system.expirationDate)}
                       </p>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <ProvisionRowActions
+                        clientId={client.clientId}
+                        clientName={client.clientName}
+                        feature={system.feature}
+                        projectRoot={productCatalog[system.feature]?.projectRoot || ''}
+                        provisionStatus={system.provisionStatus}
+                        installStatus={system.installStatus}
+                        deliverableStatus={system.deliverableStatus}
+                        provisionRunId={system.provisionRunId}
+                        installRunId={system.installRunId}
+                        provisionAt={system.provisionAt}
+                        installAt={system.installAt}
+                        onOpenDeliverable={() =>
+                          onOpenDeliverable(client.clientId, client.clientName, system.feature)
+                        }
+                      />
                     </td>
                   </tr>
                 ))}
@@ -479,22 +551,44 @@ function AllClientsCard({
 }
 
 export function ManagementSystemsClient() {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<ManagementSystemsOverviewData | null>(null);
+  const [productCatalog, setProductCatalog] = useState<ProductCatalog>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedFeature, setSelectedFeature] = useState<ManagementSystemsView | null>(null);
+  const [configFeature, setConfigFeature] = useState<ActivationFeature | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [deliverableTarget, setDeliverableTarget] = useState<{
+    clientId: string;
+    clientName: string;
+    feature: ActivationFeature;
+  } | null>(null);
   const serialReveal = useLicenseSerialReveal();
+
+  const loadCatalog = useCallback(async () => {
+    try {
+      const res = await fetch('/api/msp/management-systems/product-config', { credentials: 'include' });
+      const json = await res.json();
+      if (res.ok && json.success) setProductCatalog(json.catalog || {});
+    } catch {
+      // non-fatal
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/msp/management-systems', {
-        headers: serialReveal.authHeaders(),
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || 'Failed to load management systems');
+      const [systemsRes] = await Promise.all([
+        fetch('/api/msp/management-systems', {
+          headers: serialReveal.authHeaders(),
+          credentials: 'include',
+        }),
+        loadCatalog(),
+      ]);
+      const json = await systemsRes.json();
+      if (!systemsRes.ok) throw new Error(json.message || 'Failed to load management systems');
       setData(json.overview);
       serialReveal.applyRevealResponse(json.serialsRevealed);
       setSelectedFeature((prev) => {
@@ -509,11 +603,19 @@ export function ManagementSystemsClient() {
     } finally {
       setLoading(false);
     }
-  }, [serialReveal.authHeaders, serialReveal.applyRevealResponse]);
+  }, [serialReveal.authHeaders, serialReveal.applyRevealResponse, loadCatalog]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const featureParam = searchParams?.get('feature')?.trim();
+    if (!featureParam || featureParam === ALL_CLIENTS_VIEW) return;
+    setSelectedFeature(featureParam as ActivationFeature);
+  }, [searchParams]);
+
+  const highlightClientId = searchParams?.get('highlight')?.trim() || '';
 
   async function handleUnlock(password: string) {
     const ok = await serialReveal.unlock(password);
@@ -537,6 +639,18 @@ export function ManagementSystemsClient() {
     () => (data ? buildGroupedManagementClients(data.systems) : []),
     [data]
   );
+
+  const openDeliverable = useCallback(
+    (clientId: string, clientName: string, feature: ActivationFeature) => {
+      setDeliverableTarget({ clientId, clientName, feature });
+    },
+    []
+  );
+
+  const openProductConfig = useCallback((feature: ActivationFeature | null) => {
+    setConfigFeature(feature);
+    setConfigOpen(true);
+  }, []);
 
   if (loading && !data) {
     return (
@@ -681,6 +795,8 @@ export function ManagementSystemsClient() {
                   clients={groupedClients}
                   scrollable
                   serialsRevealed={serialReveal.revealed}
+                  productCatalog={productCatalog}
+                  onOpenDeliverable={openDeliverable}
                 />
               </div>
             </>
@@ -692,7 +808,17 @@ export function ManagementSystemsClient() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
                     {selectedSystem.productCode}
                   </p>
-                  <h2 className="text-lg font-semibold text-slate-900">{selectedSystem.title}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-slate-900">{selectedSystem.title}</h2>
+                    <button
+                      type="button"
+                      onClick={() => openProductConfig(selectedSystem.feature)}
+                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"
+                      title="Product provisioning settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
+                  </div>
                   <p className="mt-1 text-sm text-slate-500">{selectedSystem.description}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
@@ -724,6 +850,9 @@ export function ManagementSystemsClient() {
                   system={selectedSystem}
                   scrollable
                   serialsRevealed={serialReveal.revealed}
+                  productCatalog={productCatalog}
+                  onOpenDeliverable={openDeliverable}
+                  highlightClientId={highlightClientId}
                 />
               </div>
             </>
@@ -733,6 +862,25 @@ export function ManagementSystemsClient() {
           </div>
         </section>
       </div>
+
+      <ProductConfigModal
+        feature={configFeature}
+        open={configOpen}
+        onClose={() => {
+          setConfigOpen(false);
+          void loadCatalog();
+        }}
+      />
+      {deliverableTarget && (
+        <DeliverableEditorModal
+          clientId={deliverableTarget.clientId}
+          clientName={deliverableTarget.clientName}
+          feature={deliverableTarget.feature}
+          open
+          onClose={() => setDeliverableTarget(null)}
+          onSaved={() => void load()}
+        />
+      )}
     </div>
   );
 }

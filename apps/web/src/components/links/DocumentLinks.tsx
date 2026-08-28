@@ -68,10 +68,10 @@ export function QuoteLink({
   );
 }
 
-export function OrderLink({ id, label, className }: LinkProps) {
+export function OrderLink({ id, label, className, pathPrefix = '' }: LinkProps) {
   if (!id) return <span className={className}>{label}</span>;
   return (
-    <Link href={`/orders?order=${id}`} className={className ?? monoLinkClass}>
+    <Link href={`${pathPrefix}/orders?order=${id}`} className={className ?? monoLinkClass}>
       {label}
     </Link>
   );

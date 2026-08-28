@@ -17,6 +17,7 @@ import {
 } from '@web/lib/rrsp-branding';
 import { sendEmailWithConfigDetailed } from '@web/lib/email';
 import { isRrspShopDemoActive, setRrspShopDemoMode } from '@web/lib/rrsp-demo';
+import { saveRrspStaffLoginSettings, getRrspShopStaffSettingsForClient } from '@web/lib/rrsp-shop-staff';
 
 async function requireRrspLicensedClient(ctx: ApiContext) {
   const session = requireSession(ctx);
@@ -41,6 +42,16 @@ async function requireRrspLicensedClient(ctx: ApiContext) {
       access: null,
     };
   }
+  if (access.isShopStaff) {
+    return {
+      error: {
+        status: 403,
+        body: { success: false, message: 'Shop staff cannot manage shop settings' },
+      } as ApiResult,
+      session: null,
+      access: null,
+    };
+  }
   return { error: null, session, access };
 }
 
@@ -50,7 +61,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
     if (gate.error) return gate.error;
 
     const mspClientId = gate.access!.mspClientId!;
-    const [branding, email, demoMode] = await Promise.all([
+    const [branding, email, demoMode, staffSettings] = await Promise.all([
       getRrspBrandingForClient(mspClientId),
       getRrspEmailSettingsForClient(mspClientId),
       isRrspShopDemoActive(mspClientId),
@@ -64,6 +75,9 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
         email: email ? maskRrspEmailSettings(email) : null,
         emailReady: email ? rrspEmailIsReady(email) : false,
         demoMode,
+        staffLoginEnabled: gate.access!.staffSettings?.staffLoginEnabled ?? false,
+        shopLoginSlug: gate.access!.staffSettings?.shopLoginSlug ?? '',
+        isShopOwner: !gate.access!.isShopStaff,
       },
     };
   } catch (error) {
@@ -77,7 +91,14 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
     if (gate.error) return gate.error;
 
     const body = (ctx.body ?? {}) as Record<string, unknown>;
-    const section = String(body.section ?? '').trim();
+    let section = String(body.section ?? '').trim().toLowerCase();
+    if (!section) {
+      if (body.branding && typeof body.branding === 'object') section = 'business';
+      else if (body.staffLoginEnabled !== undefined) section = 'stafflogin';
+      else if (body.email && typeof body.email === 'object') section = 'email';
+      else if (body.demoMode !== undefined) section = 'demo';
+    }
+    if (section === 'stafflogin') section = 'staffLogin';
     const mspClientId = gate.access!.mspClientId!;
 
     if (section === 'business') {
@@ -85,12 +106,30 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
         mspClientId,
         (body.branding ?? body) as Partial<RrspBranding>
       );
+      let staffSettings = await getRrspShopStaffSettingsForClient(mspClientId);
+      if (
+        body.staffLoginEnabled !== undefined ||
+        body.enabled !== undefined ||
+        body.shopLoginSlug !== undefined
+      ) {
+        staffSettings = await saveRrspStaffLoginSettings(mspClientId, {
+          staffLoginEnabled:
+            body.staffLoginEnabled !== undefined
+              ? Boolean(body.staffLoginEnabled)
+              : body.enabled !== undefined
+                ? Boolean(body.enabled)
+                : undefined,
+          shopLoginSlug: body.shopLoginSlug ? String(body.shopLoginSlug) : undefined,
+        });
+      }
       return {
         status: 200,
         body: {
           success: true,
           message: 'Business information saved',
           branding,
+          shopLoginSlug: staffSettings?.shopLoginSlug ?? '',
+          staffLoginEnabled: staffSettings?.staffLoginEnabled ?? false,
         },
       };
     }
@@ -107,6 +146,25 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
           message: 'Email settings saved',
           email: maskRrspEmailSettings(email),
           emailReady: rrspEmailIsReady(email),
+        },
+      };
+    }
+
+    if (section === 'staffLogin') {
+      const enabled = Boolean(body.enabled ?? body.staffLoginEnabled);
+      const settings = await saveRrspStaffLoginSettings(mspClientId, {
+        staffLoginEnabled: enabled,
+        shopLoginSlug: body.shopLoginSlug ? String(body.shopLoginSlug) : undefined,
+      });
+      return {
+        status: 200,
+        body: {
+          success: true,
+          message: enabled
+            ? 'Staff can now sign in with username@yourshop'
+            : 'Staff sign-in disabled',
+          staffLoginEnabled: settings.staffLoginEnabled,
+          shopLoginSlug: settings.shopLoginSlug,
         },
       };
     }
@@ -128,7 +186,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 
     return {
       status: 400,
-      body: { success: false, message: 'section must be "business", "email", or "demo"' },
+      body: { success: false, message: 'section must be "business", "email", "staffLogin", or "demo"' },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to save RRSP settings';

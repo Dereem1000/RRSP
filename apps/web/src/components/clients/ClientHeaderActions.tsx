@@ -9,6 +9,7 @@ import { useClientEmailPolicy } from '@/hooks/useClientEmailPolicy';
 const btnClass =
   'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-60';
 
+/** CD MSP client detail header — staff only on /clients/[id]. RRSP shop customers use RrspShopCustomerHeaderActions. */
 export function ClientHeaderActions({ role }: { role: string }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -64,26 +65,31 @@ export function ClientHeaderActions({ role }: { role: string }) {
     }
   }
 
-  if (!clientId || !isStaff) return null;
+  if (!isStaff || !clientId) return null;
+
+  const ticketHref = `/tickets?create=1&clientId=${clientId}`;
+  const orderHref = `/orders?create=1&clientId=${clientId}`;
+  const invoiceHref = `/accounting?create=invoice&clientId=${clientId}`;
+  const quoteHref = `/accounting?create=quote&clientId=${clientId}`;
 
   return (
     <div className="flex flex-col items-end gap-1.5">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Link href={`/tickets?create=1&clientId=${clientId}`} className={btnClass}>
+        <Link href={ticketHref} className={btnClass}>
           <Ticket className="h-3.5 w-3.5 text-indigo-600" />
           New ticket
         </Link>
-        <Link href={`/orders?create=1&clientId=${clientId}`} className={btnClass}>
+        <Link href={orderHref} className={btnClass}>
           <Package className="h-3.5 w-3.5 text-indigo-600" />
           New order
         </Link>
         {isAdmin && (
           <>
-            <Link href={`/accounting?create=invoice&clientId=${clientId}`} className={btnClass}>
+            <Link href={invoiceHref} className={btnClass}>
               <Receipt className="h-3.5 w-3.5 text-indigo-600" />
               New invoice
             </Link>
-            <Link href={`/accounting?create=quote&clientId=${clientId}`} className={btnClass}>
+            <Link href={quoteHref} className={btnClass}>
               <FileText className="h-3.5 w-3.5 text-indigo-600" />
               New quote
             </Link>

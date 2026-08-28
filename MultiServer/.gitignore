@@ -1,0 +1,25 @@
+# Instance-specific (never commit)
+config.json
+logs/
+deploy/Caddyfile
+demos-manifest.json
+demo-pages.json
+mini-integration.kit-version.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local demo platforms (large provision installs)
+Test platforms/
+
+# Built update zips and unpacked payloads (deploy/ has Mini layout)
+distributions/MultiServer-Update_*/
+distributions/*.zip
+MultiServer-Update_*/
+
+# IDE
+.cursor/
+.vscode/
