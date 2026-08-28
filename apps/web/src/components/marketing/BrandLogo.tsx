@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Monitor } from 'lucide-react';
+import { Monitor, Store } from 'lucide-react';
 
 type BrandLogoProps = {
   href?: string;
@@ -13,6 +13,8 @@ type BrandLogoProps = {
   /** Custom logo URL or data URL (RRSP shop branding). */
   src?: string | null;
   alt?: string;
+  /** When false and no custom src, show a neutral shop mark instead of CD logos. */
+  usePlatformFallback?: boolean;
 };
 
 const sizes = {
@@ -31,6 +33,7 @@ export function BrandLogo({
   size = 'md',
   src: customSrc = null,
   alt = 'Computer Dynamics Logo',
+  usePlatformFallback = true,
 }: BrandLogoProps) {
   const custom = Boolean(customSrc && String(customSrc).trim());
   const [src, setSrc] = useState(custom ? String(customSrc) : PLATFORM_FALLBACKS[0]);
@@ -42,14 +45,44 @@ export function BrandLogo({
     setSrc(custom ? String(customSrc) : PLATFORM_FALLBACKS[0]);
   }, [custom, customSrc]);
 
+  if (!custom && !usePlatformFallback) {
+    const neutral = (
+      <span className={`inline-flex items-center gap-2.5 ${className}`}>
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+          <Store className="h-5 w-5" aria-hidden />
+        </span>
+        {showText ? <span className="text-lg font-bold text-slate-900">{alt}</span> : null}
+      </span>
+    );
+    if (href) {
+      return (
+        <Link href={href} className="shrink-0">
+          {neutral}
+        </Link>
+      );
+    }
+    return neutral;
+  }
+
   const content = failed ? (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600/10">
-        <Monitor className="h-5 w-5 text-indigo-600" />
-      </span>
-      <span className="bg-gradient-to-r from-indigo-600 to-pink-500 bg-clip-text text-lg font-bold text-transparent">
-        Computer Dynamics
-      </span>
+      {usePlatformFallback ? (
+        <>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600/10">
+            <Monitor className="h-5 w-5 text-indigo-600" />
+          </span>
+          <span className="bg-gradient-to-r from-indigo-600 to-pink-500 bg-clip-text text-lg font-bold text-transparent">
+            Computer Dynamics
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+            <Store className="h-5 w-5" aria-hidden />
+          </span>
+          {showText ? <span className="text-lg font-bold text-slate-900">{alt}</span> : null}
+        </>
+      )}
     </span>
   ) : (
     <span className={`inline-flex items-center gap-3 ${className}`}>

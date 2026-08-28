@@ -60,6 +60,7 @@ export default async function PortalLayout({ children }: { children: React.React
               isShopOwner: rrspAccess.isShopOwner,
               isShopStaff: rrspAccess.isShopStaff,
               portalDisplayRole: rrspAccess.portalDisplayRole,
+              shopLoginSlug: rrspAccess.shopLoginSlug ?? null,
               shopLogoUrl: shopBranding?.logoUrl ?? null,
               shopLogoAlt: shopBranding?.companyName || 'Shop logo',
               hasCustomLogo: Boolean(shopBranding?.hasCustomLogo),

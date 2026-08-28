@@ -18,6 +18,7 @@ import { BrandLogo } from '@/components/marketing/BrandLogo';
 import { PortalPriceCalculator } from '@/components/portal/PortalPriceCalculator';
 import { usePriceCalculatorOpenListener } from '@/contexts/PriceCalculatorContext';
 import { getPortalNavForRole, getPortalNavLabel } from '@/lib/portal-nav';
+import { shopStaffLoginPath } from '@/lib/rrsp-shop-staff';
 
 const STORAGE_PINNED = 'cd_sidebar_pinned';
 const STORAGE_CALCULATOR = 'cd_sidebar_calculator_open';
@@ -143,6 +144,7 @@ export function PortalSidebar({
     isShopOwner?: boolean;
     isShopStaff?: boolean;
     portalDisplayRole?: string;
+    shopLoginSlug?: string | null;
   } | null;
   clientPlatformLicenses?: boolean;
   partsIncomingBadge?: number;
@@ -262,9 +264,16 @@ export function PortalSidebar({
 
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    router.push(shopStaffLoginPath(rrspAccess?.isShopStaff ? rrspAccess.shopLoginSlug : null));
     router.refresh();
   }
+
+  const portalSubtitle =
+    rrspAccess?.isShopStaff && shopLogoAlt && shopLogoAlt !== 'Shop logo'
+      ? shopLogoAlt
+      : rrspAccess?.isShopStaff
+        ? 'Shop portal'
+        : 'MSP Portal';
 
   return (
     <aside
@@ -286,6 +295,7 @@ export function PortalSidebar({
                 size="xl"
                 src={shopLogoUrl}
                 alt={shopLogoAlt || 'Portal logo'}
+                usePlatformFallback={!rrspAccess?.isShopStaff}
               />
               {onEditLogo ? (
                 <button
@@ -300,7 +310,7 @@ export function PortalSidebar({
               ) : null}
             </div>
             <div className="mt-1 flex items-center justify-between gap-2 px-1">
-              <p className="truncate text-xs font-medium text-cd-400">MSP Portal</p>
+              <p className="truncate text-xs font-medium text-cd-400">{portalSubtitle}</p>
               <div className="flex shrink-0 items-center gap-1">
                 {!calculatorOpen && (
                   <button

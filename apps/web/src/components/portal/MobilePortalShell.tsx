@@ -19,6 +19,7 @@ import {
   type PortalNavItem,
 } from '@/lib/portal-nav';
 import { usePriceCalculatorOpenListener } from '@/contexts/PriceCalculatorContext';
+import { shopStaffLoginPath } from '@/lib/rrsp-shop-staff';
 
 export function MobilePortalChrome({
   user,
@@ -40,6 +41,7 @@ export function MobilePortalChrome({
     isShopOwner?: boolean;
     isShopStaff?: boolean;
     portalDisplayRole?: string;
+    shopLoginSlug?: string | null;
   } | null;
   clientPlatformLicenses?: boolean;
   partsIncomingBadge?: number;
@@ -90,9 +92,9 @@ export function MobilePortalChrome({
 
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    router.push(shopStaffLoginPath(rrspAccess?.isShopStaff ? rrspAccess.shopLoginSlug : null));
     router.refresh();
-  }, [router]);
+  }, [router, rrspAccess?.isShopStaff, rrspAccess?.shopLoginSlug]);
 
   const isMoreActive = moreNav.some(
     (item) => pathname === item.href || (item.href !== '/' && pathname?.startsWith(`${item.href}/`)),
@@ -112,6 +114,7 @@ export function MobilePortalChrome({
                 size="sm"
                 src={shopLogoUrl}
                 alt={shopLogoAlt || 'Portal logo'}
+                usePlatformFallback={!rrspAccess?.isShopStaff}
               />
               {onEditLogo ? (
                 <button

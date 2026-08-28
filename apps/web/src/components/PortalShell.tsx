@@ -36,6 +36,7 @@ export type PortalRrspAccess = {
   isShopOwner?: boolean;
   isShopStaff?: boolean;
   portalDisplayRole?: string;
+  shopLoginSlug?: string | null;
 } | null;
 
 export function PortalShell({
@@ -77,6 +78,16 @@ export function PortalShell({
     setHasCustomLogo(Boolean(rrspAccess?.hasCustomLogo));
     setShopLogoAlt(rrspAccess?.shopLogoAlt || 'Shop logo');
   }, [rrspAccess?.shopLogoUrl, rrspAccess?.hasCustomLogo, rrspAccess?.shopLogoAlt]);
+
+  useEffect(() => {
+    if (!rrspAccess?.isShopStaff) return;
+    const title = shopLogoAlt && shopLogoAlt !== 'Shop logo' ? shopLogoAlt : 'Shop portal';
+    const previous = document.title;
+    document.title = title;
+    return () => {
+      document.title = previous;
+    };
+  }, [rrspAccess?.isShopStaff, shopLogoAlt]);
 
   const refreshMiniStatus = useCallback(async (): Promise<boolean> => {
     if (user.role !== 'admin') return true;
@@ -252,7 +263,10 @@ export function PortalShell({
         </div>
       </div>
 
-      <ComputerDynamicsCreditBadge visible={hasCustomLogo} className={creditBadgeClassName} />
+      <ComputerDynamicsCreditBadge
+        visible={hasCustomLogo || Boolean(rrspAccess?.isShopStaff)}
+        className={creditBadgeClassName}
+      />
 
       <AccountProfileModal
         open={profileOpen}

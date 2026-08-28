@@ -3,13 +3,20 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Loader2, ArrowLeft, ExternalLink, Store } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
 import { LoginCaptcha } from '@/components/LoginCaptcha';
 import { resolveReturnPath } from '@/lib/safe-return-url';
 
+export type ShopLoginBranding = {
+  companyName: string;
+  logoUrl: string | null;
+  shopLoginSlug: string;
+};
+
 type LoginFormProps = {
   demoPortalUrl?: string | null;
+  shopBranding?: ShopLoginBranding | null;
 };
 
 type DemoStaffHint = {
@@ -18,13 +25,14 @@ type DemoStaffHint = {
   modules: string;
 };
 
-export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
+export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const demoParam = searchParams?.get('demo')?.trim().toLowerCase() ?? '';
-  const autostart = searchParams?.get('autostart') === '1';
+  const isShopLogin = Boolean(shopBranding?.shopLoginSlug);
+  const demoParam = isShopLogin ? '' : searchParams?.get('demo')?.trim().toLowerCase() ?? '';
+  const autostart = !isShopLogin && searchParams?.get('autostart') === '1';
   const returnPath = resolveReturnPath(
-    searchParams?.get('returnUrl') ?? (demoParam === 'rrms' ? '/rrsp' : null)
+    searchParams?.get('returnUrl') ?? (isShopLogin || demoParam === 'rrms' ? '/rrsp' : null)
   );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -119,6 +127,102 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
     autostartAttempted.current = true;
     performLogin();
   }, [autostart, demoReady, demoParam, username, password, loading]);
+
+  useEffect(() => {
+    if (!isShopLogin || !shopBranding?.companyName) return;
+    const previous = document.title;
+    document.title = shopBranding.companyName;
+    return () => {
+      document.title = previous;
+    };
+  }, [isShopLogin, shopBranding?.companyName]);
+
+  if (isShopLogin && shopBranding) {
+    const loginHint = `username@${shopBranding.shopLoginSlug}`;
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5">
+          <div className="mb-8 flex flex-col items-center text-center">
+            {shopBranding.logoUrl ? (
+              <BrandLogo
+                href={undefined}
+                size="lg"
+                src={shopBranding.logoUrl}
+                alt={shopBranding.companyName}
+              />
+            ) : (
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700">
+                <Store className="h-7 w-7" aria-hidden />
+              </span>
+            )}
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
+              Sign in to {shopBranding.companyName}
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Staff sign-in — use your <span className="font-mono text-slate-700">{loginHint}</span>{' '}
+              credentials.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-slate-700">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                autoComplete="username"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={loginHint}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+
+            <LoginCaptcha onReady={handleCaptchaReady} />
+
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -221,7 +325,7 @@ export function LoginForm({ demoPortalUrl = null }: LoginFormProps) {
 
             <button
               type="submit"
-              disabled={loading || (demoParam && !demoReady)}
+              disabled={loading || (Boolean(demoParam) && !demoReady)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-cd-900 py-3 text-sm font-semibold text-white shadow-lg shadow-cd-900/20 transition hover:bg-cd-800 disabled:opacity-60"
             >
               {loading ? (

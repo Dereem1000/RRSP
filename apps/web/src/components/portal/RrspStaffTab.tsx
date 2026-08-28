@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Loader2, Plus, Save, Trash2, Users } from 'lucide-react';
 import { RRSP_MODULE_LABELS, RRSP_MODULES, type RrspModule } from '@/lib/rrsp';
+import { RrspStaffLoginUrl } from '@/components/portal/RrspStaffLoginUrl';
 
 type StaffMember = {
   id: number;
@@ -173,6 +174,10 @@ export function RrspStaffTab({
         Staff sign in with <span className="font-mono text-slate-700">{loginHint}</span>. They only
         see RRSP shop pages you allow — not Computer Dynamics billing, orders, or support tickets.
       </p>
+
+      {staffLoginEnabled && shopLoginSlug ? (
+        <RrspStaffLoginUrl shopLoginSlug={shopLoginSlug} />
+      ) : null}
 
       {!staffLoginEnabled && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

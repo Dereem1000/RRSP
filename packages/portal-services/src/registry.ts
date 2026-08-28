@@ -162,6 +162,7 @@ import { dispatch as dispatch_public_quote__token__print } from './handlers/publ
 import { dispatch as dispatch_public_request_technician } from './handlers/public/request-technician';
 import { dispatch as dispatch_public_showcase_portal } from './handlers/public/showcase-portal';
 import { dispatch as dispatch_public_demo_login } from './handlers/public/demo-login';
+import { dispatch as dispatch_public_rrsp_shop_login } from './handlers/public/rrsp-shop-login';
 import { dispatch as dispatch_public_ticket_status__identifier } from './handlers/public/ticket-status__identifier';
 import { dispatch as dispatch_sales_sales } from './handlers/sales/sales';
 import { dispatch as dispatch_sales_id } from './handlers/sales/id';
@@ -405,6 +406,7 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/public/request-technician', handler: dispatch_public_request_technician },
   { method: 'GET', pattern: '/public/showcase-portal', handler: dispatch_public_showcase_portal },
   { method: 'GET', pattern: '/public/demo-login', handler: dispatch_public_demo_login },
+  { method: 'GET', pattern: '/public/rrsp/shop-login', handler: dispatch_public_rrsp_shop_login },
   { method: 'GET', pattern: '/public/ticket-status/:identifier', handler: dispatch_public_ticket_status__identifier },
   { method: 'GET', pattern: '/sales', handler: dispatch_sales_sales },
   { method: 'POST', pattern: '/sales', handler: dispatch_sales_sales },

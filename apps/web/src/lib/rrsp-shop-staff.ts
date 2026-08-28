@@ -2,7 +2,44 @@ import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { Client, User } from '@cd-v2/database';
 import { normalizeServicePlanData, RRSP_MODULES, type RrspModule } from '@/lib/rrsp';
+import { getRrspPortalBranding } from '@/lib/rrsp-branding';
 import { parseRrspBranding } from '@/lib/rrsp-branding-shared';
+
+export type RrspShopLoginPublicInfo = {
+  companyName: string;
+  logoUrl: string | null;
+  hasCustomLogo: boolean;
+  staffLoginEnabled: boolean;
+  shopLoginSlug: string;
+};
+
+/** Public shop login page metadata — no internal IDs. */
+export async function getRrspShopLoginPublicInfo(
+  rawSlug: string
+): Promise<RrspShopLoginPublicInfo | null> {
+  const shopLoginSlug = normalizeRrspShopLoginSlug(rawSlug);
+  if (!shopLoginSlug) return null;
+
+  const mspClientId = await findMspClientIdByShopLoginSlug(shopLoginSlug);
+  if (!mspClientId) return null;
+
+  const settings = await getRrspShopStaffSettingsForClient(mspClientId);
+  if (!settings?.staffLoginEnabled) return null;
+
+  const branding = await getRrspPortalBranding(mspClientId);
+  return {
+    companyName: branding.companyName || shopLoginSlug,
+    logoUrl: branding.logoUrl,
+    hasCustomLogo: branding.hasCustomLogo,
+    staffLoginEnabled: true,
+    shopLoginSlug,
+  };
+}
+
+export function shopStaffLoginPath(slug: string | null | undefined): string {
+  const normalized = slug ? normalizeRrspShopLoginSlug(slug) : '';
+  return normalized ? `/login/shop/${encodeURIComponent(normalized)}` : '/login';
+}
 
 export const RRSP_SHOP_STAFF_PREF_KEY = 'rrspShopStaff';
 

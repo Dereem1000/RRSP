@@ -27,6 +27,7 @@ import {
   type RrspEmailSettings,
 } from '@/lib/rrsp-branding-shared';
 import { RrspStaffTab } from '@/components/portal/RrspStaffTab';
+import { RrspStaffLoginUrl } from '@/components/portal/RrspStaffLoginUrl';
 
 type ProfileUser = {
   id: number;
@@ -670,6 +671,10 @@ export function AccountProfileModal({
                 </label>
               </div>
             </div>
+
+            {staffLoginEnabled && shopLoginSlug ? (
+              <RrspStaffLoginUrl shopLoginSlug={shopLoginSlug} />
+            ) : null}
 
             <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3">
               <div className="flex items-start justify-between gap-3">

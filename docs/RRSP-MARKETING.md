@@ -231,6 +231,12 @@ A profile prompt on login blocks shop features until complete (staff accounts ar
 
 ---
 
+## For operators
+
+See **[RRMS Visibility Tiers](./RRMS-VISIBILITY.md)** for the full user hierarchy, staff login URLs, and who sees CD vs shop branding.
+
+---
+
 ## Calls to action
 
 - **Get started:** Request RRMS portal activation for your repair shop.

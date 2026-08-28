@@ -43,6 +43,8 @@ export type ClientRrspAccess = {
   staffRoleLabel?: string | null;
   portalDisplayRole?: string;
   staffSettings?: RrspShopStaffSettings | null;
+  /** Shop staff login slug (`user@slug`) — for branded logout/login URLs. */
+  shopLoginSlug?: string | null;
 };
 
 function emptyAccess(overrides?: Partial<ClientRrspAccess>): ClientRrspAccess {
@@ -120,6 +122,7 @@ async function buildMspClientRrspAccess(
     isShopStaff: options?.isShopStaff,
     staffRoleLabel: options?.staffRoleLabel,
   });
+  const shopLoginSlug = options?.staffSettings?.shopLoginSlug ?? null;
 
   if (!featureEnabled) {
     return emptyAccess({
@@ -132,6 +135,7 @@ async function buildMspClientRrspAccess(
       staffRoleLabel: options?.staffRoleLabel,
       portalDisplayRole,
       staffSettings: options?.staffSettings ?? null,
+      shopLoginSlug,
     });
   }
 
@@ -152,6 +156,7 @@ async function buildMspClientRrspAccess(
       staffRoleLabel: options?.staffRoleLabel,
       portalDisplayRole,
       staffSettings: options?.staffSettings ?? null,
+      shopLoginSlug,
     });
   }
 
@@ -172,6 +177,7 @@ async function buildMspClientRrspAccess(
     staffRoleLabel: options?.staffRoleLabel,
     portalDisplayRole,
     staffSettings: options?.staffSettings ?? null,
+    shopLoginSlug,
   };
 }
 
