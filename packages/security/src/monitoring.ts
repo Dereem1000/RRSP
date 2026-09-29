@@ -8,6 +8,7 @@ import {
 } from './config-keys';
 import { isEmergencyBypassActive, refreshEmergencyState } from './emergency';
 import { runActivityMonitor } from './activity-monitor';
+import { runDataLeakBurstMonitor } from './data-leak-guard';
 import {
   checkFileIntegrity,
   getExistingProtectedPaths,
@@ -22,7 +23,11 @@ import { eventCreatedAt, ORDER_BY_CREATED_DESC, whereCreatedSince } from './sequ
 import { isMasterAuthCodeConfigured } from './auth';
 import { computeSecurityScore, getFeatureSnapshot } from './features';
 import { runIntrusionPatternScan } from './intrusion-scan';
-import { attemptFileRepairFromBackup } from './file-repair';
+import {
+  attemptFileRepairFromBackup,
+  isPackageManifestPath,
+  rebaselineProtectedFile,
+} from './file-repair';
 
 import type { ThreatLevel, WorkerHealth } from './types';
 export type { ThreatLevel, WorkerHealth } from './types';
@@ -161,7 +166,20 @@ export async function runFileIntegrityPass(
         description: `Protected file changed: ${result.relativePath} (${result.reason})`,
         details: { relativePath: result.relativePath, ...(result.details ?? { reason: result.reason }) },
       });
-      if (!bypass && !result.relativePath.endsWith('package.json')) {
+      if (isPackageManifestPath(result.relativePath)) {
+        const synced = await rebaselineProtectedFile(result.relativePath);
+        if (synced) {
+          await logSecurityEvent({
+            eventType: 'system_change',
+            severity: 'low',
+            description: `Package manifest baseline synced: ${result.relativePath}`,
+            details: { relativePath: result.relativePath, reason: result.reason },
+            outcome: 'allowed',
+          });
+        }
+        continue;
+      }
+      if (!bypass) {
         await attemptFileRepairFromBackup(result.relativePath, result.reason);
       }
     }
@@ -511,6 +529,7 @@ export async function runMonitorCycle(): Promise<void> {
       const baselines = await ensureFileBaselines();
       await runFileIntegrityPass(baselines);
       await runActivityMonitor();
+      await runDataLeakBurstMonitor();
       await runIntrusionPatternScan();
     }
 

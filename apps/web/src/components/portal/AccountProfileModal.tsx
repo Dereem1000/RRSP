@@ -86,6 +86,8 @@ export function AccountProfileModal({
   forceContact = false,
   initialTab = 'account',
   onBrandingSaved,
+  showRrspWelcomeOnLogin = true,
+  onShowRrspWelcomeChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -94,6 +96,8 @@ export function AccountProfileModal({
   forceContact?: boolean;
   initialTab?: ProfileTab;
   onBrandingSaved?: () => void;
+  showRrspWelcomeOnLogin?: boolean;
+  onShowRrspWelcomeChange?: (show: boolean) => void;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -134,6 +138,8 @@ export function AccountProfileModal({
   const [shopLoginSlug, setShopLoginSlug] = useState('');
   const [isShopOwner, setIsShopOwner] = useState(false);
   const [isShopStaff, setIsShopStaff] = useState(false);
+  const [welcomeGuideEnabled, setWelcomeGuideEnabled] = useState(showRrspWelcomeOnLogin);
+  const [welcomePrefSaving, setWelcomePrefSaving] = useState(false);
 
   const isContactMode = mode === 'contact' || forceContact;
   const showAddress = Boolean(client || isContactMode || rrspNeedsContact);
@@ -146,6 +152,10 @@ export function AccountProfileModal({
   }
 
   useEffect(() => {
+    setWelcomeGuideEnabled(showRrspWelcomeOnLogin);
+  }, [showRrspWelcomeOnLogin, open]);
+
+  useEffect(() => {
     if (!open) return;
     if (mode === 'contact') {
       setTab('account');
@@ -153,6 +163,27 @@ export function AccountProfileModal({
     }
     setTab(initialTab);
   }, [open, initialTab, mode]);
+
+  async function saveWelcomeGuidePreference(next: boolean) {
+    setWelcomePrefSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showRrspWelcomeOnLogin: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to save preference');
+      setWelcomeGuideEnabled(next);
+      onShowRrspWelcomeChange?.(next);
+      setMessage(next ? 'Welcome guide will show when you sign in.' : 'Welcome guide hidden on sign-in.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save preference');
+    } finally {
+      setWelcomePrefSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -173,6 +204,7 @@ export function AccountProfileModal({
         setRrspLicensed(licensed);
         setIsShopOwner(Boolean(data.isShopOwner));
         setIsShopStaff(Boolean(data.isShopStaff));
+        setWelcomeGuideEnabled(data.showRrspWelcomeOnLogin !== false);
         setFirstName(data.user.firstName ?? '');
         setLastName(data.user.lastName ?? '');
         setEmail(data.client?.email || data.user.email || '');
@@ -1069,6 +1101,26 @@ export function AccountProfileModal({
                 </p>
               )}
             </form>
+
+            {showRrspTabs && !isContactMode ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <p className="text-sm font-medium text-slate-800">RRMS welcome guide</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  Show the setup guide when you sign in. It covers business info, staff login URL, and
+                  module permissions.
+                </p>
+                <label className="mt-3 flex cursor-pointer items-center justify-between gap-3">
+                  <span className="text-sm text-slate-700">Show welcome guide on sign-in</span>
+                  <input
+                    type="checkbox"
+                    checked={welcomeGuideEnabled}
+                    disabled={welcomePrefSaving}
+                    onChange={(e) => void saveWelcomeGuidePreference(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                  />
+                </label>
+              </div>
+            ) : null}
 
             {!isContactMode && (
               <form onSubmit={changePassword} className="space-y-3 border-t border-slate-100 pt-5">

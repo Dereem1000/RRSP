@@ -60,7 +60,10 @@ export function snapshotFileBeforeRepair(relativePath: string): string | null {
   const snapDir = path.join(getMonorepoRoot(), 'data', 'file-repair-snapshots');
   fs.mkdirSync(snapDir, { recursive: true });
   const snapPath = path.join(snapDir, `${relativePath.replace(/[/\\]/g, '_')}.${Date.now()}.bak`);
-  fs.mkdirSync(path.dirname(snapPath), { recursive: true });
-  fs.copyFileSync(full, snapPath);
+  const content = fs.readFileSync(full);
+  if (content.length === 0) return null;
+  fs.writeFileSync(snapPath, content);
+  const written = fs.statSync(snapPath);
+  if (written.size !== content.length) return null;
   return snapPath;
 }

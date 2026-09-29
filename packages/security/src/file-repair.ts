@@ -39,7 +39,7 @@ export async function attemptFileRepairFromBackup(
         description: `File restored from backup: ${relativePath}`,
         details: { source: result.source },
       });
-      await rebaselineSingleFile(relativePath);
+      await rebaselineProtectedFile(relativePath);
       return { repaired: true, message: `Restored from ${result.source}` };
     }
     await logSecurityEvent({
@@ -54,9 +54,10 @@ export async function attemptFileRepairFromBackup(
   return { repaired: false, message: 'No backup source configured' };
 }
 
-async function rebaselineSingleFile(relativePath: string) {
+/** Update stored hash baseline for one protected path (after repair or manifest drift). */
+export async function rebaselineProtectedFile(relativePath: string): Promise<boolean> {
   const snap = snapshotFile(relativePath);
-  if (!snap) return;
+  if (!snap) return false;
   const baselines =
     (await SystemConfig.getConfig<Record<string, FileBaseline> | null>(
       SecurityConfigKeys.fileBaselines,
@@ -64,4 +65,9 @@ async function rebaselineSingleFile(relativePath: string) {
     )) ?? {};
   baselines[relativePath] = snap;
   await SystemConfig.setConfig(SecurityConfigKeys.fileBaselines, baselines, 'json', 'security');
+  return true;
+}
+
+export function isPackageManifestPath(relativePath: string): boolean {
+  return relativePath === 'package.json' || relativePath.endsWith('/package.json');
 }

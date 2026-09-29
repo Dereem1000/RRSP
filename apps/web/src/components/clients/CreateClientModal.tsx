@@ -37,9 +37,10 @@ export function CreateClientModal({
 
     const form = new FormData(e.currentTarget);
     const payload = formDataToClientPayload(form, {}, { shopMode });
-    const sendWelcomeEmail = payload.createPortalAccount
-      ? askToEmailClient('Send a welcome email to this client with portal login details?')
-      : false;
+    const sendWelcomeEmail =
+      !shopMode && 'createPortalAccount' in payload && payload.createPortalAccount
+        ? askToEmailClient('Send a welcome email to this client with portal login details?')
+        : false;
 
     try {
       const res = await fetch('/api/clients', {

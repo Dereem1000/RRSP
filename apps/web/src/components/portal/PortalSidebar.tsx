@@ -18,7 +18,7 @@ import { BrandLogo } from '@/components/marketing/BrandLogo';
 import { PortalPriceCalculator } from '@/components/portal/PortalPriceCalculator';
 import { usePriceCalculatorOpenListener } from '@/contexts/PriceCalculatorContext';
 import { getPortalNavForRole, getPortalNavLabel } from '@/lib/portal-nav';
-import { shopStaffLoginPath } from '@/lib/rrsp-shop-staff';
+import { shopPortalLogoutPath } from '@/lib/rrsp-shop-login-shared';
 
 const STORAGE_PINNED = 'cd_sidebar_pinned';
 const STORAGE_CALCULATOR = 'cd_sidebar_calculator_open';
@@ -264,7 +264,7 @@ export function PortalSidebar({
 
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push(shopStaffLoginPath(rrspAccess?.isShopStaff ? rrspAccess.shopLoginSlug : null));
+    router.push(shopPortalLogoutPath(rrspAccess?.shopLoginSlug));
     router.refresh();
   }
 

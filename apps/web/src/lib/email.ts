@@ -18,6 +18,11 @@ import {
   rrspEmailIsReady,
   type RrspEmailSettings,
 } from '@/lib/rrsp-branding';
+import {
+  buildRrspFullWelcomeEmailHtml,
+  buildRrspMarketplaceWelcomeEmailHtml,
+  resolveWelcomeEmailVariant,
+} from '@/lib/rrsp-welcome-email';
 
 export { buildPortalUrl } from '@/lib/site-url';
 
@@ -38,6 +43,20 @@ export type EmailConfig = {
 let transporter: nodemailer.Transporter | null = null;
 let isConfigured = false;
 let lastInitError: unknown = null;
+
+/** Where public website forms (demo/join/contact) deliver notifications. */
+export async function getPublicFormNotificationEmail(): Promise<string> {
+  const [inboundTo, fromEmail, user] = await Promise.all([
+    SystemConfig.getConfig<string>('email_inbound_to', ''),
+    SystemConfig.getConfig<string>('email_from_email', ''),
+    SystemConfig.getConfig<string>('email_user', ''),
+  ]);
+  const dedicated = String(inboundTo ?? '').trim();
+  if (dedicated) return dedicated;
+  const cdFrom = String(fromEmail ?? '').trim();
+  if (cdFrom) return cdFrom;
+  return String(user ?? '').trim();
+}
 
 export async function getEmailConfig(): Promise<EmailConfig> {
   const [enabled, host, port, secure, user, password, fromName, fromEmail, companyName, companyPhone, companyWebsite] =
@@ -275,6 +294,7 @@ export async function sendEmail({
   attachments = [],
   skipFailureNotice = false,
   log,
+  platformOnly = false,
 }: {
   to: string;
   subject: string;
@@ -282,9 +302,11 @@ export async function sendEmail({
   attachments?: Attachment[];
   skipFailureNotice?: boolean;
   log?: EmailLogMeta;
+  /** When true, always use platform SMTP (never RRSP shop mail). */
+  platformOnly?: boolean;
 }): Promise<boolean> {
   const rrsp = getRrspContext();
-  if (rrsp?.mspClientId) {
+  if (!platformOnly && rrsp?.mspClientId) {
     const rrspEmail = await getRrspEmailSettingsForClient(rrsp.mspClientId);
     if (rrspEmail && rrspEmailIsReady(rrspEmail)) {
       return sendEmailWithConfig(rrspEmail, {
@@ -360,6 +382,10 @@ export async function buildWelcomeEmailHtml({
   portalUrl,
   origin,
   test,
+  features,
+  servicePlanData,
+  companyName,
+  clientName,
 }: {
   contactPerson?: string | null;
   username: string;
@@ -367,7 +393,30 @@ export async function buildWelcomeEmailHtml({
   portalUrl: string;
   origin?: string;
   test?: boolean;
+  features?: unknown;
+  servicePlanData?: unknown;
+  companyName?: string | null;
+  clientName?: string | null;
 }) {
+  const common = {
+    contactPerson,
+    username,
+    tempPassword,
+    portalUrl,
+    origin,
+    test,
+    servicePlanData,
+    companyName,
+    clientName,
+  };
+  const variant = resolveWelcomeEmailVariant(features, servicePlanData);
+  if (variant === 'rrsp-marketplace') {
+    return buildRrspMarketplaceWelcomeEmailHtml(common);
+  }
+  if (variant === 'rrsp-full') {
+    return buildRrspFullWelcomeEmailHtml(common);
+  }
+
   const brand = await getEmailBrand();
   const name = escapeHtml(contactPerson || 'Valued Client');
 
@@ -414,6 +463,10 @@ export async function sendClientWelcomeEmail({
   tempPassword,
   portalUrl,
   origin,
+  features,
+  servicePlanData,
+  companyName,
+  clientName,
 }: {
   to: string;
   contactPerson?: string | null;
@@ -421,6 +474,10 @@ export async function sendClientWelcomeEmail({
   tempPassword: string;
   portalUrl: string;
   origin?: string;
+  features?: unknown;
+  servicePlanData?: unknown;
+  companyName?: string | null;
+  clientName?: string | null;
 }) {
   const { subject, html, attachments } = await buildWelcomeEmailHtml({
     contactPerson,
@@ -428,9 +485,20 @@ export async function sendClientWelcomeEmail({
     tempPassword,
     portalUrl,
     origin,
+    features,
+    servicePlanData,
+    companyName,
+    clientName,
   });
 
   return sendEmail({ to, subject, html, attachments, log: { category: 'welcome' } });
+}
+
+/** Public website forms — platform SMTP + CD notification inbox. */
+export async function sendPlatformEmail(
+  options: Parameters<typeof sendEmail>[0] & { log?: EmailLogMeta }
+): Promise<boolean> {
+  return sendEmail({ ...options, platformOnly: true });
 }
 
 export async function testEmailConnection() {

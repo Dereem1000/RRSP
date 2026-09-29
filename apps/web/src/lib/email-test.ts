@@ -280,6 +280,68 @@ async function buildAllTemplatePreviews(
 
   previews.push({ name: "Welcome — client portal", ...welcome });
 
+  const rrspFull = await buildWelcomeEmailHtml({
+    contactPerson: "Sample Repair Shop",
+
+    username: "sample.shop",
+
+    tempPassword: "TempPass123!",
+
+    portalUrl,
+
+    origin,
+
+    test: true,
+
+    features: ["rrsp"],
+
+    companyName: "Sample Repair Shop",
+
+    clientName: "Sample Repair Shop",
+
+    servicePlanData: {
+      rrspShopLoginSlug: "samplerepairshop",
+      rrspModules: {
+        tickets: true,
+        orders: true,
+        parts: true,
+        sales: false,
+        clients: true,
+        accounting: true,
+        pos: false,
+      },
+    },
+  });
+
+  previews.push({ name: "Welcome — RRSP full platform", ...rrspFull });
+
+  const rrspMarketplace = await buildWelcomeEmailHtml({
+    contactPerson: "Sample Marketplace Shop",
+
+    username: "sample.marketplace",
+
+    tempPassword: "TempPass123!",
+
+    portalUrl,
+
+    origin,
+
+    test: true,
+
+    features: ["rrsp"],
+
+    companyName: "Sample Marketplace Shop",
+
+    clientName: "Sample Marketplace Shop",
+
+    servicePlanData: {
+      rrspShopLoginSlug: "samplemarketplace",
+      rrspModules: { parts: true },
+    },
+  });
+
+  previews.push({ name: "Welcome — RRSP marketplace only", ...rrspMarketplace });
+
   for (const type of INVOICE_TYPES) {
     const invoice = {
       ...SAMPLE_INVOICE,
@@ -358,7 +420,7 @@ async function buildAllTemplatePreviews(
 }
 
 function groupPreviews(previews: TemplatePreview[]): TemplateGroup[] {
-  const welcome = previews.find((p) => p.name.startsWith("Welcome"));
+  const welcome = previews.filter((p) => p.name.startsWith("Welcome"));
 
   const quote = previews.find((p) => p.name.startsWith("Quote"));
 
@@ -370,7 +432,7 @@ function groupPreviews(previews: TemplatePreview[]): TemplateGroup[] {
 
   const groups: TemplateGroup[] = [];
 
-  const welcomeQuote = [welcome, quote].filter(Boolean) as TemplatePreview[];
+  const welcomeQuote = [...welcome, quote].filter(Boolean) as TemplatePreview[];
 
   if (welcomeQuote.length)
     groups.push({ title: "Welcome & quotes", items: welcomeQuote });

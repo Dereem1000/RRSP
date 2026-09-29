@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { requirePortalUser } from '@/lib/session';
-import { requireRrspModule } from '@/lib/rrsp-access';
+import { requireRrspModule, getClientRrspAccess } from '@/lib/rrsp-access';
 import { withOptionalRrspDb } from '@/lib/rrsp-page';
 import { listShopPosInventory } from '@/lib/pos-catalog';
 import { isRrspShopDemoActive } from '@/lib/rrsp-demo';
@@ -19,6 +19,8 @@ function InventoryLoading() {
 export default async function RrspPosInventoryPage() {
   const { user } = await requirePortalUser();
   const gate = await requireRrspModule(user, 'pos');
+  const access = await getClientRrspAccess(user.id);
+  const canEditInventory = !access.isShopStaff;
 
   return withOptionalRrspDb(gate, async () => {
     if (gate.mspClientId && (await isRrspShopDemoActive(gate.mspClientId))) {
@@ -33,7 +35,11 @@ export default async function RrspPosInventoryPage() {
 
     return (
       <Suspense fallback={<InventoryLoading />}>
-        <PosInventoryPageClient mode="rrsp" initialProducts={products} />
+        <PosInventoryPageClient
+          mode="rrsp"
+          initialProducts={products}
+          canEditInventory={canEditInventory}
+        />
       </Suspense>
     );
   });

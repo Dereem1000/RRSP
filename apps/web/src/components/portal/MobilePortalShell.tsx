@@ -19,7 +19,7 @@ import {
   type PortalNavItem,
 } from '@/lib/portal-nav';
 import { usePriceCalculatorOpenListener } from '@/contexts/PriceCalculatorContext';
-import { shopStaffLoginPath } from '@/lib/rrsp-shop-staff';
+import { shopPortalLogoutPath } from '@/lib/rrsp-shop-login-shared';
 
 export function MobilePortalChrome({
   user,
@@ -92,9 +92,9 @@ export function MobilePortalChrome({
 
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push(shopStaffLoginPath(rrspAccess?.isShopStaff ? rrspAccess.shopLoginSlug : null));
+    router.push(shopPortalLogoutPath(rrspAccess?.shopLoginSlug));
     router.refresh();
-  }, [router, rrspAccess?.isShopStaff, rrspAccess?.shopLoginSlug]);
+  }, [router, rrspAccess?.shopLoginSlug]);
 
   const isMoreActive = moreNav.some(
     (item) => pathname === item.href || (item.href !== '/' && pathname?.startsWith(`${item.href}/`)),

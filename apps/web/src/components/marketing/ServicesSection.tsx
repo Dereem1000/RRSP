@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Globe,
   ClipboardCheck,
+  Store,
 } from 'lucide-react';
 
 const services = [
@@ -33,9 +34,17 @@ const services = [
     icon: ClipboardCheck,
     title: 'Repair Report Management System',
     description:
-      'RRMS — branded repair shop portal with modular tickets, parts marketplace, accounting, and counter POS.',
+      'RRMS — corporate business portal with white-label employee access, modular operations, marketplace, and governed point of sale.',
     href: '/rrms-learn-more.html',
     cta: 'Learn More',
+  },
+  {
+    icon: Store,
+    title: 'Shop Parts & Marketplace',
+    description:
+      'Find the parts you need. Sell the parts you don\'t. Request through the marketplace — Computer Dynamics delivers to your shop.',
+    href: '/rrms-marketplace.html?join=1',
+    cta: 'Join Marketplace',
   },
   {
     icon: Server,

@@ -172,6 +172,12 @@ export function SettingsSecuritySection({
     intrusion: { enabled: boolean; threats24h: number; blockedIps: number; rateLimited24h: number };
     bot: { enabled: boolean; detected24h: number; blocked24h: number; captchaEnabled: boolean };
     repair: { enabled: boolean; attempted24h: number; succeeded24h: number };
+    dataLeakGuard?: {
+      enabled: boolean;
+      autoBlockIp: boolean;
+      dataAccess24h: number;
+      suspectedExfiltration24h: number;
+    };
     activity?: { suspicious24h: number; failedLogins24h: number };
     blockedIps: Array<{ ip: string; reason: string; blockedAt?: string }>;
     license?: {
@@ -402,7 +408,7 @@ export function SettingsSecuritySection({
           </div>
 
           {metrics && (
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <h4 className="text-sm font-semibold text-slate-800">Intrusion detection</h4>
                 <p className="mt-1 text-xs text-slate-500">{metrics.intrusion.enabled ? 'Enabled' : 'Disabled'}</p>
@@ -446,6 +452,54 @@ export function SettingsSecuritySection({
                     }}
                   />
                   Enable auto-repair from backups
+                </label>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-slate-800">Data leak guard</h4>
+                <p className="mt-1 text-xs text-slate-500">
+                  {metrics.dataLeakGuard?.enabled !== false
+                    ? 'Audits sensitive API access · alerts on bulk/burst'
+                    : 'Disabled (no exfiltration heuristics)'}
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                  <li>Sensitive access (24h): {metrics.dataLeakGuard?.dataAccess24h ?? 0}</li>
+                  <li>Suspected exfiltration (24h): {metrics.dataLeakGuard?.suspectedExfiltration24h ?? 0}</li>
+                </ul>
+                <label className="mt-3 flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={metrics.dataLeakGuard?.enabled !== false}
+                    onChange={async (e) => {
+                      await fetch('/api/security/module-toggles', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          key: 'data_leak_guard_enabled',
+                          value: e.target.checked,
+                        }),
+                      });
+                      loadAll();
+                    }}
+                  />
+                  Enable data leak guard
+                </label>
+                <label className="mt-2 flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={metrics.dataLeakGuard?.autoBlockIp !== false}
+                    onChange={async (e) => {
+                      await fetch('/api/security/module-toggles', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          key: 'data_leak_auto_block_ip',
+                          value: e.target.checked,
+                        }),
+                      });
+                      loadAll();
+                    }}
+                  />
+                  Auto-block untrusted IPs on exfiltration alerts
                 </label>
               </div>
             </div>

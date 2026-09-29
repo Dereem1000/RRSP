@@ -17,13 +17,15 @@ export default async function RrspPartsPage() {
   await requireRrspModule(user, 'parts');
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Shop parts</h1>
-        <p className="mt-1 text-sm text-slate-500">Parts catalog and stock for your shop</p>
+    <div className="flex min-h-0 flex-col gap-3 max-lg:min-h-[calc(100dvh-8rem)] sm:gap-4">
+      <div className="shrink-0">
+        <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Shop parts</h1>
+        <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+          Parts catalog and stock for your shop
+        </p>
       </div>
       <Suspense fallback={<PartsLoading />}>
-        <PartsCatalogPageClient canManageStock stockTabLabel="My Stock" />
+        <PartsCatalogPageClient canManageStock hidePageHeader stockTabLabel="My Stock" />
       </Suspense>
     </div>
   );

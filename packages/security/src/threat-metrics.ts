@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import { SecurityEvent, SystemConfig } from '@cd-v2/database';
 import { getFeatureSnapshot } from './features';
+import { getDataLeakGuardSnapshot } from './data-leak-guard';
 import { loadBlockedIps, SecurityHttpKeys } from './http-guard';
 import { whereCreatedSince } from './sequelize-time';
 
@@ -20,7 +21,7 @@ export async function getThreatMetrics() {
   const features = await getFeatureSnapshot();
   const blocked = await loadBlockedIps();
 
-  const [intrusionEvents, botDetected, botBlocked, rateLimited, repairAttempts, repairSuccess] =
+  const [intrusionEvents, botDetected, botBlocked, rateLimited, repairAttempts, repairSuccess, leakSnapshot] =
     await Promise.all([
       SecurityEvent.count({
         where: { ...where24h, eventType: { [Op.in]: INTRUSION_TYPES } },
@@ -30,6 +31,7 @@ export async function getThreatMetrics() {
       SecurityEvent.count({ where: { ...where24h, eventType: 'rate_limited' } }),
       SecurityEvent.count({ where: { ...where24h, eventType: 'file_repair_attempted' } }),
       SecurityEvent.count({ where: { ...where24h, eventType: 'file_repair_succeeded' } }),
+      getDataLeakGuardSnapshot(),
     ]);
 
   const intrusionEnabled =
@@ -65,6 +67,7 @@ export async function getThreatMetrics() {
       attempted24h: repairAttempts,
       succeeded24h: repairSuccess,
     },
+    dataLeakGuard: leakSnapshot,
     blockedIps: blocked,
     license: await (async () => {
       const { checkLicenseApiHealth } = await import('./license-health');

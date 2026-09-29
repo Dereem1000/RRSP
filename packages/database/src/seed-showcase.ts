@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import sqlite3 from 'sqlite3';
 import type { ClientAttributes } from './models/Client';
 import {
   CalendarEvent,

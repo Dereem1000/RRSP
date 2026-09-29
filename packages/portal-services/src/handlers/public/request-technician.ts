@@ -11,8 +11,8 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import { escapeHtml, getEmailBrand, paragraph, renderEmailLayout } from '@web/lib/email-templates';
-import { getEmailConfig, sendEmail } from '@web/lib/email';
+import { escapeHtml, getPlatformEmailBrand, paragraph, renderEmailLayout } from '@web/lib/email-templates';
+import { getEmailConfig, getPublicFormNotificationEmail, sendPlatformEmail } from '@web/lib/email';
 import { guardPublicFormFromCtx } from '../../http-helpers';
 
 function formatValue(value: unknown): string {
@@ -44,7 +44,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     if (blocked) return blocked;
 
     const config = await getEmailConfig();
-    const to = config.fromEmail || config.user;
+    const to = await getPublicFormNotificationEmail();
     if (!config.enabled || !to) {
       return { status: 503, body: { success: false, message: 'Requests are temporarily unavailable. Please contact us directly.' } };
     }
@@ -53,7 +53,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       ([key]) => !['captchaToken', 'turnstileToken', 'website'].includes(key)
     );
 
-    const brand = await getEmailBrand();
+    const brand = await getPlatformEmailBrand();
     const bodyHtml = [
       paragraph('A technician service request was submitted from the public website.'),
       `<table style="width:100%;border-collapse:collapse">${rows
@@ -72,11 +72,12 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       bodyHtml,
     });
 
-    await sendEmail({
+    await sendPlatformEmail({
       to,
       subject: `Technician request — ${formatValue(body.contactName || body.name || 'Website form')}`,
       html: rendered.html,
       attachments: rendered.attachments,
+      log: { category: 'other', detail: 'technician-request' },
     });
 
     return { status: 200, body: {

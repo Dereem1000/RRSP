@@ -13,6 +13,7 @@ type EmailSettings = {
   password: string;
   fromName: string;
   fromEmail: string;
+  inboundEmail: string;
   companyName: string;
   companyAddress: string;
   companyPhone: string;
@@ -249,6 +250,18 @@ export function SettingsEmailSection({ onMessage, onError }: Props) {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">From email</span>
             <input value={email.fromEmail} onChange={(e) => setEmail({ ...email, fromEmail: e.target.value })} className={inputClass} />
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block text-sm font-medium text-slate-700">Public form notifications</span>
+            <input
+              value={email.inboundEmail}
+              onChange={(e) => setEmail({ ...email, inboundEmail: e.target.value })}
+              placeholder={email.fromEmail || 'Uses From email when blank'}
+              className={inputClass}
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              Demo requests, marketplace join forms, and other public website submissions are delivered here — not the SMTP username.
+            </span>
           </label>
         </div>
 

@@ -143,7 +143,8 @@ async function isSystemChangeResolved(event: SecurityEvent): Promise<boolean> {
   if (
     event.description.includes('baselines refreshed') ||
     event.description.includes('monitoring enabled') ||
-    event.description.includes('File integrity baselines auto-updated')
+    event.description.includes('File integrity baselines auto-updated') ||
+    event.description.includes('Package manifest baseline synced')
   ) {
     return true;
   }
@@ -258,6 +259,12 @@ async function isEventResolved(event: SecurityEvent): Promise<boolean> {
     case 'xss_attempt':
     case 'path_traversal':
       return isOutsideWindow(event, ACTIVITY_WINDOW_MS);
+
+    case 'data_access':
+      return isOutsideWindow(event, ACTIVITY_WINDOW_MS);
+
+    case 'data_exfiltration_suspected':
+      return isOutsideWindow(event, 24 * 60 * 60 * 1000);
 
     case 'ip_blocked': {
       const ip = event.ipAddress?.trim();

@@ -14,6 +14,20 @@ export type EmailBrand = {
   closingMessage: string;
 };
 
+/** Computer Dynamics platform branding — never RRSP shop overrides (public website forms). */
+export async function getPlatformEmailBrand(): Promise<EmailBrand> {
+  const [company, email] = await Promise.all([getCompanySettings(), getEmailConfig()]);
+  return {
+    companyName: company.companyName,
+    companyAddress: company.companyAddress,
+    companyPhone: company.companyPhone || email.companyPhone,
+    companyWebsite: company.companyWebsite,
+    companyEmail: email.fromEmail || email.user,
+    companyLogo: company.companyLogo,
+    closingMessage: company.closingMessage,
+  };
+}
+
 export async function getEmailBrand(): Promise<EmailBrand> {
   try {
     const { getRrspContext } = await import('@/lib/rrsp-db');

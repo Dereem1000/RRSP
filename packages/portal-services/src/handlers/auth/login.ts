@@ -12,7 +12,6 @@ import {
   mspAuthErrorResult,
 } from '@cd-v2/api-handlers';
 
-import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { logSecurityEvent, verifyPublicCaptchaDetailed } from '@cd-v2/security';
 import { User, SystemConfig, publicUser } from '@web/lib/db';
@@ -128,7 +127,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
     }
 
     if (user.tempPassword && !user.passwordSet) {
-      const tempValid = await bcrypt.compare(password, user.tempPassword);
+      const tempValid = await user.verifyLoginPassword(password);
       if (!tempValid) {
         await user.incrementFailedLoginAttempts();
         await logLoginAttempt('blocked', ip, username, user.id);
@@ -161,7 +160,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       return { status: 401, body: { success: false, message: 'Invalid credentials' } };
     }
 
-    const valid = await user.validatePassword(password);
+    const valid = await user.verifyLoginPassword(password);
     if (!valid) {
       await user.incrementFailedLoginAttempts();
       await logLoginAttempt('blocked', ip, username, user.id);

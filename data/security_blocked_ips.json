@@ -1,1 +1,1 @@
-[{"ip":"157.230.41.239","reason":"Manual block: intrusion investigation (DigitalOcean Singapore probe)","blockedAt":"2026-08-02T00:59:49.384Z"}]
+[{"ip":"157.230.41.239","reason":"Manual block: intrusion investigation (DigitalOcean Singapore probe)","blockedAt":"2026-08-02T00:59:49.384Z"},{"ip":"185.93.89.167","reason":"trying to acess env","blockedAt":"2026-08-04T01:47:44.112Z"},{"ip":"34.105.161.20","reason":"Manual block: .git/config probe (crusader-worker/1.0, Google Cloud London)","blockedAt":"2026-08-04T23:45:23.225Z"}]

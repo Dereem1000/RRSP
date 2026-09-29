@@ -7,6 +7,7 @@ export * from './alerts';
 export * from './activity-thresholds';
 export * from './recaptcha';
 export * from './file-repair';
+export * from './data-leak-guard';
 export * from './threat-metrics';
 export * from './license-paths';
 export * from './license-health';

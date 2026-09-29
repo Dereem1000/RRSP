@@ -48,6 +48,8 @@ const EVENT_TYPE_OPTIONS = [
   'rate_limited',
   'suspicious_activity',
   'file_integrity',
+  'data_access',
+  'data_exfiltration_suspected',
   'login_attempt',
 ];
 

@@ -1,14 +1,11 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/LoginForm';
+import { ShopLoginLoadingShell } from '@/components/ShopLoginLoadingShell';
 import { getRrspShopLoginPublicInfo } from '@/lib/rrsp-shop-staff';
 
 function ShopLoginLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center text-slate-500">
-      Loading sign in…
-    </div>
-  );
+  return <ShopLoginLoadingShell />;
 }
 
 type PageProps = {

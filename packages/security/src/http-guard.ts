@@ -22,6 +22,8 @@ export const SecurityHttpKeys = {
   botEnabled: 'bot_detection_enabled',
   repairEnabled: 'security_repair_enabled',
   repairUseBackups: 'security_repair_use_backups',
+  dataLeakGuardEnabled: 'data_leak_guard_enabled',
+  dataLeakAutoBlockIp: 'data_leak_auto_block_ip',
 } as const;
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -251,7 +253,12 @@ export async function guardRequest(input: GuardRequestInput): Promise<GuardResul
           path: input.path,
           method: input.method,
         },
+        outcome: 'blocked',
       });
+      await blockIp(
+        input.ip,
+        `Intrusion signature (${hit.name}): ${hit.matched.slice(0, 80)}`
+      );
       return {
         allow: false,
         reason: 'Request blocked',

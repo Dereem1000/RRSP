@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import { requireSession, authErrorResult } from '@cd-v2/api-handlers';
-import { runWithPosAccess } from '@web/lib/pos-access';
+import { runWithPosAccess, assertPosInventoryEditAllowed } from '@web/lib/pos-access';
 import {
   adjustPosInventoryStock,
   deactivatePosInventoryLine,
@@ -21,6 +21,7 @@ function resolveSource(
 export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    await assertPosInventoryEditAllowed(session);
     return await runWithPosAccess(session, async (mode) => {
       const id = String(ctx.params?.id ?? '');
       if (!id) return { status: 400, body: { success: false, message: 'Product id required' } };
@@ -80,6 +81,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    await assertPosInventoryEditAllowed(session);
     return await runWithPosAccess(session, async (mode) => {
       const id = String(ctx.params?.id ?? '');
       if (!id) return { status: 400, body: { success: false, message: 'Product id required' } };
@@ -120,6 +122,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function DELETEHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    await assertPosInventoryEditAllowed(session);
     return await runWithPosAccess(session, async (mode) => {
       const id = String(ctx.params?.id ?? '');
       if (!id) return { status: 400, body: { success: false, message: 'Product id required' } };

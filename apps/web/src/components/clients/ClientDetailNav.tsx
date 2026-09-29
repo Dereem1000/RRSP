@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { suffix: '', label: 'Overview' },
+  { suffix: '', label: 'Overview', cdOnly: false },
   { suffix: '/licenses', label: 'Licenses & activation', cdOnly: true },
 ] as const;
 

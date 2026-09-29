@@ -171,7 +171,12 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       const emailSent =
         body.sendWelcomeEmail === true
           ? await sendPortalWelcomeEmail(
-              { email, contactPerson: body.contactPerson },
+              {
+                email,
+                contactPerson: body.contactPerson,
+                features: body.features,
+                servicePlanData: body.servicePlanData,
+              },
               username,
               tempPassword,
               portalUrl

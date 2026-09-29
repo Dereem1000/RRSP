@@ -68,6 +68,15 @@ export class User
     return bcrypt.compare(password, this.password);
   }
 
+  /** Match login or profile "current password" against stored main and temp credentials. */
+  async verifyLoginPassword(password: string): Promise<boolean> {
+    if (await this.validatePassword(password)) return true;
+    if (this.tempPassword && !this.passwordSet) {
+      return bcrypt.compare(password, this.tempPassword);
+    }
+    return false;
+  }
+
   async incrementFailedLoginAttempts(): Promise<void> {
     this.failedLoginAttempts += 1;
     if (this.failedLoginAttempts >= 5) {

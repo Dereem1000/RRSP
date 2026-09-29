@@ -3,7 +3,60 @@ import {
   getTokenFromContext,
   verifyToken,
   type ApiContext,
+  type ApiResult,
+  type TokenPayload,
 } from '@cd-v2/api-handlers';
+import { auditSensitiveApiResult } from '@cd-v2/security';
+
+function clientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0]!.trim();
+  }
+  if (Array.isArray(forwarded) && forwarded[0]) {
+    return String(forwarded[0]).split(',')[0]!.trim();
+  }
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+function rawBodyByteLength(result: ApiResult): number | undefined {
+  if (result.rawBody === undefined) return undefined;
+  if (Buffer.isBuffer(result.rawBody)) return result.rawBody.length;
+  if (typeof result.rawBody === 'string') return Buffer.byteLength(result.rawBody, 'utf8');
+  return undefined;
+}
+
+async function auditApiResult(
+  req: Request,
+  ctx: ApiContext,
+  session: TokenPayload | null,
+  result: ApiResult
+): Promise<ApiResult> {
+  void auditSensitiveApiResult({
+    method: ctx.method,
+    path: ctx.path,
+    urlPath: ctx.urlPath,
+    ip: clientIp(req),
+    userId: session?.id ?? null,
+    userRole: session?.role ?? null,
+    userAgent: req.get('user-agent') ?? null,
+    status: result.status,
+    body: result.rawBody !== undefined ? undefined : result.body,
+    rawBodyBytes: rawBodyByteLength(result),
+  }).catch((err) => {
+    console.error('[data-leak-guard]', err instanceof Error ? err.message : err);
+  });
+  return result;
+}
+
+async function invokeDispatch(
+  req: Request,
+  ctx: ApiContext,
+  session: TokenPayload | null,
+  dispatch: (ctx: ApiContext) => Promise<ApiResult>
+): Promise<ApiResult> {
+  return auditApiResult(req, ctx, session, await dispatch(ctx));
+}
 
 function buildFormDataFromRequest(req: Request): FormData | undefined {
   const files = req.files as Express.Multer.File[] | undefined;
@@ -124,13 +177,13 @@ export async function runDispatcher(
           body: { success: false, message: 'Shop accounting requires an RRSP shop database context' },
         };
       }
-      return dispatch(ctx);
+      return invokeDispatch(req, ctx, session, dispatch);
     }
 
     if (session.role === 'client') {
       const access = await getClientRrspAccess(session.id);
       if (access.enabled && access.mspClientId) {
-        return runWithRrspDb(access.mspClientId, () => dispatch(ctx));
+        return runWithRrspDb(access.mspClientId, () => invokeDispatch(req, ctx, session, dispatch));
       }
       return {
         status: 403,
@@ -156,10 +209,10 @@ export async function runDispatcher(
       const { getClientRrspAccess } = await import('@web/lib/rrsp-access');
       const access = await getClientRrspAccess(session.id);
       if (access.enabled && access.mspClientId) {
-        return runWithRrspDb(access.mspClientId, () => dispatch(ctx));
+        return runWithRrspDb(access.mspClientId, () => invokeDispatch(req, ctx, session, dispatch));
       }
     }
   }
 
-  return dispatch(ctx);
+  return invokeDispatch(req, ctx, session, dispatch);
 }

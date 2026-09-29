@@ -1,7 +1,7 @@
 import { Client } from '@cd-v2/database';
 import { normalizeServicePlanData } from '@/lib/rrsp';
 import { normalizeStoredPhone } from '@/lib/phone-utils';
-import { normalizeRrspShopLoginSlug } from '@/lib/rrsp-shop-staff';
+import { normalizeRrspShopLoginSlug } from '@/lib/rrsp-shop-login-shared';
 import {
   emptyRrspEmailSettings,
   isCustomRrspLogo,

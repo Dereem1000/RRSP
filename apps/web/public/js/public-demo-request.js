@@ -4,10 +4,17 @@
  */
 (function (global) {
   let productName = 'Product Demo';
+  let defaultTitle = 'Request a Demo';
   let defaultSubtitle = '';
+  let defaultSubmitLabel = 'Send Demo Request';
+  let defaultVariant = '';
+  let defaultSuccessMessage = '';
   let modalEl = null;
   let formEl = null;
   let captchaMounted = false;
+  let shopGroupEl = null;
+  let shopInputEl = null;
+  let messageInputEl = null;
 
   const STYLES = `
 #cdDemoRequestModal.cd-demo-modal-overlay {
@@ -77,6 +84,10 @@
         <label for="cdDemoEmail">Email Address *</label>
         <input type="email" id="cdDemoEmail" name="email" required autocomplete="email">
       </div>
+      <div class="cd-demo-form-group" id="cdDemoShopGroup" hidden>
+        <label for="cdDemoShop">Repair Shop / Business Name *</label>
+        <input type="text" id="cdDemoShop" name="shopName" autocomplete="organization">
+      </div>
       <div class="cd-demo-form-group">
         <label for="cdDemoPhone">Contact Number</label>
         <input type="tel" id="cdDemoPhone" name="phone" autocomplete="tel">
@@ -93,6 +104,9 @@
     document.body.appendChild(wrap.firstElementChild);
     modalEl = document.getElementById('cdDemoRequestModal');
     formEl = document.getElementById('cdDemoRequestForm');
+    shopGroupEl = document.getElementById('cdDemoShopGroup');
+    shopInputEl = document.getElementById('cdDemoShop');
+    messageInputEl = document.getElementById('cdDemoMessage');
     if (global.CDPhoneInput) global.CDPhoneInput.init(modalEl);
 
     document.getElementById('cdDemoRequestClose').addEventListener('click', close);
@@ -115,15 +129,52 @@
     if (global.CDPublicCaptcha) global.CDPublicCaptcha.reset();
   }
 
+  function applyVariant(variant) {
+    const isMarketplace = variant === 'marketplace';
+    if (shopGroupEl && shopInputEl) {
+      shopGroupEl.hidden = !isMarketplace;
+      shopInputEl.required = isMarketplace;
+      if (!isMarketplace) shopInputEl.value = '';
+    }
+    if (messageInputEl) {
+      messageInputEl.placeholder = isMarketplace
+        ? 'Tell us about the parts you buy or sell, your location, and anything else we should know...'
+        : 'Tell us about your business and requirements...';
+    }
+  }
+
+  function resolveOpenOptions(opts) {
+    opts = opts || {};
+    const el = opts.trigger || null;
+    const variant =
+      (el && el.dataset.cdDemoVariant) ||
+      opts.variant ||
+      defaultVariant ||
+      '';
+    return {
+      title: (el && el.dataset.cdDemoTitle) || opts.title || defaultTitle,
+      subtitle:
+        (el && el.dataset.cdDemoSubtitle) ||
+        opts.subtitle ||
+        defaultSubtitle ||
+        'Schedule a personalized demonstration of our ' + productName + '.',
+      submitLabel: (el && el.dataset.cdDemoSubmit) || opts.submitLabel || defaultSubmitLabel,
+      successMessage:
+        (el && el.dataset.cdDemoSuccess) || opts.successMessage || defaultSuccessMessage,
+      variant: variant,
+      product: (el && el.dataset.cdDemoProduct) || opts.product || productName,
+    };
+  }
+
   async function open(opts) {
     ensureModal();
-    const title = (opts && opts.title) || 'Request a Demo';
-    const subtitle =
-      (opts && opts.subtitle) ||
-      defaultSubtitle ||
-      'Schedule a personalized demonstration of our ' + productName + '.';
-    document.getElementById('cdDemoRequestTitle').textContent = title;
-    document.getElementById('cdDemoRequestSubtitle').textContent = subtitle;
+    const resolved = resolveOpenOptions(opts);
+    applyVariant(resolved.variant);
+    document.getElementById('cdDemoRequestTitle').textContent = resolved.title;
+    document.getElementById('cdDemoRequestSubtitle').textContent = resolved.subtitle;
+    document.getElementById('cdDemoSubmitBtn').textContent = resolved.submitLabel;
+    modalEl.dataset.cdDemoSuccess = resolved.successMessage;
+    modalEl.dataset.cdDemoProduct = resolved.product;
     modalEl.classList.add('active');
     modalEl.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -147,10 +198,16 @@
         name: String(fd.get('name') || '').trim(),
         email: String(fd.get('email') || '').trim(),
         phone: String(fd.get('phone') || '').trim(),
+        shopName: String(fd.get('shopName') || '').trim(),
         message: String(fd.get('message') || '').trim(),
-        product: productName,
+        product: modalEl.dataset.cdDemoProduct || productName,
         website: String(fd.get('website') || ''),
       };
+
+      if (shopInputEl && shopInputEl.required && !payload.shopName) {
+        alert('Please enter your repair shop or business name.');
+        return;
+      }
 
       if (global.CDPublicCaptcha) {
         try {
@@ -173,7 +230,11 @@
         throw new Error(data.message || 'Failed to send demo request');
       }
 
-      alert(data.message || 'Demo request sent! We will contact you within 24 hours.');
+      alert(
+        modalEl.dataset.cdDemoSuccess ||
+          data.message ||
+          'Request sent! We will contact you within 24 hours.'
+      );
       close();
     } catch (err) {
       alert(err.message || 'There was an error sending your request. Please try again.');
@@ -190,7 +251,7 @@
       el.dataset.cdDemoBound = '1';
       el.addEventListener('click', function (e) {
         e.preventDefault();
-        open();
+        open({ trigger: el });
       });
     });
   }
@@ -198,8 +259,14 @@
   function init(opts) {
     opts = opts || {};
     if (opts.product) productName = opts.product;
+    if (opts.title) defaultTitle = opts.title;
     if (opts.subtitle) defaultSubtitle = opts.subtitle;
+    if (opts.submitLabel) defaultSubmitLabel = opts.submitLabel;
+    if (opts.variant) defaultVariant = opts.variant;
+    if (opts.successMessage) defaultSuccessMessage = opts.successMessage;
     ensureModal();
+    applyVariant(defaultVariant);
+    document.getElementById('cdDemoSubmitBtn').textContent = defaultSubmitLabel;
     bindTriggers();
     if (typeof opts.onReady === 'function') opts.onReady();
   }

@@ -173,8 +173,20 @@ Common `event_type` values from v2 worker:
 - `emergency_override` — bypass start/end
 - `system_change` — monitoring toggled
 - `monitor_cycle_error` — worker failure
+- `data_access` — audited read of sensitive API data (clients, backups, users, tickets, settings)
+- `data_exfiltration_suspected` — bulk response, backup download volume, or burst of sensitive reads
 
 Events use **5-minute deduplication** for identical type+description (except explicit `skipDedup` actions).
+
+### Data leak guard
+
+- **Live audit** — after successful Express API responses, classifies sensitive routes and writes `data_access` events (record/byte counts in `details`).
+- **Heuristics** — raises **`data_exfiltration_suspected`** (critical, outbound alert) when:
+  - Response size ≥ **4 MB** (default; includes backup ZIP downloads),
+  - Large list payloads on high-risk routes,
+  - **≥ 30** sensitive accesses in **5 minutes** per user/IP (worker + live).
+- **Auto-block** — when `data_leak_auto_block_ip` is true (default), blocks **client** or **anonymous** actors on exfiltration alerts; staff users are alerted but not IP-blocked by default.
+- **Toggles (S-CLS1)** — `data_leak_guard_enabled`, `data_leak_auto_block_ip` via Settings → Security or `POST /api/security/module-toggles`.
 
 ## Windows quick start (`start.bat`)
 

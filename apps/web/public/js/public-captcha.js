@@ -19,44 +19,66 @@ window.CDPublicCaptcha = (function () {
     return config;
   }
 
-  function loadScript() {
-    return new Promise(function (resolve, reject) {
-      function finish() {
-        if (!window.grecaptcha) {
-          reject(new Error('grecaptcha failed to load'));
-          return;
-        }
-        if (typeof window.grecaptcha.ready === 'function') {
-          window.grecaptcha.ready(function () {
-            resolve(window.grecaptcha);
-          });
-          return;
-        }
-        if (typeof window.grecaptcha.render === 'function') {
+  function waitForGrecaptcha(timeoutMs) {
+    timeoutMs = timeoutMs || 15000;
+    return new Promise(function (resolve) {
+      var start = Date.now();
+      function tick() {
+        if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
           resolve(window.grecaptcha);
           return;
         }
-        reject(new Error('grecaptcha API not ready'));
+        if (Date.now() - start >= timeoutMs) {
+          resolve(null);
+          return;
+        }
+        window.setTimeout(tick, 50);
+      }
+      tick();
+    });
+  }
+
+  function loadScript() {
+    return new Promise(function (resolve, reject) {
+      function finish(gr) {
+        if (!gr || typeof gr.render !== 'function') {
+          reject(new Error('grecaptcha failed to load'));
+          return;
+        }
+        if (typeof gr.ready === 'function') {
+          gr.ready(function () {
+            resolve(gr);
+          });
+          return;
+        }
+        resolve(gr);
       }
 
       if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
-        finish();
+        finish(window.grecaptcha);
         return;
       }
 
-      const existing = document.querySelector('script[data-cd-recaptcha]');
+      var existing = document.querySelector('script[data-cd-recaptcha], script[src*="google.com/recaptcha/api.js"]');
       if (existing) {
-        existing.addEventListener('load', finish);
-        existing.addEventListener('error', reject);
+        waitForGrecaptcha().then(function (gr) {
+          if (gr) finish(gr);
+          else reject(new Error('grecaptcha API not ready'));
+        });
         return;
       }
 
-      const script = document.createElement('script');
+      var script = document.createElement('script');
       script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
       script.async = true;
       script.defer = true;
       script.setAttribute('data-cd-recaptcha', '1');
-      script.onload = finish;
+      script.onload = function () {
+        waitForGrecaptcha().then(function (gr) {
+          if (gr) finish(gr);
+          else reject(new Error('grecaptcha API not ready'));
+        });
+      };
       script.onerror = reject;
       document.head.appendChild(script);
     });
@@ -77,8 +99,20 @@ window.CDPublicCaptcha = (function () {
     const mount = document.createElement('div');
     container.appendChild(mount);
 
-    widgetId = window.grecaptcha.render(mount, { sitekey: cfg.siteKey });
-    return widgetId != null;
+    var attempts = 0;
+    while (attempts < 40) {
+      try {
+        widgetId = window.grecaptcha.render(mount, { sitekey: cfg.siteKey });
+        if (widgetId != null) return true;
+      } catch (e) {
+        if (attempts === 39) throw e;
+      }
+      attempts += 1;
+      await new Promise(function (r) {
+        window.setTimeout(r, 150);
+      });
+    }
+    return false;
   }
 
   function getToken() {

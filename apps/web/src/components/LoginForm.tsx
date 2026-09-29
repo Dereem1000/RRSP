@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ArrowLeft, ExternalLink, Store } from 'lucide-react';
 import { BrandLogo } from '@/components/marketing/BrandLogo';
-import { LoginCaptcha } from '@/components/LoginCaptcha';
+import { ShopEmployeeLoginLayout } from '@/components/ShopEmployeeLoginLayout';
+import { LoginCaptcha, type LoginCaptchaApi } from '@/components/LoginCaptcha';
 import { resolveReturnPath } from '@/lib/safe-return-url';
 
 export type ShopLoginBranding = {
@@ -42,20 +43,32 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
   const [demoStaffHint, setDemoStaffHint] = useState<DemoStaffHint[]>([]);
   const [demoReady, setDemoReady] = useState(!demoParam);
   const autostartAttempted = useRef(false);
-  const captchaRef = useRef<{ getToken: () => string; reset: () => void; required: boolean }>({
+  const submittingRef = useRef(false);
+  const captchaRef = useRef<LoginCaptchaApi>({
     getToken: () => '',
     reset: () => {},
-    required: false,
+    required: true,
+    ready: false,
   });
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const [captchaRequired, setCaptchaRequired] = useState(true);
 
-  const handleCaptchaReady = useCallback(
-    (api: { getToken: () => string; reset: () => void; required: boolean }) => {
-      captchaRef.current = api;
-    },
-    []
-  );
+  const handleCaptchaReady = useCallback((api: LoginCaptchaApi) => {
+    captchaRef.current = api;
+    setCaptchaRequired(api.required);
+    setCaptchaReady(api.ready);
+  }, []);
+
+  const canSubmit = !loading && (!captchaRequired || captchaReady);
 
   async function performLogin() {
+    if (submittingRef.current) return;
+    if (captchaRef.current.required && !captchaRef.current.ready) {
+      setError('Verification is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    submittingRef.current = true;
     setError('');
     setLoading(true);
     try {
@@ -83,6 +96,7 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
       captchaRef.current.reset();
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 
@@ -122,11 +136,11 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
     if (!autostart || !demoReady || !demoParam || !username || !password) return;
     if (autostartAttempted.current) return;
     if (loading) return;
-    if (captchaRef.current.required) return;
+    if (captchaRef.current.required && !captchaRef.current.ready) return;
 
     autostartAttempted.current = true;
     performLogin();
-  }, [autostart, demoReady, demoParam, username, password, loading]);
+  }, [autostart, demoReady, demoParam, username, password, loading, captchaReady]);
 
   useEffect(() => {
     if (!isShopLogin || !shopBranding?.companyName) return;
@@ -141,8 +155,11 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
     const loginHint = `username@${shopBranding.shopLoginSlug}`;
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5">
+      <ShopEmployeeLoginLayout
+        companyName={shopBranding.companyName}
+        logoUrl={shopBranding.logoUrl}
+      >
+        <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-8 shadow-xl shadow-slate-900/8 backdrop-blur-sm">
           <div className="mb-8 flex flex-col items-center text-center">
             {shopBranding.logoUrl ? (
               <BrandLogo
@@ -156,19 +173,22 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
                 <Store className="h-7 w-7" aria-hidden />
               </span>
             )}
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
-              Sign in to {shopBranding.companyName}
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+              {shopBranding.companyName}
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Staff sign-in — use your <span className="font-mono text-slate-700">{loginHint}</span>{' '}
-              credentials.
+            <p className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-500">
+              Employee Portal
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Authorized personnel only. Sign in with your assigned credentials{' '}
+              <span className="font-mono text-slate-800">({loginHint})</span>.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-slate-700">
-                Username
+                Username or employee ID
               </label>
               <input
                 id="username"
@@ -206,7 +226,7 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={!canSubmit}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-60"
             >
               {loading ? (
@@ -214,13 +234,15 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Signing in…
                 </>
+              ) : captchaRequired && !captchaReady ? (
+                'Waiting for verification…'
               ) : (
-                'Sign in'
+                'Access portal'
               )}
             </button>
           </form>
         </div>
-      </div>
+      </ShopEmployeeLoginLayout>
     );
   }
 
@@ -325,7 +347,7 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
 
             <button
               type="submit"
-              disabled={loading || (Boolean(demoParam) && !demoReady)}
+              disabled={!canSubmit || (Boolean(demoParam) && !demoReady)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-cd-900 py-3 text-sm font-semibold text-white shadow-lg shadow-cd-900/20 transition hover:bg-cd-800 disabled:opacity-60"
             >
               {loading ? (
@@ -333,6 +355,8 @@ export function LoginForm({ demoPortalUrl = null, shopBranding = null }: LoginFo
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Signing in…
                 </>
+              ) : captchaRequired && !captchaReady ? (
+                'Waiting for verification…'
               ) : (
                 'Sign in'
               )}

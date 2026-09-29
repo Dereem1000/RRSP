@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { DemoModeBanner } from '@/components/DemoModeBanner';
 import { DashboardHeaderActions } from '@/components/dashboard/DashboardHeaderActions';
@@ -19,6 +19,7 @@ import {
 import { ComputerDynamicsCreditBadge } from '@/components/marketing/BrandLogo';
 import { PartsLiveSync } from '@/components/parts/PartsLiveSync';
 import { PortalQuickCreate } from '@/components/portal/PortalQuickCreate';
+import { RrspWelcomeModal } from '@/components/portal/RrspWelcomeModal';
 import { PriceCalculatorProvider } from '@/contexts/PriceCalculatorContext';
 import { getPortalPageLabel } from '@/lib/portal-nav';
 import { useAdaptiveMiniPoll } from '@/lib/use-adaptive-mini-poll';
@@ -62,6 +63,10 @@ export function PortalShell({
   const [profileMode, setProfileMode] = useState<'profile' | 'contact'>('profile');
   const [profileTab, setProfileTab] = useState<ProfileTab>('account');
   const [contactPromptDismissed, setContactPromptDismissed] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [showRrspWelcomeOnLogin, setShowRrspWelcomeOnLogin] = useState<boolean | null>(null);
+  const [welcomePrefsLoaded, setWelcomePrefsLoaded] = useState(false);
+  const welcomeShownThisSessionRef = useRef(false);
   const [shopLogoUrl, setShopLogoUrl] = useState<string | null>(rrspAccess?.shopLogoUrl ?? null);
   const [hasCustomLogo, setHasCustomLogo] = useState(Boolean(rrspAccess?.hasCustomLogo));
   const [shopLogoAlt, setShopLogoAlt] = useState(rrspAccess?.shopLogoAlt || 'Shop logo');
@@ -71,6 +76,13 @@ export function PortalShell({
       !rrspAccess?.isShopStaff &&
       rrspAccess?.featureEnabled &&
       (rrspAccess.licenseActive || rrspAccess.enabled || rrspAccess.needsContact)
+  );
+
+  const isRrmsShopOwner = Boolean(
+    user.role === 'client' &&
+      rrspAccess?.featureEnabled &&
+      rrspAccess?.licenseActive &&
+      !rrspAccess?.isShopStaff
   );
 
   useEffect(() => {
@@ -107,12 +119,51 @@ export function PortalShell({
   useAdaptiveMiniPoll(user.role === 'admin', refreshMiniStatus, { baseMs: 60_000, maxMs: 180_000 });
 
   useEffect(() => {
+    if (!isRrmsShopOwner) {
+      setWelcomePrefsLoaded(true);
+      setShowRrspWelcomeOnLogin(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/profile', { cache: 'no-store' });
+        const data = await res.json();
+        if (cancelled) return;
+        setShowRrspWelcomeOnLogin(data.showRrspWelcomeOnLogin !== false);
+      } catch {
+        if (!cancelled) setShowRrspWelcomeOnLogin(true);
+      } finally {
+        if (!cancelled) setWelcomePrefsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isRrmsShopOwner, user.id]);
+
+  useEffect(() => {
+    if (!isRrmsShopOwner || !welcomePrefsLoaded) return;
+    if (showRrspWelcomeOnLogin) {
+      if (!welcomeShownThisSessionRef.current) {
+        welcomeShownThisSessionRef.current = true;
+        setWelcomeOpen(true);
+      }
+      return;
+    }
     if (rrspAccess?.needsContact && !contactPromptDismissed && !profileOpen) {
       setProfileMode('contact');
       setProfileTab('account');
       setProfileOpen(true);
     }
-  }, [rrspAccess?.needsContact, contactPromptDismissed, profileOpen]);
+  }, [
+    isRrmsShopOwner,
+    welcomePrefsLoaded,
+    showRrspWelcomeOnLogin,
+    rrspAccess?.needsContact,
+    contactPromptDismissed,
+    profileOpen,
+  ]);
 
   const handleSidebarWidthChange = useCallback((px: number) => {
     setSidebarWidth(px);
@@ -123,6 +174,17 @@ export function PortalShell({
     setProfileMode('profile');
     setProfileTab(tab);
     setProfileOpen(true);
+  }, []);
+
+  const hideRrspWelcomePermanently = useCallback(async () => {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ showRrspWelcomeOnLogin: false }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to save preference');
+    setShowRrspWelcomeOnLogin(false);
   }, []);
 
   const closeProfile = useCallback(() => {
@@ -275,7 +337,21 @@ export function PortalShell({
         forceContact={profileMode === 'contact'}
         initialTab={profileTab}
         onBrandingSaved={refreshShopBranding}
+        showRrspWelcomeOnLogin={showRrspWelcomeOnLogin ?? true}
+        onShowRrspWelcomeChange={(show) => {
+          setShowRrspWelcomeOnLogin(show);
+          if (show) setWelcomeOpen(true);
+        }}
       />
+
+      {isRrmsShopOwner && (
+        <RrspWelcomeModal
+          open={welcomeOpen}
+          onClose={() => setWelcomeOpen(false)}
+          onHidePermanently={hideRrspWelcomePermanently}
+          onOpenProfile={(tab) => openProfile(tab)}
+        />
+      )}
 
       {(user.role === 'admin' || user.role === 'technician' || user.role === 'client') && (
         <PartsLiveSync role={user.role} isAdmin={user.role === 'admin'} />

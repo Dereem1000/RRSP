@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Parts &amp; Marketplace | RRMS | Computer Dynamics</title>
+    <meta name="description" content="RRMS Shop Parts &amp; Marketplace — find the parts you need, sell the parts you don't. Request parts, track fulfillment, and get delivery.">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        window.placeholderImg = function placeholderImg(img, label) {
+            if (!img) return;
+            var slot = img.dataset.cdSlot || img.getAttribute('data-original-src') ||
+                ('images/rrms/' + String(label || img.alt || 'Screenshot').toLowerCase().replace(/ /g, '-') + '.png');
+            var text = encodeURIComponent((label || img.alt || 'Screenshot') + ' — add screenshot');
+            var pathHint = encodeURIComponent(slot);
+            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='240'%3E%3Crect fill='%23e2e8f0' width='400' height='240'/%3E%3Ctext fill='%2364748b' font-family='Inter,sans-serif' font-size='14' x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle'%3E" + text + "%3C/text%3E%3Ctext fill='%2394a3b8' font-family='Inter,sans-serif' font-size='11' x='50%25' y='58%25' text-anchor='middle' dominant-baseline='middle'%3E" + pathHint + "%3C/text%3E%3C/svg%3E";
+            img.onerror = function () { placeholderImg(img, label || img.alt || 'Screenshot'); };
+        };
+
+        (function () {
+            var pendingData = null;
+            var applied = false;
+            window.__cdMarketingImagesPromise = fetch('/api/marketing-images', { credentials: 'same-origin' })
+                .then(function (res) { return res.ok ? res.json() : null; })
+                .catch(function () { return null; });
+            window.__cdMarketingImagesPromise.then(function (data) {
+                pendingData = data;
+                if (data) window.__cdMarketingImagesData = data;
+                tryApplyMarketingImages();
+            });
+            function tryApplyMarketingImages() {
+                if (applied || !pendingData || !document.body) return;
+                var overrides = pendingData.overrides || {};
+                document.querySelectorAll('img[data-cd-slot], img[data-original-src]').forEach(function (img) {
+                    if (img.closest('.header, header, .nav, nav, .logo')) return;
+                    var slot = img.dataset.cdSlot || img.getAttribute('data-original-src');
+                    if (!slot) return;
+                    var url = overrides[slot] || '';
+                    if (url) {
+                        img.src = url;
+                        img.onerror = function () { placeholderImg(img, img.alt || 'Screenshot'); };
+                    } else {
+                        placeholderImg(img, img.alt || 'Screenshot');
+                    }
+                });
+                applied = true;
+                window.__cdMarketingImagesApplied = true;
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', tryApplyMarketingImages);
+            } else {
+                tryApplyMarketingImages();
+            }
+        })();
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --sky: #0ea5e9;
+            --dark: #0f172a;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --white: #ffffff;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--white);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 64px);
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+        }
+
+        .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+        .logo {
+            display: flex; align-items: center;
+            font-size: 24px; font-weight: 800; color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo img { height: 50px; width: auto; max-width: 200px; margin-right: 12px; object-fit: contain; }
+
+        .nav-links { display: flex; list-style: none; gap: 24px; align-items: center; }
+        .nav-links a { color: var(--gray-700); text-decoration: none; font-weight: 500; font-size: 0.95rem; }
+        .nav-links a:hover { color: var(--primary); }
+
+        .nav-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        .back-btn, .demo-btn {
+            padding: 12px 20px; border-radius: 12px;
+            text-decoration: none; font-weight: 600;
+            font-size: 0.9rem; display: inline-flex;
+            align-items: center; gap: 8px;
+        }
+
+        .back-btn { background: var(--gray-100); color: var(--gray-700); }
+        .demo-btn {
+            background: linear-gradient(135deg, var(--sky), var(--primary));
+            color: white;
+        }
+
+        .mobile-menu-btn {
+            display: none; background: none; border: none;
+            font-size: 1.25rem; color: var(--gray-700); cursor: pointer;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0284c7 0%, var(--sky) 35%, var(--primary) 70%, var(--secondary) 100%);
+            color: white;
+            padding: 120px 0 72px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.35;
+        }
+
+        .hero-content { position: relative; z-index: 2; max-width: 820px; }
+
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            padding: 8px 16px; border-radius: 999px;
+            font-size: 0.85rem; font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.1rem, 4.8vw, 3.25rem);
+            font-weight: 800; margin-bottom: 16px; line-height: 1.12;
+        }
+
+        .hero-hook {
+            font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+            font-weight: 700;
+            margin-bottom: 18px;
+            line-height: 1.3;
+            opacity: 0.98;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem; opacity: 0.92;
+            max-width: 680px; margin-bottom: 28px; line-height: 1.6;
+        }
+
+        .hero-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
+
+        .hero-button {
+            padding: 14px 24px; border-radius: 12px;
+            text-decoration: none; font-weight: 700; font-size: 0.95rem;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .hero-button:hover { transform: translateY(-2px); }
+
+        .hero-button.primary {
+            background: white; color: var(--primary);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .hero-button.secondary {
+            background: rgba(255,255,255,0.12);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.35);
+        }
+
+        .hero-powered {
+            font-size: 0.88rem;
+            opacity: 0.85;
+        }
+
+        .hero-powered a { color: white; font-weight: 600; }
+
+        .dual-path {
+            padding: 72px 0;
+            background: var(--gray-50);
+        }
+
+        .dual-path-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+        .path-card {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid var(--gray-200);
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+        }
+
+        .path-card.buy { border-top: 4px solid var(--sky); }
+        .path-card.sell { border-top: 4px solid var(--success); }
+
+        .path-label {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.78rem; font-weight: 800;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .path-card.buy .path-label { color: var(--sky); }
+        .path-card.sell .path-label { color: var(--success); }
+
+        .path-card h2 {
+            font-size: 1.5rem; font-weight: 800;
+            color: var(--dark); margin-bottom: 20px;
+        }
+
+        .path-steps {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .path-step {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 14px; border-radius: 10px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            font-size: 0.9rem; font-weight: 700;
+            color: var(--gray-700);
+        }
+
+        .path-step i { color: var(--primary); font-size: 0.85rem; }
+
+        .path-arrow { color: var(--gray-500); font-weight: 700; }
+
+        .path-card p {
+            font-size: 0.95rem; color: var(--gray-600); line-height: 1.55;
+        }
+
+        .stock-callout {
+            padding: 56px 0;
+            background: white;
+            border-top: 1px solid var(--gray-200);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .stock-callout-panel {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 32px;
+            align-items: center;
+            border: 1px solid #bae6fd;
+            border-radius: 20px;
+            padding: 32px;
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+        }
+
+        .stock-callout-panel h2 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .stock-callout-panel p {
+            color: var(--gray-600);
+            margin-bottom: 16px;
+        }
+
+        .stock-callout-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .stock-callout-list li {
+            font-size: 0.92rem;
+            color: var(--gray-700);
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .stock-callout-list li::before {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            top: 2px;
+            color: var(--success);
+            font-size: 0.75rem;
+        }
+
+        .stock-callout-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--sky), var(--primary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 16px;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 720px;
+            margin: 0 auto 48px;
+        }
+
+        .section-header h2 {
+            font-size: clamp(1.75rem, 3vw, 2.25rem);
+            font-weight: 800; color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .section-header p { color: var(--gray-600); font-size: 1.05rem; }
+
+        .how-section { padding: 72px 0; }
+
+        .parts-showcase-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .parts-showcase-card {
+            border: 1px solid var(--gray-200);
+            border-radius: 14px;
+            padding: 14px;
+            background: var(--gray-50);
+            position: relative;
+        }
+
+        .parts-showcase-card h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .parts-showcase-image {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 1px solid var(--gray-200);
+            background: white;
+        }
+
+        .parts-showcase-image .cd-mkt-img-frame,
+        .parts-showcase-image.cd-mkt-host {
+            width: 100%;
+            height: 100%;
+        }
+
+        .parts-showcase-card .showcase-image {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+        }
+
+        .trust-section {
+            padding: 72px 0;
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+            border-top: 1px solid #bae6fd;
+            border-bottom: 1px solid #bae6fd;
+        }
+
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .trust-card {
+            background: white;
+            border: 1px solid #bae6fd;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .trust-card i {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--sky), var(--primary));
+            color: white;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 14px;
+        }
+
+        .trust-card h4 {
+            font-size: 1rem; font-weight: 700;
+            color: var(--dark); margin-bottom: 8px;
+        }
+
+        .trust-card p { font-size: 0.88rem; color: var(--gray-600); }
+
+        .bridge-section {
+            padding: 72px 0;
+        }
+
+        .bridge-panel {
+            border-radius: 20px;
+            padding: 40px;
+            background: linear-gradient(135deg, var(--gray-800), var(--dark));
+            color: white;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .bridge-panel h2 {
+            font-size: 1.75rem; font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .bridge-panel p {
+            opacity: 0.9; margin-bottom: 20px;
+            max-width: 520px;
+        }
+
+        .bridge-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: white; font-weight: 700;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+
+        .bridge-modules {
+            display: flex; flex-wrap: wrap; gap: 8px;
+        }
+
+        .bridge-module {
+            padding: 8px 12px; border-radius: 8px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            font-size: 0.8rem; font-weight: 600;
+        }
+
+        .cta-section {
+            padding: 72px 0 96px;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 2rem; font-weight: 800;
+            color: var(--dark); margin-bottom: 12px;
+        }
+
+        .cta-section p {
+            color: var(--gray-600); margin-bottom: 28px;
+            max-width: 560px; margin-left: auto; margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex; flex-wrap: wrap;
+            gap: 14px; justify-content: center;
+        }
+
+        .cta-button {
+            padding: 14px 24px; border-radius: 12px;
+            text-decoration: none; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+
+        .cta-button.primary {
+            background: linear-gradient(135deg, var(--sky), var(--primary));
+            color: white;
+        }
+
+        .cta-button.secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        @media (max-width: 900px) {
+            .dual-path-grid, .bridge-panel, .parts-showcase-grid, .stock-callout-panel { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav container">
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="Computer Dynamics Logo" onerror="this.style.display='none';">
+            </a>
+            <ul class="nav-links">
+                <li><a href="#my-stock">My Stock</a></li>
+                <li><a href="#buy-sell">Buy &amp; Sell</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#rrms">Full Platform</a></li>
+                <li><a href="#join">Join</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="/rrms-learn-more.html" class="back-btn"><i class="fas fa-clipboard-check"></i> RRMS Overview</a>
+                <a href="#" class="demo-btn" data-cd-demo-request><i class="fas fa-store"></i> Join Marketplace</a>
+            </div>
+            <button class="mobile-menu-btn" type="button" aria-label="Menu"><i class="fas fa-bars"></i></button>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge"><i class="fas fa-clipboard-check"></i> RRMS</div>
+                <h1>Shop Parts &amp; Marketplace</h1>
+                <p class="hero-hook">Find the parts you need. Sell the parts you don't.</p>
+                <p class="hero-subtitle">
+                    Manage stock in <strong>My Stock</strong>, list whatever you want to sell, and request spare parts, surplus stock, and hard-to-find components through the marketplace. Computer Dynamics handles logistics — we deliver to your shop.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#" class="hero-button primary" data-cd-demo-request><i class="fas fa-user-plus"></i> Join the Marketplace</a>
+                    <a href="#how-it-works" class="hero-button secondary"><i class="fas fa-circle-play"></i> See How It Works</a>
+                </div>
+                <p class="hero-powered"><a href="/rrms-learn-more.html">View the full Repair Report Management System</a></p>
+            </div>
+        </div>
+    </section>
+
+    <section class="dual-path" id="buy-sell">
+        <div class="container">
+            <div class="dual-path-grid">
+                <article class="path-card buy">
+                    <div class="path-label"><i class="fas fa-search"></i> Need a part?</div>
+                    <h2>Source what your bench needs</h2>
+                    <div class="path-steps" aria-label="Buy workflow">
+                        <span class="path-step"><i class="fas fa-magnifying-glass"></i> Search</span>
+                        <span class="path-arrow" aria-hidden="true">→</span>
+                        <span class="path-step"><i class="fas fa-scale-balanced"></i> Compare</span>
+                        <span class="path-arrow" aria-hidden="true">→</span>
+                        <span class="path-step"><i class="fas fa-paper-plane"></i> Request</span>
+                        <span class="path-arrow" aria-hidden="true">→</span>
+                        <span class="path-step"><i class="fas fa-truck"></i> Delivery</span>
+                    </div>
+                    <p>Search the marketplace for the part you need, compare price and distance, send a request, and track delivery to your shop. No self-pickup — request the part and we deliver.</p>
+                </article>
+
+                <article class="path-card sell">
+                    <div class="path-label"><i class="fas fa-boxes-stacked"></i> Have extra stock?</div>
+                    <h2>Turn surplus into revenue</h2>
+                    <div class="path-steps" aria-label="Sell workflow">
+                        <span class="path-step"><i class="fas fa-list"></i> List</span>
+                        <span class="path-arrow" aria-hidden="true">→</span>
+                        <span class="path-step"><i class="fas fa-bullhorn"></i> Get Discovered</span>
+                        <span class="path-arrow" aria-hidden="true">→</span>
+                        <span class="path-step"><i class="fas fa-handshake"></i> Sell</span>
+                        <span class="path-arrow" aria-hidden="true">→</span>
+                        <span class="path-step"><i class="fas fa-wallet"></i> Get Paid</span>
+                    </div>
+                    <p>Manage parts in <strong>My Stock</strong>, set how much is available to sell, and list on the Marketplace in a few clicks. When an order comes in, mark it ready — Computer Dynamics collects and delivers.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="stock-callout" id="my-stock">
+        <div class="container">
+            <div class="stock-callout-panel">
+                <div>
+                    <div class="stock-callout-icon" aria-hidden="true"><i class="fas fa-boxes"></i></div>
+                    <h2>My Stock manages your inventory — listing is built in</h2>
+                    <p>Your shelf stock and marketplace listings live in one place. Part numbers, brands, quantity, and price are already there when you're ready to sell.</p>
+                </div>
+                <ul class="stock-callout-list">
+                    <li>Manage shop inventory in <strong>My Stock</strong> — bench stock and sellable quantity in one view</li>
+                    <li>List whatever you want to sell on the Marketplace straight from the stock you're already tracking</li>
+                    <li>No separate listing system — choose what's for the bench and what's for sale</li>
+                    <li>Received a part from a buy request? Add it back into My Stock and list it when you're ready</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="how-section" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2>How It Works</h2>
+                <p>Inventory, marketplace browse, buy requests, and sell orders — all tied to the stock you manage in My Stock.</p>
+            </div>
+
+            <div class="parts-showcase-grid">
+                <div class="parts-showcase-card">
+                    <h4><i class="fas fa-store" style="color: var(--primary); margin-right: 6px;"></i> Marketplace — browse &amp; request</h4>
+                    <div class="parts-showcase-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Parts Marketplace" class="showcase-image" data-cd-slot="images/rrms/modules/parts-marketplace.png" data-original-src="images/rrms/modules/parts-marketplace.png" onerror="placeholderImg(this,'Parts Marketplace')">
+                    </div>
+                </div>
+                <div class="parts-showcase-card">
+                    <h4><i class="fas fa-boxes" style="color: var(--primary); margin-right: 6px;"></i> My Stock — manage &amp; list</h4>
+                    <div class="parts-showcase-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="My Stock" class="showcase-image" data-cd-slot="images/rrms/modules/parts-my-stock.png" data-original-src="images/rrms/modules/parts-my-stock.png" onerror="placeholderImg(this,'My Stock')">
+                    </div>
+                </div>
+                <div class="parts-showcase-card">
+                    <h4><i class="fas fa-paper-plane" style="color: var(--primary); margin-right: 6px;"></i> Outgoing — your buy requests</h4>
+                    <div class="parts-showcase-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Outgoing Requests" class="showcase-image" data-cd-slot="images/rrms/modules/parts-outgoing.png" data-original-src="images/rrms/modules/parts-outgoing.png" onerror="placeholderImg(this,'Outgoing Requests')">
+                    </div>
+                </div>
+                <div class="parts-showcase-card">
+                    <h4><i class="fas fa-inbox" style="color: var(--primary); margin-right: 6px;"></i> Incoming — orders to fulfill</h4>
+                    <div class="parts-showcase-image">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Incoming Orders" class="showcase-image" data-cd-slot="images/rrms/modules/parts-incoming.png" data-original-src="images/rrms/modules/parts-incoming.png" onerror="placeholderImg(this,'Incoming Orders')">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="trust-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Built for Repair Shops</h2>
+                <p>A parts marketplace inside RRMS — request what you need, fulfill what you sell, and let Computer Dynamics handle collection and delivery.</p>
+            </div>
+            <div class="trust-grid">
+                <div class="trust-card">
+                    <i class="fas fa-screwdriver-wrench"></i>
+                    <h4>Repair-industry focus</h4>
+                    <p>Parts, screens, batteries, and boards — sourced through a marketplace built for repair work.</p>
+                </div>
+                <div class="trust-card">
+                    <i class="fas fa-location-dot"></i>
+                    <h4>Faster delivery</h4>
+                    <p>Compare distance on available options so you can choose parts that reach your shop sooner when a job is urgent.</p>
+                </div>
+                <div class="trust-card">
+                    <i class="fas fa-warehouse"></i>
+                    <h4>Stock + marketplace together</h4>
+                    <p>Manage inventory in My Stock and list to sell from the same place — Marketplace, Outgoing, Incoming, and History stay in sync.</p>
+                </div>
+                <div class="trust-card">
+                    <i class="fas fa-shield-halved"></i>
+                    <h4>CD handles logistics</h4>
+                    <p>Request parts for your shop or mark seller orders ready — Computer Dynamics collects and delivers. Clients never self-pickup.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="bridge-section" id="rrms">
+        <div class="container">
+            <div class="bridge-panel">
+                <div>
+                    <h2>Part of RRMS</h2>
+                    <p>The marketplace lives inside Shop Parts on the Repair Report Management System. Run tickets, customers, orders, accounting, and POS in the same portal — with marketplace access when you need it.</p>
+                    <a href="/rrms-learn-more.html" class="bridge-link"><i class="fas fa-arrow-right"></i> Explore the full RRMS platform</a>
+                </div>
+                <div class="bridge-modules" aria-label="RRMS modules">
+                    <span class="bridge-module">Shop Tickets</span>
+                    <span class="bridge-module">Customers</span>
+                    <span class="bridge-module">Shop Orders</span>
+                    <span class="bridge-module">Shop Parts</span>
+                    <span class="bridge-module">Accounting</span>
+                    <span class="bridge-module">Shop POS</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section" id="join">
+        <div class="container">
+            <h2>Ready to join the marketplace?</h2>
+            <p>Request RRMS portal access for your repair shop. Once onboarded, you can list stock from My Stock and request parts through the marketplace when you need them.</p>
+            <div class="cta-buttons">
+                <a href="#" class="cta-button primary" data-cd-demo-request><i class="fas fa-store"></i> Join the Marketplace</a>
+                <a href="/login?demo=rrms&autostart=1&returnUrl=/rrsp" class="cta-button secondary" data-cd-link-slot="rrms-marketplace/live-demo" data-cd-link-default="/login?demo=rrms&autostart=1&returnUrl=/rrsp"><i class="fas fa-play-circle"></i> Try Live Demo</a>
+                <a href="https://wa.me/18683168851?text=Hi! I'm interested in the RRMS Repair Shop Parts Marketplace." class="cta-button secondary" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i> Get Quote</a>
+            </div>
+            <p style="margin-top: 28px; font-size: 0.9rem; color: var(--gray-500);">Computer Dynamics &bull; +1 (868) 316-8851 &bull; support@computerdynamicstt.com</p>
+        </div>
+    </section>
+
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                if (this.hasAttribute('data-cd-demo-request')) return;
+                const href = this.getAttribute('href');
+                if (!href || href === '#') return;
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        const menuBtn = document.querySelector('.mobile-menu-btn');
+        if (menuBtn) {
+            menuBtn.addEventListener('click', () => {
+                const navLinks = document.querySelector('.nav-links');
+                navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
+    </script>
+    <script src="/js/public-captcha.js"></script>
+    <script src="/js/public-phone-input.js"></script>
+    <script src="/js/public-demo-request.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            CDDemoRequest.init({
+                product: 'RRMS Shop Parts & Marketplace',
+                title: 'Join the Marketplace',
+                subtitle:
+                    'Request RRMS portal access for your repair shop. Once onboarded, you can list stock from My Stock and request parts through the marketplace.',
+                submitLabel: 'Submit Join Request',
+                variant: 'marketplace',
+                successMessage:
+                    'Join request sent! We will contact you within 24 hours about RRMS marketplace access.',
+                onReady: function () {
+                    if (new URLSearchParams(window.location.search).get('join') === '1') {
+                        CDDemoRequest.open();
+                    }
+                },
+            });
+        });
+    </script>
+    <script src="/js/marketing-link-guard.js"></script>
+    <script src="/js/marketing-image-editor.js?v=20260828d" defer></script>
+    <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
+    <script src="/js/marketing-link-editor.js?v=20260818c" defer></script>
+</body>
+</html>

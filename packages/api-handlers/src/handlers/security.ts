@@ -294,6 +294,8 @@ export async function securityModuleTogglesPost(ctx: ApiContext): Promise<ApiRes
     SecurityHttpKeys.botCaptchaEnabled,
     SecurityHttpKeys.repairEnabled,
     SecurityHttpKeys.repairUseBackups,
+    SecurityHttpKeys.dataLeakGuardEnabled,
+    SecurityHttpKeys.dataLeakAutoBlockIp,
   ] as string[];
 
   if (!allowed.includes(String(body.key))) {

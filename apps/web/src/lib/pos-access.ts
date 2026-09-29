@@ -29,3 +29,21 @@ export async function runWithPosAccess<T>(
 
   throw Object.assign(new Error('Access denied'), { status: 403 });
 }
+
+/** Shop staff may use POS checkout but only the shop owner (admin) may change inventory. */
+export async function assertPosInventoryEditAllowed(session: {
+  id: number;
+  role: string;
+}): Promise<void> {
+  if (session.role === 'admin' || session.role === 'technician') return;
+
+  if (session.role === 'client') {
+    const access = await getClientRrspAccess(session.id);
+    if (access.isShopStaff) {
+      throw Object.assign(new Error('Only shop admins can edit inventory'), { status: 403 });
+    }
+    return;
+  }
+
+  throw Object.assign(new Error('Access denied'), { status: 403 });
+}

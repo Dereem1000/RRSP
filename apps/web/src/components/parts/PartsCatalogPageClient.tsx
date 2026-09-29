@@ -444,7 +444,7 @@ type FulfillModalState = {
   requestId: string;
   requestNumber: string;
   itemName: string;
-  /** Staff see route + fee; client suppliers only confirm ready for CD pickup. */
+  /** Staff see route + fee; client suppliers only confirm ready for CD collection. */
   mode: 'staff' | 'client';
   loading: boolean;
   preview: FulfillPreviewPayload | null;
@@ -473,7 +473,7 @@ function buildHistoryTimeline(request: PartRequestView): HistoryTimelineStep[] {
     steps.push({ key: 'pending_delivery', label: 'Ready for delivery', at: request.pendingDeliveryAt });
   }
   if (request.pickedUpAt) {
-    steps.push({ key: 'picked_up', label: 'Picked up / out for delivery', at: request.pickedUpAt });
+    steps.push({ key: 'picked_up', label: 'Out for delivery', at: request.pickedUpAt });
   }
   if (request.completedAt) {
     steps.push({ key: 'completed', label: 'Delivered / received', at: request.completedAt });
@@ -492,12 +492,20 @@ async function parseResponse(res: Response) {
   return data;
 }
 
+const PARTS_MODAL_BACKDROP =
+  'fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/40 p-3 backdrop-blur-sm sm:items-center sm:p-4';
+const PARTS_MODAL_PANEL =
+  'max-h-[min(92dvh,42rem)] w-full overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-6';
+
 export function PartsCatalogPageClient({
   canManageStock,
   stockTabLabel = 'My Stock',
+  hidePageHeader = false,
 }: {
   canManageStock: boolean;
   stockTabLabel?: string;
+  /** Hide the built-in page title when the parent route already renders one (e.g. RRSP shop parts). */
+  hidePageHeader?: boolean;
 }) {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1251,7 +1259,7 @@ export function PartsCatalogPageClient({
         payload.message ||
           (isStaffModal
             ? 'Request marked pending delivery.'
-            : 'Marked ready — Computer Dynamics will handle pickup and delivery.')
+            : 'Marked ready — Computer Dynamics will collect and deliver.')
       );
       clearIncomingToastSnooze(fulfillModal.requestId);
       setToasts((prev) => prev.filter((toast) => toast.id !== fulfillModal.requestId));
@@ -1300,7 +1308,7 @@ export function PartsCatalogPageClient({
   }
 
   async function pickupIncomingRequest(requestId: string, requestNumber: string) {
-    if (!window.confirm(`Mark request ${requestNumber} as picked up / out for delivery?`)) return;
+    if (!window.confirm(`Mark request ${requestNumber} as collected and out for delivery?`)) return;
 
     setSubmitting(`pickup:${requestId}`);
     setError('');
@@ -1315,7 +1323,7 @@ export function PartsCatalogPageClient({
       setNotice(payload.message || 'Request marked out for delivery.');
       await refreshAfterChange();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to mark pickup');
+      setError(err instanceof Error ? err.message : 'Failed to mark collected');
     } finally {
       setSubmitting('');
     }
@@ -1496,7 +1504,7 @@ export function PartsCatalogPageClient({
   async function requestPackageCod(packageId: string) {
     if (
       !window.confirm(
-        'Request cash on delivery? Accept the quote if needed, then pay cash when the order arrives. Staff will confirm payment on pickup.'
+        'Request cash on delivery? Accept the quote if needed, then pay cash when your order is delivered. Staff will confirm payment on delivery.'
       )
     ) {
       return;
@@ -1589,7 +1597,7 @@ export function PartsCatalogPageClient({
   // Toasts are handled portal-wide by PartsLiveSync (works off the Parts page too).
   const showPageToasts = false;
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 touch-manipulation sm:gap-4">
       {showPageToasts && (toasts.length > 0 || outgoingToasts.length > 0 || cancelToasts.length > 0) && (
         <div
           className={`pointer-events-none fixed right-6 z-[90] flex max-h-[min(70vh,28rem)] w-full max-w-sm flex-col-reverse gap-2 overflow-y-auto ${
@@ -1721,23 +1729,37 @@ export function PartsCatalogPageClient({
           ))}
         </div>
       )}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Parts Catalog</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Shared marketplace stock for businesses and technicians, routed through the platform.
-          </p>
+      {hidePageHeader ? (
+        <div className="flex shrink-0 justify-end">
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading || !!submitting}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadData()}
-          disabled={loading || !!submitting}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
+      ) : (
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Parts Catalog</h1>
+            <p className="mt-1 hidden text-sm text-slate-500 sm:block">
+              Shared marketplace stock for businesses and technicians, routed through the platform.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading || !!submitting}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      )}
 
       {notice && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -1762,14 +1784,21 @@ export function PartsCatalogPageClient({
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
         <button type="button" onClick={() => setTab('marketplace')} className="text-left">
-          <StatCard label="Catalog items" value={marketplaceCatalog.length} icon={Boxes} accent="bg-blue-50 text-blue-600" />
+          <StatCard
+            compact
+            label="Catalog items"
+            value={marketplaceCatalog.length}
+            icon={Boxes}
+            accent="bg-blue-50 text-blue-600"
+          />
         </button>
-        <StatCard label="Units available" value={totalAvailable} icon={Package} accent="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Businesses listing stock" value={totalSuppliers} icon={Store} accent="bg-amber-50 text-amber-700" />
+        <StatCard compact label="Units available" value={totalAvailable} icon={Package} accent="bg-emerald-50 text-emerald-600" />
+        <StatCard compact label="Businesses listing stock" value={totalSuppliers} icon={Store} accent="bg-amber-50 text-amber-700" />
         <button type="button" onClick={() => setTab('outgoing')} className="text-left">
           <StatCard
+            compact
             label="Your outgoing requests"
             value={activeOutgoing.length}
             icon={ShoppingCart}
@@ -1778,13 +1807,31 @@ export function PartsCatalogPageClient({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1">
+      <label className="block shrink-0 sm:hidden">
+        <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-slate-500">
+          Section
+        </span>
+        <select
+          value={tab}
+          onChange={(e) => setTab(e.target.value as PartsTab)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800"
+        >
+          {tabItems.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
+              {typeof item.count === 'number' ? ` (${item.count})` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="hidden shrink-0 flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 sm:flex">
         {tabItems.map((item) => (
           <button
             key={item.key}
             type="button"
             onClick={() => setTab(item.key)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 ${
               tab === item.key ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
@@ -1802,11 +1849,12 @@ export function PartsCatalogPageClient({
         ))}
       </div>
 
+      <div className="max-lg:min-h-0 max-lg:flex-1 max-lg:overflow-y-auto max-lg:overscroll-contain">
       {tab === 'marketplace' && (
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Marketplace Stock</h2>
-            <p className="text-sm text-slate-500">
+            <p className="hidden text-sm text-slate-500 sm:block">
               Combined stock is grouped by item name. Open a card to compare every option, then
               request the one you want
               {data?.viewer.role === 'admin' || data?.viewer.role === 'technician'
@@ -1816,9 +1864,9 @@ export function PartsCatalogPageClient({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <form
-              className="flex flex-wrap gap-2"
+              className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
               onSubmit={(e) => {
                 e.preventDefault();
                 setSearch(searchInput);
@@ -1828,11 +1876,11 @@ export function PartsCatalogPageClient({
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search by item name, part number, or brand..."
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
               />
               <button
                 type="submit"
-                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                className="min-h-11 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 sm:w-auto"
               >
                 Search
               </button>
@@ -1864,7 +1912,7 @@ export function PartsCatalogPageClient({
                       setPriceDetailItem(item);
                     }
                   }}
-                  className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition ${
+                  className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition sm:p-5 ${
                     item.listings.length > 1
                       ? 'cursor-pointer hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500/30'
                       : ''
@@ -1926,7 +1974,7 @@ export function PartsCatalogPageClient({
                         e.stopPropagation();
                         openRequestForItem(item, null);
                       }}
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 sm:w-auto"
                     >
                       <ShoppingCart className="h-4 w-4" />
                       Request part
@@ -1944,7 +1992,7 @@ export function PartsCatalogPageClient({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{resolvedStockLabel}</h2>
-              <p className="text-sm text-slate-500">
+              <p className="hidden text-sm text-slate-500 sm:block">
                 {resolvedStockLabel === 'Our Stock'
                   ? 'List Computer Dynamics parts here so they appear in the shared marketplace catalog.'
                   : 'Add your available parts here so they appear in the shared marketplace catalog. Enter your unit price — buyers see a platform-adjusted listed price.'}
@@ -1953,16 +2001,16 @@ export function PartsCatalogPageClient({
             <button
               type="button"
               onClick={openAddListing}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               Add listing
             </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <form
-              className="flex flex-wrap gap-2"
+              className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
               onSubmit={(e) => {
                 e.preventDefault();
                 setStockSearch(stockSearchInput);
@@ -1972,11 +2020,11 @@ export function PartsCatalogPageClient({
                 value={stockSearchInput}
                 onChange={(e) => setStockSearchInput(e.target.value)}
                 placeholder="Search by item name, part number, or brand..."
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
               />
               <button
                 type="submit"
-                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                className="min-h-11 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 sm:w-auto"
               >
                 Search
               </button>
@@ -2000,7 +2048,71 @@ export function PartsCatalogPageClient({
               No stock listings match your search.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <>
+              <div className="space-y-3 sm:hidden">
+                {filteredInventory.map((listing) => (
+                  <article
+                    key={listing.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900">{listing.itemName}</p>
+                        {listing.notes && <p className="mt-1 text-xs text-slate-500">{listing.notes}</p>}
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => beginEdit(listing)}
+                          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                          title="Edit listing"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteListing(listing.id)}
+                          disabled={submitting === `delete-${listing.id}`}
+                          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          title="Delete listing"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-slate-600">
+                      <div>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Part #</dt>
+                        <dd className="mt-0.5 font-medium text-slate-800">{listing.partNumber ?? '—'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Brand</dt>
+                        <dd className="mt-0.5 font-medium text-slate-800">{listing.brand ?? '—'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Your price</dt>
+                        <dd className="mt-0.5 font-medium text-slate-900">{formatMoney(listing.unitPrice)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Listed</dt>
+                        <dd className="mt-0.5 font-medium text-indigo-700">
+                          {formatMoney(listing.listedUnitPrice ?? listing.unitPrice)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Qty</dt>
+                        <dd className="mt-0.5 font-medium text-slate-800">{listing.quantity}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Available</dt>
+                        <dd className="mt-0.5 font-medium text-slate-800">{listing.availableQuantity}</dd>
+                      </div>
+                    </dl>
+                    <p className="mt-3 text-[11px] text-slate-500">Updated {formatDate(listing.updatedAt)}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm sm:block">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/80">
@@ -2054,7 +2166,8 @@ export function PartsCatalogPageClient({
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </section>
       )}
@@ -2063,7 +2176,7 @@ export function PartsCatalogPageClient({
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Outgoing Requests</h2>
-            <p className="text-sm text-slate-500">
+            <p className="hidden text-sm text-slate-500 sm:block">
               {data?.viewer.role === 'client'
                 ? 'Requests you placed through the catalog remain platform-managed. Use Request cancel if you need staff to cancel one.'
                 : 'Your outgoing requests plus client cancel requests waiting for confirmation. Cancel releases reserved stock.'}
@@ -2076,7 +2189,7 @@ export function PartsCatalogPageClient({
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {activeOutgoing.map((request) => (
-                <article key={request.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <article key={request.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-slate-900">{request.itemName}</h3>
@@ -2267,7 +2380,7 @@ export function PartsCatalogPageClient({
                     )}
                     {request.status === 'pending_delivery' && !request.billing?.paymentUnpaid && (
                       <p className="text-sm text-indigo-700">
-                        Supplier marked this ready for delivery. Waiting for pickup.
+                        Ready for delivery — Computer Dynamics is handling logistics to your shop.
                       </p>
                     )}
                     {request.status === 'out_for_delivery' && (
@@ -2306,10 +2419,10 @@ export function PartsCatalogPageClient({
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Incoming Requests</h2>
-            <p className="text-sm text-slate-500">
+            <p className="hidden text-sm text-slate-500 sm:block">
               {data?.viewer.role === 'client'
-                ? 'Fulfill pending requests from your stock. After you fulfill, Computer Dynamics handles pickup and delivery.'
-                : 'Fulfill your stock requests, then run pickup and delivery for any seller’s fulfilled orders.'}
+                ? 'Fulfill pending requests from your stock. Mark orders ready — Computer Dynamics collects from your shop and delivers to the buyer.'
+                : 'Fulfill seller orders, then collect from suppliers and run delivery to buyers.'}
             </p>
           </div>
           {!activeIncoming.length ? (
@@ -2321,7 +2434,7 @@ export function PartsCatalogPageClient({
               {activeIncoming.map((request) => (
                 <article
                   key={request.id}
-                  className={`rounded-2xl border bg-white p-5 shadow-sm ${
+                  className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${
                     request.billing?.paymentUnpaid
                       ? 'border-amber-300 ring-1 ring-amber-200'
                       : 'border-slate-200'
@@ -2572,7 +2685,7 @@ export function PartsCatalogPageClient({
                     data?.viewer.role === 'client' && (
                       <p className="mt-3 text-sm text-indigo-700">
                         {request.status === 'pending_delivery'
-                          ? 'Fulfilled — Computer Dynamics will handle pickup and delivery.'
+                          ? 'Fulfilled — Computer Dynamics is collecting and delivering.'
                           : 'Out for delivery — waiting for the buyer to confirm Receive.'}
                       </p>
                     )}
@@ -2642,9 +2755,9 @@ export function PartsCatalogPageClient({
                         onClick={() => void pickupIncomingRequest(request.id, request.requestNumber)}
                         className="rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
                       >
-                        {submitting === `pickup:${request.id}` ? 'Marking…' : 'Pickup'}
+                        {submitting === `pickup:${request.id}` ? 'Marking…' : 'Mark collected'}
                       </button>
-                      <p className="text-sm text-indigo-700">Pending delivery — mark Pickup when it leaves.</p>
+                      <p className="text-sm text-indigo-700">Pending delivery — mark collected when CD picks up from the seller.</p>
                     </div>
                   )}
                   {request.status === 'out_for_delivery' &&
@@ -2668,7 +2781,7 @@ export function PartsCatalogPageClient({
                   {request.status === 'cancel_requested' && (
                     <p className="mt-3 text-sm text-amber-700">
                       Buyer requested cancellation — wait for staff to confirm. Do not release the part
-                      for pickup until this is resolved.
+                      until this is resolved.
                     </p>
                   )}
                 </article>
@@ -2682,7 +2795,7 @@ export function PartsCatalogPageClient({
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Request history</h2>
-            <p className="text-sm text-slate-500">
+            <p className="hidden text-sm text-slate-500 sm:block">
               Fulfilled and cancelled requests from outgoing and incoming.
             </p>
           </div>
@@ -2695,7 +2808,7 @@ export function PartsCatalogPageClient({
               {historyRequests.map((request) => {
                 const timeline = buildHistoryTimeline(request);
                 return (
-                <article key={`${request.source}-${request.id}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <article key={`${request.source}-${request.id}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-slate-900">{request.itemName}</h3>
@@ -2832,10 +2945,11 @@ export function PartsCatalogPageClient({
           )}
         </section>
       )}
+      </div>
 
       {stockModalOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+        <div className={PARTS_MODAL_BACKDROP}>
+          <div className={`${PARTS_MODAL_PANEL} max-w-2xl`}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
@@ -2987,8 +3101,8 @@ export function PartsCatalogPageClient({
       )}
 
       {priceDetailItem && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+        <div className={PARTS_MODAL_BACKDROP}>
+          <div className={`${PARTS_MODAL_PANEL} max-w-lg`}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">{priceDetailItem.itemName}</h2>
@@ -3139,8 +3253,8 @@ export function PartsCatalogPageClient({
       )}
 
       {requestItem && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <div className={PARTS_MODAL_BACKDROP}>
+          <div className={`${PARTS_MODAL_PANEL} max-w-lg`}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Request Part</h2>
@@ -3271,8 +3385,8 @@ export function PartsCatalogPageClient({
       )}
 
       {fulfillModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className={PARTS_MODAL_BACKDROP}>
+          <div className={`${PARTS_MODAL_PANEL} max-w-md`}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Fulfill request</h2>
@@ -3292,8 +3406,8 @@ export function PartsCatalogPageClient({
             {fulfillModal.mode === 'client' ? (
               <div className="mt-5 space-y-3">
                 <p className="text-sm text-slate-600">
-                  Mark this item ready for pickup. Computer Dynamics handles delivery fee, pickup,
-                  and delivery from here.
+                  Mark this item ready for collection. Computer Dynamics handles the delivery fee,
+                  collection from your shop, and delivery to the buyer.
                 </p>
                 {fulfillModal.error && (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -3386,7 +3500,7 @@ export function PartsCatalogPageClient({
                 {submitting === `fulfill:${fulfillModal.requestId}`
                   ? 'Fulfilling…'
                   : fulfillModal.mode === 'client'
-                    ? 'Mark ready for pickup'
+                    ? 'Mark ready for collection'
                     : 'Confirm fulfill'}
               </button>
             </div>
@@ -3395,8 +3509,8 @@ export function PartsCatalogPageClient({
       )}
 
       {addToStockPrompt && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/40 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className={`${PARTS_MODAL_PANEL} max-w-md`}>
             <h2 className="text-lg font-semibold text-slate-900">Add to stock?</h2>
             <p className="mt-3 text-sm text-slate-600">
               Received {addToStockPrompt.qty}× {addToStockPrompt.request.itemName}.

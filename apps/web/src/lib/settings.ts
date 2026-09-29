@@ -17,6 +17,8 @@ export type EmailSettings = {
   password: string;
   fromName: string;
   fromEmail: string;
+  /** Demo/join/contact forms on the public website deliver here (falls back to From email). */
+  inboundEmail: string;
   companyName: string;
   companyAddress: string;
   companyPhone: string;
@@ -68,6 +70,7 @@ export async function getEmailSettings(): Promise<EmailSettings> {
     password,
     fromName,
     fromEmail,
+    inboundEmail,
     companyName,
     companyAddress,
     companyPhone,
@@ -82,6 +85,7 @@ export async function getEmailSettings(): Promise<EmailSettings> {
       SystemConfig.getConfig<string>('email_password', ''),
       SystemConfig.getConfig<string>('email_from_name', 'Computer Dynamics'),
       SystemConfig.getConfig<string>('email_from_email', ''),
+      SystemConfig.getConfig<string>('email_inbound_to', ''),
       SystemConfig.getConfig<string>('email_company_name', 'Computer Dynamics'),
       SystemConfig.getConfig<string>('email_company_address', ''),
       SystemConfig.getConfig<string>('email_company_phone', '+1-868-316-8851'),
@@ -98,6 +102,7 @@ export async function getEmailSettings(): Promise<EmailSettings> {
     password: password ?? '',
     fromName: fromName ?? 'Computer Dynamics',
     fromEmail: fromEmail ?? user ?? '',
+    inboundEmail: inboundEmail ?? '',
     companyName: companyName ?? 'Computer Dynamics',
     companyAddress: companyAddress ?? '',
     companyPhone: companyPhone ?? '+1-868-316-8851',
@@ -123,6 +128,7 @@ export async function saveEmailSettings(config: Partial<EmailSettings>) {
     ['email_user', config.user ?? '', 'string'],
     ['email_from_name', config.fromName ?? 'Computer Dynamics', 'string'],
     ['email_from_email', config.fromEmail ?? '', 'string'],
+    ['email_inbound_to', config.inboundEmail ?? '', 'string'],
     ['email_company_name', config.companyName ?? 'Computer Dynamics', 'string'],
     ['email_company_address', config.companyAddress ?? '', 'string'],
     ['email_company_phone', normalizeStoredPhone(config.companyPhone ?? '') ?? '', 'string'],

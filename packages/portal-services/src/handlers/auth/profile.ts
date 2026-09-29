@@ -1,6 +1,7 @@
 // @ts-nocheck
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import { authErrorResult, requireSession } from '@cd-v2/api-handlers';
+import bcrypt from 'bcryptjs';
 import { Client, User, publicUser } from '@web/lib/db';
 import {
   ensureClientLocationColumns,
@@ -10,6 +11,7 @@ import {
 import { normalizeStoredPhone } from '@web/lib/phone-utils';
 import { getMissingRrspContactFields, isRrspContactComplete } from '@web/lib/rrsp-contact';
 import { getClientRrspAccess } from '@web/lib/rrsp-access';
+import { readShowRrspWelcomeOnLogin, mergeShowRrspWelcomeOnLogin } from '@web/lib/rrsp-welcome-prefs';
 
 async function loadLinkedClient(userId: number) {
   await ensureClientLocationColumns();
@@ -81,6 +83,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
         isShopStaff: Boolean(rrsp?.isShopStaff),
         portalDisplayRole: rrsp?.portalDisplayRole ?? null,
         missingContactFields: rrsp?.missingContactFields ?? [],
+        showRrspWelcomeOnLogin: readShowRrspWelcomeOnLogin(user.preferences),
       },
     };
   } catch (error) {
@@ -101,6 +104,40 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
     const lastName = String(body.lastName ?? user.lastName).trim();
     const email = String(body.email ?? user.email).trim();
     const phone = normalizeStoredPhone(String(body.phone ?? user.phone ?? '')) ?? null;
+
+    if (body.showRrspWelcomeOnLogin !== undefined) {
+      await user.update({
+        preferences: mergeShowRrspWelcomeOnLogin(user.preferences, Boolean(body.showRrspWelcomeOnLogin)),
+      });
+      if (
+        body.firstName === undefined &&
+        body.lastName === undefined &&
+        body.email === undefined &&
+        body.phone === undefined &&
+        body.client === undefined &&
+        body.address === undefined
+      ) {
+        await user.reload({ attributes: { exclude: ['password', 'tempPassword'] } });
+        const rrsp =
+          session.role === 'client' ? await getClientRrspAccess(session.id) : null;
+        return {
+          status: 200,
+          body: {
+            success: true,
+            message: 'Preferences updated',
+            user: {
+              ...publicUser(user),
+              phone: user.phone ?? '',
+              username: user.username,
+            },
+            client: await serializeLinkedClient(await loadLinkedClient(session.id)),
+            rrspNeedsContact: Boolean(rrsp?.needsContact),
+            rrspLicensed: Boolean(rrsp?.featureEnabled && rrsp?.licenseActive),
+            showRrspWelcomeOnLogin: readShowRrspWelcomeOnLogin(user.preferences),
+          },
+        };
+      }
+    }
 
     if (!firstName || !lastName) {
       return { status: 400, body: { success: false, message: 'First and last name are required' } };
@@ -240,6 +277,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
                 address: client.address,
               })
             : true,
+          showRrspWelcomeOnLogin: readShowRrspWelcomeOnLogin(user.preferences),
         },
       };
     }
@@ -262,6 +300,7 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
         rrspNeedsContact: Boolean(rrsp?.needsContact),
         rrspLicensed: Boolean(rrsp?.featureEnabled && rrsp?.licenseActive),
         contactComplete: true,
+        showRrspWelcomeOnLogin: readShowRrspWelcomeOnLogin(user.preferences),
       },
     };
   } catch (error) {
@@ -296,19 +335,32 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       return { status: 404, body: { success: false, message: 'User not found' } };
     }
 
-    const valid = await user.validatePassword(currentPassword);
+    const valid = await user.verifyLoginPassword(currentPassword);
     if (!valid) {
       return { status: 400, body: { success: false, message: 'Current password is incorrect' } };
     }
 
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
     await user.update({
-      password: newPassword,
+      password: hashedPassword,
       passwordSet: true,
       tempPassword: null,
+      isActive: true,
       isLocked: false,
       failedLoginAttempts: 0,
       lockoutUntil: null,
+      ...(user.passwordSet ? {} : { firstLoginAt: user.firstLoginAt ?? new Date() }),
     });
+
+    if (user.role === 'client') {
+      const client = await Client.findOne({
+        where: { userId: session.id },
+        attributes: ['id', 'status', 'isActive'],
+      });
+      if (client && (client.status !== 'active' || !client.isActive)) {
+        await client.update({ status: 'active', isActive: true });
+      }
+    }
 
     return { status: 200, body: { success: true, message: 'Password updated' } };
   } catch (error) {

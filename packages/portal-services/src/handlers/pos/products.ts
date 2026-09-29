@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import { requireSession, authErrorResult } from '@cd-v2/api-handlers';
-import { runWithPosAccess } from '@web/lib/pos-access';
+import { runWithPosAccess, assertPosInventoryEditAllowed } from '@web/lib/pos-access';
 import {
   createPosInventoryLine,
   listCdPosCatalog,
@@ -59,6 +59,7 @@ export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
     const session = requireSession(ctx);
+    await assertPosInventoryEditAllowed(session);
     return await runWithPosAccess(session, async (mode) => {
       const body = (ctx.body ?? {}) as Record<string, unknown>;
       const sourceRaw = String(body.source ?? '').trim().toLowerCase();

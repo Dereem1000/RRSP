@@ -26,9 +26,12 @@ export function RrspStaffLoginUrl({ shopLoginSlug }: { shopLoginSlug: string }) 
 
   return (
     <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-3">
-      <p className="text-xs font-medium text-indigo-950">Staff sign-in page</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-950">
+        Employee portal URL
+      </p>
       <p className="mt-1 text-xs leading-relaxed text-indigo-900/80">
-        Share this link with your team — it shows your shop branding, not Computer Dynamics.
+        Provide this secure sign-in link to authorized team members. They will see your company
+        branding and business workspace — not the platform provider.
       </p>
       <div className="mt-2 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded-lg border border-indigo-200/80 bg-white px-2.5 py-1.5 text-xs text-slate-800">

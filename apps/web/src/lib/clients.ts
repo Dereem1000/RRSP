@@ -20,8 +20,16 @@ export function serializeClient(client: { toJSON: () => Record<string, unknown> 
   return json;
 }
 
+/** Minimal client fields needed to resolve activation features (MSP + RRSP shop models). */
+export type ClientActivationSource = {
+  id: string;
+  features?: unknown;
+};
+
 /** Portal client features + active license rows (so RRSP license enables the feature). */
-export async function resolveClientActivationFeatures(client: Client): Promise<ActivationFeature[]> {
+export async function resolveClientActivationFeatures(
+  client: ClientActivationSource,
+): Promise<ActivationFeature[]> {
   const stored = getActivationFeatures(client.features);
   try {
     const { getLicenseStatusByMspClientId } = await import('@/lib/license-service');
@@ -34,11 +42,11 @@ export async function resolveClientActivationFeatures(client: Client): Promise<A
   }
 }
 
-export async function getClientById(id: string) {
+export async function getClientById(id: string): Promise<Client | null> {
   const ClientModel = isRrspDbActive() ? getShopClientModel() : Client;
   const TicketModel = isRrspDbActive() ? getTicketModel() : Ticket;
 
-  return ClientModel.findByPk(id, {
+  return (await ClientModel.findByPk(id, {
     include: [
       {
         model: TicketModel,
@@ -47,7 +55,7 @@ export async function getClientById(id: string) {
         order: [['lastUpdated', 'DESC']],
       },
     ],
-  });
+  })) as Client | null;
 }
 
 /** Orders FK still references legacy `clients_backup`; mirror live clients before insert. */
@@ -321,7 +329,14 @@ export async function createPortalUserForClient(client: {
 }
 
 export async function sendPortalWelcomeEmail(
-  client: { email: string; contactPerson?: string | null },
+  client: {
+    email: string;
+    contactPerson?: string | null;
+    name?: string;
+    companyName?: string | null;
+    features?: unknown;
+    servicePlanData?: unknown;
+  },
   username: string,
   tempPassword: string,
   portalUrl: string
@@ -332,6 +347,10 @@ export async function sendPortalWelcomeEmail(
     username,
     tempPassword,
     portalUrl,
+    features: client.features,
+    servicePlanData: client.servicePlanData,
+    companyName: client.companyName,
+    clientName: client.name,
   });
 }
 

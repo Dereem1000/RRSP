@@ -4,14 +4,13 @@ import { Client, User } from '@cd-v2/database';
 import { normalizeServicePlanData, RRSP_MODULES, type RrspModule } from '@/lib/rrsp';
 import { getRrspPortalBranding } from '@/lib/rrsp-branding';
 import { parseRrspBranding } from '@/lib/rrsp-branding-shared';
+import {
+  normalizeRrspShopLoginSlug,
+  type RrspShopLoginPublicInfo,
+} from '@/lib/rrsp-shop-login-shared';
 
-export type RrspShopLoginPublicInfo = {
-  companyName: string;
-  logoUrl: string | null;
-  hasCustomLogo: boolean;
-  staffLoginEnabled: boolean;
-  shopLoginSlug: string;
-};
+export type { RrspShopLoginPublicInfo } from '@/lib/rrsp-shop-login-shared';
+export { normalizeRrspShopLoginSlug, shopPortalLogoutPath, shopStaffLoginPath } from '@/lib/rrsp-shop-login-shared';
 
 /** Public shop login page metadata — no internal IDs. */
 export async function getRrspShopLoginPublicInfo(
@@ -34,11 +33,6 @@ export async function getRrspShopLoginPublicInfo(
     staffLoginEnabled: true,
     shopLoginSlug,
   };
-}
-
-export function shopStaffLoginPath(slug: string | null | undefined): string {
-  const normalized = slug ? normalizeRrspShopLoginSlug(slug) : '';
-  return normalized ? `/login/shop/${encodeURIComponent(normalized)}` : '/login';
 }
 
 export const RRSP_SHOP_STAFF_PREF_KEY = 'rrspShopStaff';
@@ -67,17 +61,6 @@ export type RrspShopStaffSettings = {
   staffLoginEnabled: boolean;
   shopLoginSlug: string;
 };
-
-export function normalizeRrspShopLoginSlug(value: string): string {
-  return String(value || '')
-    .normalize('NFKD')
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .replace(/[\s_]+/g, '')
-    .replace(/-+/g, '')
-    .toLowerCase()
-    .slice(0, 48);
-}
 
 export function parseRrspShopStaffPreferences(
   preferences: unknown

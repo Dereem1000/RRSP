@@ -237,9 +237,10 @@ export async function resetUserPassword(id: number) {
   }
 
   const tempPassword = generateTempPassword();
+  const hashed = await bcrypt.hash(tempPassword, 12);
   await user.update({
-    password: tempPassword,
-    tempPassword: await bcrypt.hash(tempPassword, 12),
+    password: hashed,
+    tempPassword: hashed,
     passwordSet: false,
     isLocked: false,
     failedLoginAttempts: 0,

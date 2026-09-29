@@ -123,9 +123,12 @@ function formFromProduct(product: PosProduct): ProductForm {
 export function PosInventoryPageClient({
   mode,
   initialProducts,
+  canEditInventory = true,
 }: {
   mode: 'cd' | 'rrsp';
   initialProducts: PosProduct[];
+  /** RRMS shop staff: view-only inventory; owner/admin can edit. */
+  canEditInventory?: boolean;
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [search, setSearch] = useState('');
@@ -342,7 +345,9 @@ export function PosInventoryPageClient({
             {mode === 'rrsp' ? 'Shop POS inventory' : 'POS inventory'}
           </h1>
           <p className="mt-1 hidden text-sm text-slate-500 sm:block">
-            Manage POS items/services and Parts stock. Use Add product → Parts / marketplace to list stock for sale online.
+            {canEditInventory
+              ? 'Manage POS items/services and Parts stock. Use Add product → Parts / marketplace to list stock for sale online.'
+              : 'View POS items and Parts stock. Only shop admins can add or edit inventory.'}
           </p>
         </div>
         <PosSectionNav mode={mode} />
@@ -418,14 +423,16 @@ export function PosInventoryPageClient({
             <RefreshCw className={`h-4 w-4 ${loading === 'refresh' ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button
-            type="button"
-            onClick={() => setForm(emptyForm(mode))}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            <Plus className="h-4 w-4" />
-            Add product
-          </button>
+          {canEditInventory ? (
+            <button
+              type="button"
+              onClick={() => setForm(emptyForm(mode))}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              <Plus className="h-4 w-4" />
+              Add product
+            </button>
+          ) : null}
         </div>
 
         {/* Mobile: compact selects · Desktop: one chip row */}
@@ -600,7 +607,7 @@ export function PosInventoryPageClient({
                       </td>
                       <td className="px-2 py-3">
                         <div className="flex justify-end gap-1">
-                          {tracked ? (
+                          {canEditInventory && tracked ? (
                             <>
                               <button
                                 type="button"
@@ -631,27 +638,31 @@ export function PosInventoryPageClient({
                               </button>
                             </>
                           ) : null}
-                          <button
-                            type="button"
-                            onClick={() => setForm(formFromProduct(product))}
-                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                            aria-label="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void removeProduct(product)}
-                            disabled={loading === `delete-${product.id}`}
-                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
-                            aria-label="Remove"
-                          >
-                            {loading === `delete-${product.id}` ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </button>
+                          {canEditInventory ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setForm(formFromProduct(product))}
+                                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                aria-label="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void removeProduct(product)}
+                                disabled={loading === `delete-${product.id}`}
+                                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+                                aria-label="Remove"
+                              >
+                                {loading === `delete-${product.id}` ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -1015,7 +1026,7 @@ export function PosInventoryPageClient({
                   : 'This item does not track quantity — it can always be sold.'}
               </p>
             )}
-            {form.id && formTracksStock && form.source ? (
+            {canEditInventory && form.id && formTracksStock && form.source ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   Stock movements
