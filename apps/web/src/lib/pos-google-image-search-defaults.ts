@@ -1,11 +1,7 @@
-/**
- * Same Google Custom Search credentials POS uses when Settings/DB/env are empty.
- * Documented in POS repo: `docs/IMAGE_SEARCH_SETUP.md` (`getImageSearchConfig` in `server/index.js`).
- */
-export const POS_BUILTIN_GOOGLE_IMAGE_API_KEY = 'AIzaSyCMK06wL91WfWqUA8ijtgmlqWEdSZA6ETU';
-export const POS_BUILTIN_GOOGLE_SEARCH_ENGINE_ID = '9580d86ee26594a48';
-
-export const POS_GOOGLE_IMAGE_SEARCH_SETTING_KEYS = {
-  apiKey: 'google_image_api_key',
-  searchEngineId: 'google_search_engine_id',
+/** SystemConfig keys (Settings → Integrations → Federation image search). */
+export const FEDERATION_IMAGE_SEARCH_CONFIG_KEYS = {
+  provider: 'federation_image_search_provider',
+  googleApiKey: 'federation_google_image_api_key',
+  googleSearchEngineId: 'federation_google_search_engine_id',
+  braveApiKey: 'federation_brave_search_api_key',
 } as const;

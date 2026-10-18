@@ -3,15 +3,13 @@
 import https from 'https';
 import { stripBarcodeTokensFromImageSearchQuery } from '@/lib/catalog-image-search-query';
 import {
-  POS_BUILTIN_GOOGLE_IMAGE_API_KEY,
-  POS_BUILTIN_GOOGLE_SEARCH_ENGINE_ID,
-} from '@/lib/pos-google-image-search-defaults';
+  type FederationGoogleImageSearchConfig,
+  type FederationImageSearchConfigSource,
+  type FederationImageSearchRuntime,
+  resolveFederationImageSearchRuntime,
+  resolveFederationGoogleImageSearchConfig,
+} from '@cd-v2/security';
 
-/**
- * CD federation catalog (no POS process required):
- * 1. Env `GOOGLE_API_KEY` + `GOOGLE_SEARCH_ENGINE_ID` (both required to override)
- * 2. Built-in defaults from POS `docs/IMAGE_SEARCH_SETUP.md` (same as POS Inventory)
- */
 export type CatalogImageSearchOption = {
   url: string;
   thumbnail: string;
@@ -21,35 +19,19 @@ export type CatalogImageSearchOption = {
   height?: number;
 };
 
-export type GoogleImageSearchConfig = {
-  googleApiKey: string;
-  googleSearchEngineId: string;
-};
+export type GoogleImageSearchConfig = FederationGoogleImageSearchConfig;
 
-export type GoogleImageSearchConfigSource = 'environment' | 'pos_builtin';
+export type GoogleImageSearchConfigSource = FederationImageSearchConfigSource;
 
-export function getBuiltinGoogleImageSearchConfig(): GoogleImageSearchConfig {
-  return {
-    googleApiKey: POS_BUILTIN_GOOGLE_IMAGE_API_KEY,
-    googleSearchEngineId: POS_BUILTIN_GOOGLE_SEARCH_ENGINE_ID,
-  };
+export async function getFederationImageSearchRuntime(): Promise<FederationImageSearchRuntime> {
+  return resolveFederationImageSearchRuntime();
 }
 
-export function getGoogleImageSearchConfig(): {
-  config: GoogleImageSearchConfig;
+export async function getGoogleImageSearchConfig(): Promise<{
+  config: GoogleImageSearchConfig | null;
   source: GoogleImageSearchConfigSource;
-} {
-  const googleApiKey = String(process.env.GOOGLE_API_KEY || process.env.GOOGLE_IMAGE_API_KEY || '').trim();
-  const googleSearchEngineId = String(process.env.GOOGLE_SEARCH_ENGINE_ID || '').trim();
-
-  if (googleApiKey && googleSearchEngineId) {
-    return {
-      config: { googleApiKey, googleSearchEngineId },
-      source: 'environment',
-    };
-  }
-
-  return { config: getBuiltinGoogleImageSearchConfig(), source: 'pos_builtin' };
+}> {
+  return resolveFederationGoogleImageSearchConfig();
 }
 
 function rankImageItem(item: {

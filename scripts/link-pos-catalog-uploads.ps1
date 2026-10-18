@@ -36,5 +36,5 @@ if (Test-Path -LiteralPath $link) {
     Write-Error "Path exists and is not a junction: $link"
 }
 
-cmd /c mklink /J `"$link`" `"$uploadsSrc`""
+cmd /c mklink /J `"$link`" `"$uploadsSrc`"
 Write-Host "Linked $link -> $uploadsSrc"

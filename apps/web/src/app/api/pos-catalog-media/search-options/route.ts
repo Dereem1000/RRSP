@@ -4,15 +4,15 @@ import {
   buildPosStyleImageSearchQuery,
   stripBarcodeTokensFromImageSearchQuery,
 } from '@/lib/catalog-image-search-query';
+import { searchBraveCatalogImageOptions } from '@/lib/brave-catalog-image-search';
 import {
-  getBuiltinGoogleImageSearchConfig,
-  getGoogleImageSearchConfig,
+  getFederationImageSearchRuntime,
   searchGoogleCatalogImageOptions,
 } from '@/lib/pos-catalog-image-search';
 
 export const runtime = 'nodejs';
 
-/** Google image search for federation catalog (same Custom Search API as POS Inventory). */
+/** Online image search for federation catalog (Google Custom Search or Brave Image Search). */
 export async function GET(req: NextRequest) {
   try {
     const session = requireSession(req);
@@ -39,25 +39,35 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { config, source } = getGoogleImageSearchConfig();
-    let result = await searchGoogleCatalogImageOptions(query, config);
-    let configSource = source;
+    const runtime = await getFederationImageSearchRuntime();
+    const configSource = runtime.source;
+    const provider = runtime.provider;
 
-    const builtin = getBuiltinGoogleImageSearchConfig();
-    const usingBuiltin =
-      config.googleApiKey === builtin.googleApiKey && config.googleSearchEngineId === builtin.googleSearchEngineId;
-
-    if (!result.images.length && !result.quotaExceeded && !result.apiError && !usingBuiltin) {
-      const builtinResult = await searchGoogleCatalogImageOptions(query, builtin);
-      if (builtinResult.images.length || builtinResult.apiError || builtinResult.quotaExceeded) {
-        result = builtinResult;
-        configSource = 'pos_builtin';
-      }
+    if (!provider) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            'Federation image search is not configured. Open Settings → Integrations → Federation image search and choose Google or Brave, then save credentials.',
+          configSource,
+        },
+        { status: 503 },
+      );
     }
 
+    const result =
+      provider === 'brave'
+        ? await searchBraveCatalogImageOptions(query, runtime.braveSubscriptionToken || '')
+        : await searchGoogleCatalogImageOptions(query, runtime.google!);
+
     if (result.apiError) {
+      let message = result.apiError;
+      if (provider === 'google' && /invalid argument/i.test(message)) {
+        message +=
+          ' Check Settings → Integrations: Search Engine ID must be the Programmable Search cx value (not a Firebase or GCP project UUID).';
+      }
       return NextResponse.json(
-        { success: false, message: result.apiError, configSource },
+        { success: false, message, configSource, provider },
         { status: 502 },
       );
     }
@@ -67,7 +77,8 @@ export async function GET(req: NextRequest) {
         {
           success: false,
           quotaExceeded: true,
-          message: 'Google image search quota exceeded. Try again tomorrow or upload an image file.',
+          message: `${provider === 'brave' ? 'Brave' : 'Google'} image search quota exceeded. Try again later or upload an image file.`,
+          provider,
         },
         { status: 429 },
       );
@@ -79,12 +90,18 @@ export async function GET(req: NextRequest) {
           success: false,
           message: 'No images found for this product. Try a shorter name or upload an image file.',
           configSource,
+          provider,
         },
         { status: 404 },
       );
     }
 
-    return NextResponse.json({ success: true, images: result.images, configSource });
+    return NextResponse.json({
+      success: true,
+      images: result.images,
+      configSource,
+      provider,
+    });
   } catch (error) {
     if (error instanceof AuthError) return authErrorResponse(error);
     console.error('[pos-catalog-media/search-options]', error);

@@ -4,6 +4,7 @@ import { Plug } from 'lucide-react';
 import { SettingsLicenseSystemHealthSection } from '@/components/settings/SettingsLicenseSystemHealthSection';
 import { SettingsMiniSection } from '@/components/settings/SettingsMiniSection';
 import { SettingsMspSyncTokenSection } from '@/components/settings/SettingsMspSyncTokenSection';
+import { SettingsFederationImageSearchSection } from '@/components/settings/SettingsFederationImageSearchSection';
 import { SettingsRecaptchaSection } from '@/components/settings/SettingsRecaptchaSection';
 
 export function SettingsIntegrationsSection({
@@ -23,13 +24,16 @@ export function SettingsIntegrationsSection({
           <h2 className="text-lg font-semibold text-slate-900">Integrations</h2>
         </div>
         <p className="mt-1 text-sm text-slate-500">
-          License Activation GUI sync token, Mini assistant dock, and Google reCAPTCHA for public forms and login.
+          License Activation GUI sync token, Mini assistant dock, federation catalog image search, and Google
+          reCAPTCHA for public forms and login.
         </p>
       </div>
 
       <SettingsMiniSection onMessage={onMessage} onError={onError} />
 
       <SettingsMspSyncTokenSection onMessage={onMessage} onError={onError} />
+
+      <SettingsFederationImageSearchSection onMessage={onMessage} onError={onError} />
 
       <SettingsRecaptchaSection onMessage={onMessage} onError={onError} />
     </div>

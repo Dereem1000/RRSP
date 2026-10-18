@@ -6,6 +6,7 @@ export * from './intrusion-scan';
 export * from './alerts';
 export * from './activity-thresholds';
 export * from './recaptcha';
+export * from './federation-image-search';
 export * from './file-repair';
 export * from './data-leak-guard';
 export * from './threat-metrics';

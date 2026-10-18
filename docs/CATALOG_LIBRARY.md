@@ -25,7 +25,7 @@ Federation policy (consensus mode, enable/disable) is edited under **Shared prod
 
 **Starter images:** Bundled under `data/pos-catalog-media/` and served by CD at `/api/pos-catalog-media/file/{filename}?kind=image`. Catalog copy for Mini/CD import: `data/pos-starter-catalog/default-product-catalog.json` (CD image URLs). Refresh from POS with `node scripts/sync-starter-catalog-media.js` in the POS repo.
 
-**Federation catalog image search (CD web):** Google Custom Search only (`GET /api/pos-catalog-media/search-options`) — POS does not need to be running. Optional env override: set **both** `GOOGLE_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID` on the CD server; otherwise CD uses the same built-in keys as POS (`docs/IMAGE_SEARCH_SETUP.md`). Picked images are saved under `data/pos-catalog-media/`.
+**Federation catalog image search (CD web):** `GET /api/pos-catalog-media/search-options` — POS does not need to be running. Configure **Settings → Integrations → Federation image search** (Brave subscription token, or Google API key + Search Engine ID). Env fallbacks: `BRAVE_SEARCH_API_KEY`, or `GOOGLE_API_KEY` + `GOOGLE_SEARCH_ENGINE_ID`. Picked images are saved under `data/pos-catalog-media/`.
 
 **CD as source of truth (symlinks):** Catalog rows may keep POS-style paths (`/uploads/products/…`). CD resolves the file name from either that path or `/api/pos-catalog-media/file/…`, then serves bytes from `data/pos-catalog-media/` **or** `data/pos-catalog-uploads/products/` (junction/symlink to POS uploads). See `data/pos-catalog-uploads/README.md` and `scripts/link-pos-catalog-uploads.ps1`. Optional env: `POS_CATALOG_MEDIA_ROOT`, `POS_CATALOG_UPLOADS_ROOT`.
 

@@ -189,6 +189,7 @@ import { dispatch as dispatch_settings_mini } from './handlers/settings/mini';
 import { dispatch as dispatch_settings_msp_sync_token } from './handlers/settings/msp-sync-token';
 import { dispatch as dispatch_settings_msp_sync_token__sync_mini } from './handlers/settings/msp-sync-token__sync-mini';
 import { dispatch as dispatch_settings_recaptcha } from './handlers/settings/recaptcha';
+import { dispatch as dispatch_settings_federation_image_search } from './handlers/settings/federation-image-search';
 import { dispatch as dispatch_system_demo_mode } from './handlers/system/demo-mode';
 import { dispatch as dispatch_tickets_tickets } from './handlers/tickets/tickets';
 import { dispatch as dispatch_tickets_id } from './handlers/tickets/id';
@@ -466,6 +467,16 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/settings/msp-sync-token/sync-mini', handler: dispatch_settings_msp_sync_token__sync_mini },
   { method: 'GET', pattern: '/settings/recaptcha', handler: dispatch_settings_recaptcha },
   { method: 'PUT', pattern: '/settings/recaptcha', handler: dispatch_settings_recaptcha },
+  {
+    method: 'GET',
+    pattern: '/settings/federation-image-search',
+    handler: dispatch_settings_federation_image_search,
+  },
+  {
+    method: 'PUT',
+    pattern: '/settings/federation-image-search',
+    handler: dispatch_settings_federation_image_search,
+  },
   { method: 'GET', pattern: '/system/demo-mode', handler: dispatch_system_demo_mode },
   { method: 'GET', pattern: '/tickets', handler: dispatch_tickets_tickets },
   { method: 'POST', pattern: '/tickets', handler: dispatch_tickets_tickets },

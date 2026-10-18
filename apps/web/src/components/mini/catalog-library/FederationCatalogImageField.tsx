@@ -202,7 +202,7 @@ export function FederationCatalogImageField({
                 {searching ? (
                   <p className="flex items-center gap-2 text-sm text-slate-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Searching Google…
+                    Searching…
                   </p>
                 ) : pickerError ? (
                   <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
@@ -265,7 +265,7 @@ export function FederationCatalogImageField({
           className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-900 hover:bg-violet-100 disabled:opacity-60"
         >
           {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-          Search online (Google)
+          Search
         </button>
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
           {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
