@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Point of Sale System for Mini-Marts/Grocery Stores",
   "main": "server/index.js",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "private": true,
   "scripts": {
     "start": "node server/index.js"

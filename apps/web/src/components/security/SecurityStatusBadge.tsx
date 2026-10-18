@@ -65,34 +65,41 @@ export function SecurityStatusBadge() {
   const issueCount = summary?.issueCount ?? 0;
   const hasIssues = issueCount > 0;
   const bypassActive = summary?.bypassActive ?? false;
+  /** Break-glass bypass uses amber styling; underlying threat/issues stay in the tooltip only. */
+  const showIssueAlert = hasIssues && !bypassActive;
 
   const threatLevel = summary?.threatLevel;
 
-  const threatLevelTone = (() => {
-    switch (threatLevel) {
-      case 'high':
-        return 'border-red-300 bg-red-50 text-red-800 shadow-red-200/50 hover:bg-red-100';
-      case 'medium':
-        return 'border-orange-300 bg-orange-50 text-orange-800 shadow-orange-200/50 hover:bg-orange-100';
-      case 'low':
-        return 'border-yellow-300 bg-yellow-50 text-yellow-800 shadow-yellow-200/50 hover:bg-yellow-100';
-      default:
-        return '';
-    }
-  })();
+  const threatLevelTone = bypassActive
+    ? ''
+    : (() => {
+        switch (threatLevel) {
+          case 'critical':
+          case 'high':
+            return 'border-red-300 bg-red-50 text-red-800 shadow-red-200/50 hover:bg-red-100';
+          case 'medium':
+            return 'border-orange-300 bg-orange-50 text-orange-800 shadow-orange-200/50 hover:bg-orange-100';
+          case 'low':
+            return 'border-yellow-300 bg-yellow-50 text-yellow-800 shadow-yellow-200/50 hover:bg-yellow-100';
+          default:
+            return '';
+        }
+      })();
 
-  const tone = threatLevelTone
-    ? threatLevelTone
-    : hasIssues
-    ? 'border-red-300 bg-red-50 text-red-800 shadow-red-200/50 hover:bg-red-100'
-    : bypassActive
+  const tone = bypassActive
     ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-amber-200/50 hover:bg-amber-100'
-    : 'border-indigo-200 bg-white text-indigo-900 shadow-indigo-200/40 hover:bg-indigo-50';
+    : threatLevelTone
+      ? threatLevelTone
+      : hasIssues
+        ? 'border-red-300 bg-red-50 text-red-800 shadow-red-200/50 hover:bg-red-100'
+        : 'border-indigo-200 bg-white text-indigo-900 shadow-indigo-200/40 hover:bg-indigo-50';
 
-  const ariaLabel = hasIssues
-    ? `Security: ${issueCount} issue${issueCount === 1 ? '' : 's'}. Open security settings.`
-    : bypassActive
-      ? 'Security: emergency bypass active. Open security settings.'
+  const ariaLabel = bypassActive
+    ? hasIssues
+      ? `Security: emergency bypass active (${issueCount} background issue${issueCount === 1 ? '' : 's'}). Open security settings.`
+      : 'Security: emergency bypass active. Open security settings.'
+    : hasIssues
+      ? `Security: ${issueCount} issue${issueCount === 1 ? '' : 's'}. Open security settings.`
       : 'Security status OK. Open security settings.';
 
   return createPortal(
@@ -101,10 +108,16 @@ export function SecurityStatusBadge() {
       onClick={() => router.push('/settings?tab=security')}
       aria-label={ariaLabel}
       title={
-        hasIssues
-          ? summary?.issues.map((i) => i.label).join('\n') || 'Security issues detected'
-          : bypassActive
-            ? 'Emergency bypass is active'
+        bypassActive
+          ? [
+              'Emergency bypass is active (checks paused; blocklist still on)',
+              hasIssues ? summary?.issues.map((i) => i.label).join('\n') : null,
+              summary != null ? `Security score ${summary.securityScore}` : null,
+            ]
+              .filter(Boolean)
+              .join('\n')
+          : hasIssues
+            ? summary?.issues.map((i) => i.label).join('\n') || 'Security issues detected'
             : `Security score ${summary?.securityScore ?? '—'}`
       }
       className={`fixed right-4 z-[90] flex items-center gap-2 rounded-full border px-3 py-2.5 text-sm font-semibold shadow-lg transition lg:bottom-6 lg:right-6 ${
@@ -113,23 +126,26 @@ export function SecurityStatusBadge() {
           : 'max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]'
       } ${tone}`}
     >
-      {hasIssues ? (
+      {showIssueAlert ? (
         <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden />
       ) : (
         <Shield className="h-5 w-5 shrink-0" aria-hidden />
       )}
       <span className="hidden lg:inline">
-        {hasIssues ? 'Security' : bypassActive ? 'Bypass on' : 'Security'}
+        {bypassActive ? 'Bypass on' : hasIssues ? 'Security' : 'Security'}
       </span>
-      {hasIssues && (
+      {showIssueAlert && (
         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">
           {issueCount > 9 ? '9+' : issueCount}
         </span>
       )}
-      {bypassActive && !hasIssues && (
+      {bypassActive && (
         <span className="h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200" aria-hidden />
       )}
-      {!hasIssues && !bypassActive && summary != null && (
+      {bypassActive && summary != null && (
+        <span className="text-xs font-medium opacity-80">{summary.securityScore}</span>
+      )}
+      {!bypassActive && !hasIssues && summary != null && (
         <span className="text-xs font-medium opacity-80">{summary.securityScore}</span>
       )}
     </button>,

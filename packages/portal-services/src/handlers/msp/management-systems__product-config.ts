@@ -2,6 +2,7 @@
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import { requireSession, requireRole, authErrorResult } from '@cd-v2/api-handlers';
 import { getProductCatalog, saveProductCatalog } from '@web/lib/management-system-product-config';
+import { refreshPublicInstallerManifestFiles } from '@web/lib/product-installer-manifest';
 
 export async function GETHandler(ctx: ApiContext): Promise<ApiResult> {
   try {
@@ -20,6 +21,11 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
     requireRole(session, 'admin');
     const body = ctx.body as Record<string, unknown>;
     const catalog = await saveProductCatalog((body.catalog || body) as Parameters<typeof saveProductCatalog>[0]);
+    try {
+      await refreshPublicInstallerManifestFiles();
+    } catch {
+      /* manifest refresh is best-effort */
+    }
     return { status: 200, body: { success: true, catalog } };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to save product config';

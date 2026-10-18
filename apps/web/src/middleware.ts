@@ -11,7 +11,13 @@ function isPublicPath(pathname: string) {
   if (pathname.endsWith('.html')) return true;
   if (pathname.startsWith('/images/')) return true;
   if (pathname.startsWith('/js/')) return true;
-  if (pathname === '/demos-manifest.json' || pathname === '/demo-pages.json') return true;
+  if (
+    pathname === '/demos-manifest.json' ||
+    pathname === '/demo-pages.json' ||
+    pathname === '/product-installer-manifest.json'
+  ) {
+    return true;
+  }
   if (pathname === '/demo' || pathname.startsWith('/demo/')) return true;
   if (pathname === '/logo.png' || pathname === '/logo.svg') return true;
   return false;

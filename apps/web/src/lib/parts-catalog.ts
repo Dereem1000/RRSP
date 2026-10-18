@@ -11,6 +11,19 @@ import {
   type DrivingRouteSummary,
 } from '@/lib/parts-routing';
 import { DEFAULT_PARTS_CATALOG_MARKUP_PERCENT } from '@/lib/settings';
+import {
+  categoryRequiresVideoVerification,
+  fulfillmentVerificationClear,
+  listingImageFilesFromRow,
+  MAX_PARTS_LISTING_IMAGES,
+  normalizeItemCondition,
+  normalizePartsCategory,
+  normalizeVerificationStatus,
+  serializeListingImageFiles,
+  type PartsItemCondition,
+  type PartsListingCategory,
+  type PartsRequestVerificationStatus,
+} from '@/lib/parts-catalog-categories';
 
 const SYSTEM_AUTHOR_ID = 1;
 const PLATFORM_PARTS_CLIENT_EMAIL = 'parts-platform@computerdynamics.local';
@@ -64,6 +77,12 @@ type InventoryRow = {
   clientLatitude?: number | null;
   clientLongitude?: number | null;
   clientContractDetails?: unknown;
+  category?: string | null;
+  imageFile?: string | null;
+  imageFiles?: string | null;
+  itemCondition?: string | null;
+  verificationVideoFile?: string | null;
+  requiresVerification?: number | boolean | null;
 };
 
 type RequestRow = {
@@ -114,6 +133,14 @@ type RequestRow = {
   deliveryPackageId?: string | null;
   deliveryDistanceMeters?: number | null;
   deliveryFee?: number | null;
+  itemCategory?: string | null;
+  requiresVerificationSnapshot?: number | boolean | null;
+  verificationStatus?: string | null;
+  verificationVideoFile?: string | null;
+  verificationNotes?: string | null;
+  verificationReviewedAt?: string | null;
+  verificationReviewedBy?: number | null;
+  verificationRequestedAt?: string | null;
 };
 
 export type InventoryListing = {
@@ -149,11 +176,18 @@ export type InventoryListing = {
   distanceMeters?: number | null;
   distanceLabel?: string | null;
   travelMinutes?: number | null;
+  category: PartsListingCategory;
+  itemCondition: PartsItemCondition;
+  imageFile: string | null;
+  imageFiles: string[];
+  verificationVideoFile: string | null;
+  requiresVerification: boolean;
 };
 
 export type CatalogItem = {
   normalizedName: string;
   itemName: string;
+  category: PartsListingCategory;
   totalAvailable: number;
   supplierCount: number;
   listingCount: number;
@@ -252,6 +286,14 @@ export type PartRequestView = {
     codRequested?: boolean;
     codRequestedAt?: string | null;
   } | null;
+  itemCategory?: PartsListingCategory;
+  requiresVerificationSnapshot?: boolean;
+  verificationStatus?: PartsRequestVerificationStatus;
+  verificationVideoFile?: string | null;
+  verificationNotes?: string | null;
+  verificationReviewedAt?: string | null;
+  verificationReviewedBy?: number | null;
+  verificationRequestedAt?: string | null;
 };
 
 const DELIVERY_PACKAGE_WINDOW_MS = 60 * 60 * 1000;
@@ -465,6 +507,10 @@ function asListing(row: InventoryRow): InventoryListing {
   const coords = coordsFromClient(pin ?? {});
   const streetAddress = row.clientAddress?.trim() || null;
 
+  const category = normalizePartsCategory(row.category);
+  const requiresVerification =
+    categoryRequiresVideoVerification(category) || Boolean(row.requiresVerification);
+
   return {
     id: row.id,
     clientId: row.clientId,
@@ -488,7 +534,48 @@ function asListing(row: InventoryRow): InventoryListing {
     supplierStreetAddress: streetAddress,
     supplierLatitude: pin?.latitude ?? null,
     supplierLongitude: pin?.longitude ?? null,
+    category,
+    itemCondition: normalizeItemCondition(row.itemCondition),
+    imageFiles: listingImageFilesFromRow(row.imageFiles, row.imageFile),
+    imageFile: listingImageFilesFromRow(row.imageFiles, row.imageFile)[0] ?? null,
+    verificationVideoFile: row.verificationVideoFile?.trim() || null,
+    requiresVerification,
   };
+}
+
+function normalizeListingImagesInput(input: {
+  imageFiles?: string[] | null;
+  imageFile?: string | null;
+}): { imageFiles: string[]; imageFile: string | null; imageFilesJson: string | null } {
+  const merged = [
+    ...(Array.isArray(input.imageFiles) ? input.imageFiles : []),
+    ...(input.imageFile?.trim() ? [input.imageFile.trim()] : []),
+  ]
+    .map((f) => String(f ?? '').trim())
+    .filter(Boolean);
+  const imageFiles = merged.filter((f, i) => merged.indexOf(f) === i).slice(0, MAX_PARTS_LISTING_IMAGES);
+  return {
+    imageFiles,
+    imageFile: imageFiles[0] ?? null,
+    imageFilesJson: serializeListingImageFiles(imageFiles),
+  };
+}
+
+function catalogGroupKey(listing: InventoryListing) {
+  return `${listing.normalizedName}::${listing.category}`;
+}
+
+function assertListingMedia(input: {
+  category: PartsListingCategory;
+  requiresVerification: boolean;
+  verificationVideoFile?: string | null;
+}) {
+  if (
+    categoryRequiresVideoVerification(input.category) &&
+    !input.verificationVideoFile?.trim()
+  ) {
+    throw new Error('Full devices require a video showing the device is working');
+  }
 }
 
 function asRequest(row: RequestRow): PartRequestView {
@@ -576,7 +663,60 @@ function asRequest(row: RequestRow): PartRequestView {
         : Number(row.deliveryDistanceMeters),
     deliveryFee:
       row.deliveryFee === null || row.deliveryFee === undefined ? null : Number(row.deliveryFee),
+    itemCategory: row.itemCategory
+      ? normalizePartsCategory(row.itemCategory)
+      : ('mobile_parts' as PartsListingCategory),
+    requiresVerificationSnapshot: Boolean(row.requiresVerificationSnapshot),
+    verificationStatus: normalizeVerificationStatus(row.verificationStatus),
+    verificationVideoFile: row.verificationVideoFile?.trim() || null,
+    verificationNotes: row.verificationNotes?.trim() || null,
+    verificationReviewedAt: row.verificationReviewedAt?.trim() || null,
+    verificationReviewedBy:
+      row.verificationReviewedBy == null ? null : Number(row.verificationReviewedBy),
+    verificationRequestedAt: row.verificationRequestedAt?.trim() || null,
   };
+}
+
+function inventoryRequiresRequestVerification(row: InventoryRow): boolean {
+  const category = normalizePartsCategory(row.category);
+  return categoryRequiresVideoVerification(category) || Boolean(row.requiresVerification);
+}
+
+function initialVerificationForInventory(row: InventoryRow): {
+  status: PartsRequestVerificationStatus;
+  video: string | null;
+  requiresSnapshot: boolean;
+  category: PartsListingCategory;
+} {
+  const category = normalizePartsCategory(row.category);
+  const requiresSnapshot = inventoryRequiresRequestVerification(row);
+  if (!requiresSnapshot) {
+    return { status: 'none', video: null, requiresSnapshot: false, category };
+  }
+  const video = row.verificationVideoFile?.trim() || null;
+  return {
+    status: video ? 'pending_review' : 'awaiting_seller',
+    video,
+    requiresSnapshot: true,
+    category,
+  };
+}
+
+export function assertFulfillmentVerificationAllowed(row: RequestRow) {
+  const status = normalizeVerificationStatus(row.verificationStatus);
+  if (fulfillmentVerificationClear(status)) return;
+  if (status === 'pending_review') {
+    throw new Error(
+      'Computer Dynamics must accept, deny, or skip verification before this can be fulfilled'
+    );
+  }
+  if (status === 'awaiting_seller') {
+    throw new Error('Waiting for the seller to provide a verification video');
+  }
+  if (status === 'denied') {
+    throw new Error('Verification was denied — this request cannot be fulfilled');
+  }
+  throw new Error('Verification must be resolved before fulfillment');
 }
 
 async function createClientNotice(clientId: string, title: string, content: string) {
@@ -755,6 +895,34 @@ async function ensurePartsCatalogSchemaInner() {
       ON parts_inventory (clientId, isActive)
   `);
 
+  const inventoryCols = await sequelize.query<{ name: string }>(
+    `PRAGMA table_info(parts_inventory)`,
+    { type: QueryTypes.SELECT }
+  );
+  const inventoryExtraCols: Array<{ name: string; sql: string }> = [
+    {
+      name: 'category',
+      sql: `ALTER TABLE parts_inventory ADD COLUMN category TEXT NOT NULL DEFAULT 'mobile_parts'`,
+    },
+    { name: 'imageFile', sql: 'ALTER TABLE parts_inventory ADD COLUMN imageFile TEXT' },
+    { name: 'imageFiles', sql: 'ALTER TABLE parts_inventory ADD COLUMN imageFiles TEXT' },
+    {
+      name: 'itemCondition',
+      sql: `ALTER TABLE parts_inventory ADD COLUMN itemCondition TEXT NOT NULL DEFAULT 'new'`,
+    },
+    {
+      name: 'verificationVideoFile',
+      sql: 'ALTER TABLE parts_inventory ADD COLUMN verificationVideoFile TEXT',
+    },
+    {
+      name: 'requiresVerification',
+      sql: `ALTER TABLE parts_inventory ADD COLUMN requiresVerification INTEGER NOT NULL DEFAULT 0`,
+    },
+  ];
+  for (const col of inventoryExtraCols) {
+    await addColumnIfMissing(sequelize, inventoryCols, col.name, col.sql);
+  }
+
   await sequelize.query(`
     CREATE TABLE IF NOT EXISTS parts_requests (
       id TEXT PRIMARY KEY,
@@ -835,6 +1003,26 @@ async function ensurePartsCatalogSchemaInner() {
     { name: 'deliveryPackageId', sql: 'ALTER TABLE parts_requests ADD COLUMN deliveryPackageId TEXT' },
     { name: 'deliveryDistanceMeters', sql: 'ALTER TABLE parts_requests ADD COLUMN deliveryDistanceMeters REAL' },
     { name: 'deliveryFee', sql: 'ALTER TABLE parts_requests ADD COLUMN deliveryFee REAL' },
+    {
+      name: 'itemCategory',
+      sql: `ALTER TABLE parts_requests ADD COLUMN itemCategory TEXT NOT NULL DEFAULT 'mobile_parts'`,
+    },
+    {
+      name: 'requiresVerificationSnapshot',
+      sql: `ALTER TABLE parts_requests ADD COLUMN requiresVerificationSnapshot INTEGER NOT NULL DEFAULT 0`,
+    },
+    {
+      name: 'verificationStatus',
+      sql: `ALTER TABLE parts_requests ADD COLUMN verificationStatus TEXT NOT NULL DEFAULT 'none'`,
+    },
+    { name: 'verificationVideoFile', sql: 'ALTER TABLE parts_requests ADD COLUMN verificationVideoFile TEXT' },
+    { name: 'verificationNotes', sql: 'ALTER TABLE parts_requests ADD COLUMN verificationNotes TEXT' },
+    { name: 'verificationReviewedAt', sql: 'ALTER TABLE parts_requests ADD COLUMN verificationReviewedAt TEXT' },
+    {
+      name: 'verificationReviewedBy',
+      sql: 'ALTER TABLE parts_requests ADD COLUMN verificationReviewedBy INTEGER',
+    },
+    { name: 'verificationRequestedAt', sql: 'ALTER TABLE parts_requests ADD COLUMN verificationRequestedAt TEXT' },
   ];
   for (const col of historyCols) {
     await addColumnIfMissing(sequelize, requestCols, col.name, col.sql);
@@ -1003,11 +1191,13 @@ export async function listCatalogItems(options?: {
   const grouped = new Map<string, CatalogItem>();
   for (const row of rows) {
     const listing = asListing(row);
-    const existing = grouped.get(listing.normalizedName);
+    const groupKey = catalogGroupKey(listing);
+    const existing = grouped.get(groupKey);
     if (!existing) {
-      grouped.set(listing.normalizedName, {
+      grouped.set(groupKey, {
         normalizedName: listing.normalizedName,
         itemName: listing.itemName,
+        category: listing.category,
         totalAvailable: listing.availableQuantity,
         supplierCount: 1,
         listingCount: 1,
@@ -1434,6 +1624,12 @@ export async function createInventoryListing(input: {
   quantity: number;
   /** Marketplace-listed qty (≤ on-hand). Defaults to full quantity (listed). Use 0 for shop-only. */
   availableQuantity?: number;
+  category?: PartsListingCategory | string | null;
+  itemCondition?: PartsItemCondition | string | null;
+  imageFile?: string | null;
+  imageFiles?: string[] | null;
+  verificationVideoFile?: string | null;
+  requiresVerification?: boolean;
 }) {
   await ensurePartsCatalogSchema();
   const itemName = input.itemName.trim();
@@ -1456,6 +1652,17 @@ export async function createInventoryListing(input: {
       : input.quantity;
 
   const unitPrice = Math.round(Number(input.unitPrice));
+  const category = normalizePartsCategory(input.category);
+  const verificationVideoFile = input.verificationVideoFile?.trim() || null;
+  const requiresVerification =
+    categoryRequiresVideoVerification(category) || Boolean(input.requiresVerification);
+  assertListingMedia({ category, requiresVerification, verificationVideoFile });
+  const itemCondition = normalizeItemCondition(input.itemCondition);
+  const images = normalizeListingImagesInput({
+    imageFiles: input.imageFiles,
+    imageFile: input.imageFile,
+  });
+
   const sequelize = getSequelize();
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -1463,10 +1670,12 @@ export async function createInventoryListing(input: {
     `
       INSERT INTO parts_inventory (
         id, clientId, itemName, normalizedName, partNumber, brand, notes,
-        unitPrice, quantity, availableQuantity, createdBy, isActive, createdAt, updatedAt
+        unitPrice, quantity, availableQuantity, createdBy, isActive, createdAt, updatedAt,
+        category, itemCondition, imageFile, imageFiles, verificationVideoFile, requiresVerification
       ) VALUES (
         :id, :clientId, :itemName, :normalizedName, :partNumber, :brand, :notes,
-        :unitPrice, :quantity, :availableQuantity, :createdBy, 1, :now, :now
+        :unitPrice, :quantity, :availableQuantity, :createdBy, 1, :now, :now,
+        :category, :itemCondition, :imageFile, :imageFiles, :verificationVideoFile, :requiresVerification
       )
     `,
     {
@@ -1482,6 +1691,12 @@ export async function createInventoryListing(input: {
         quantity: input.quantity,
         availableQuantity,
         createdBy: input.createdBy,
+        category,
+        itemCondition,
+        imageFile: images.imageFile,
+        imageFiles: images.imageFilesJson,
+        verificationVideoFile,
+        requiresVerification: requiresVerification ? 1 : 0,
         now,
       },
     }
@@ -1503,6 +1718,12 @@ export async function updateInventoryListing(
     unitPrice: number;
     quantity: number;
     availableQuantity: number;
+    category?: PartsListingCategory | string | null;
+    itemCondition?: PartsItemCondition | string | null;
+    imageFile?: string | null;
+    imageFiles?: string[] | null;
+    verificationVideoFile?: string | null;
+    requiresVerification?: boolean;
   }
 ) {
   await ensurePartsCatalogSchema();
@@ -1525,10 +1746,20 @@ export async function updateInventoryListing(
   }
 
   const unitPrice = Math.round(Number(input.unitPrice));
+
   const sequelize = getSequelize();
-  const result = await sequelize.query<{ id: string }>(
+  const result = await sequelize.query<{
+    id: string;
+    category: string | null;
+    itemCondition: string | null;
+    imageFile: string | null;
+    imageFiles: string | null;
+    verificationVideoFile: string | null;
+    requiresVerification: number | boolean | null;
+  }>(
     `
-      SELECT id FROM parts_inventory
+      SELECT id, category, itemCondition, imageFile, imageFiles, verificationVideoFile, requiresVerification
+      FROM parts_inventory
       WHERE id = :id AND clientId = :clientId AND isActive = 1
     `,
     {
@@ -1536,9 +1767,41 @@ export async function updateInventoryListing(
       replacements: { id, clientId: input.clientId },
     }
   );
-  if (!result[0]) {
+  const existing = result[0];
+  if (!existing) {
     throw new Error('Listing not found');
   }
+
+  const category =
+    input.category !== undefined && input.category !== null
+      ? normalizePartsCategory(input.category)
+      : normalizePartsCategory(existing.category);
+  const itemCondition =
+    input.itemCondition !== undefined && input.itemCondition !== null
+      ? normalizeItemCondition(input.itemCondition)
+      : normalizeItemCondition(existing.itemCondition);
+
+  const preserveMedia = input.imageFiles === undefined && input.imageFile === undefined;
+  const images = preserveMedia
+    ? normalizeListingImagesInput({
+        imageFiles: listingImageFilesFromRow(existing.imageFiles, existing.imageFile),
+      })
+    : normalizeListingImagesInput({
+        imageFiles: input.imageFiles,
+        imageFile: input.imageFile,
+      });
+
+  const verificationVideoFile =
+    input.verificationVideoFile !== undefined
+      ? input.verificationVideoFile?.trim() || null
+      : existing.verificationVideoFile?.trim() || null;
+
+  const requiresVerification =
+    input.requiresVerification !== undefined
+      ? categoryRequiresVideoVerification(category) || Boolean(input.requiresVerification)
+      : categoryRequiresVideoVerification(category) || Boolean(existing.requiresVerification);
+
+  assertListingMedia({ category, requiresVerification, verificationVideoFile });
 
   await sequelize.query(
     `
@@ -1551,6 +1814,12 @@ export async function updateInventoryListing(
           unitPrice = :unitPrice,
           quantity = :quantity,
           availableQuantity = :availableQuantity,
+          category = :category,
+          itemCondition = :itemCondition,
+          imageFile = :imageFile,
+          imageFiles = :imageFiles,
+          verificationVideoFile = :verificationVideoFile,
+          requiresVerification = :requiresVerification,
           updatedAt = :now
       WHERE id = :id
     `,
@@ -1565,6 +1834,12 @@ export async function updateInventoryListing(
         unitPrice,
         quantity: input.quantity,
         availableQuantity: input.availableQuantity,
+        category,
+        itemCondition,
+        imageFile: images.imageFile,
+        imageFiles: images.imageFilesJson,
+        verificationVideoFile,
+        requiresVerification: requiresVerification ? 1 : 0,
         now: new Date().toISOString(),
       },
     }
@@ -1636,6 +1911,8 @@ export async function createPartRequest(input: {
   preferredInventoryId?: string | null;
   /** Never allocate from this stock owner (viewer’s own My/Our Stock). */
   excludeSupplierClientId?: string | null;
+  /** When set, only allocate from listings in this category. */
+  category?: PartsListingCategory | string | null;
 }) {
   await ensurePartsCatalogSchema();
   const itemName = input.itemName.trim();
@@ -1654,6 +1931,7 @@ export async function createPartRequest(input: {
   );
 
   const preferredInventoryId = input.preferredInventoryId?.trim() || null;
+  const category = input.category ? normalizePartsCategory(input.category) : null;
   // Prefer explicit exclude; fall back to buyer client id for clients.
   const excludeSupplierClientId =
     input.excludeSupplierClientId?.trim() || input.buyerClientId?.trim() || null;
@@ -1668,6 +1946,7 @@ export async function createPartRequest(input: {
       WHERE p.isActive = 1
         AND p.availableQuantity > 0
         AND p.normalizedName = :normalizedName
+        AND (:category IS NULL OR COALESCE(p.category, 'mobile_parts') = :category)
         AND (:excludeSupplierClientId IS NULL OR p.clientId <> :excludeSupplierClientId)
         AND (:preferredInventoryId IS NULL OR p.id = :preferredInventoryId)
       ORDER BY
@@ -1680,6 +1959,7 @@ export async function createPartRequest(input: {
       type: QueryTypes.SELECT,
       replacements: {
         normalizedName,
+        category,
         excludeSupplierClientId,
         preferredInventoryId,
       },
@@ -1720,6 +2000,7 @@ export async function createPartRequest(input: {
   }> = [];
 
   let remaining = input.quantity;
+  let createdPendingVerificationReview = false;
   const transaction = await sequelize.transaction();
   try {
     for (const row of candidateRows) {
@@ -1731,17 +2012,23 @@ export async function createPartRequest(input: {
       const requestId = randomUUID();
       const supplierUnitPrice = Number(row.unitPrice ?? 0);
       const listedUnitPrice = applyPartsCatalogMarkup(supplierUnitPrice, markupPercent);
+      const verification = initialVerificationForInventory(row);
+      if (verification.status === 'pending_review') {
+        createdPendingVerificationReview = true;
+      }
 
       await sequelize.query(
         `
           INSERT INTO parts_requests (
             id, requestNumber, requestGroupId, inventoryId, supplierClientId, buyerClientId,
             buyerDisplayName, requesterUserId, requesterRole, itemName, normalizedName,
-            requestedQuantity, unitPrice, listedUnitPrice, status, notes, createdAt, updatedAt
+            requestedQuantity, unitPrice, listedUnitPrice, status, notes, createdAt, updatedAt,
+            itemCategory, requiresVerificationSnapshot, verificationStatus, verificationVideoFile
           ) VALUES (
             :id, :requestNumber, :requestGroupId, :inventoryId, :supplierClientId, :buyerClientId,
             :buyerDisplayName, :requesterUserId, :requesterRole, :itemName, :normalizedName,
-            :requestedQuantity, :unitPrice, :listedUnitPrice, 'pending', :notes, :now, :now
+            :requestedQuantity, :unitPrice, :listedUnitPrice, 'pending', :notes, :now, :now,
+            :itemCategory, :requiresVerificationSnapshot, :verificationStatus, :verificationVideoFile
           )
         `,
         {
@@ -1761,6 +2048,10 @@ export async function createPartRequest(input: {
             unitPrice: supplierUnitPrice,
             listedUnitPrice,
             notes: input.notes?.trim() || null,
+            itemCategory: verification.category,
+            requiresVerificationSnapshot: verification.requiresSnapshot ? 1 : 0,
+            verificationStatus: verification.status,
+            verificationVideoFile: verification.video,
             now,
           },
           transaction,
@@ -1819,6 +2110,13 @@ export async function createPartRequest(input: {
         quantity: allocation.quantity,
       });
     }
+  }
+
+  if (createdPendingVerificationReview) {
+    await createStaffNotice(
+      `Verification review: ${requestNumber}`,
+      `${buyerDisplayName} requested ${itemName}. A seller verification video is ready for Computer Dynamics to accept, deny, or skip before fulfillment.`
+    );
   }
 
   await Promise.all(
@@ -2316,6 +2614,7 @@ export async function previewFulfillPartRequestById(input: {
   if (row.supplierClientId !== input.supplierClientId) {
     throw new Error('You can only fulfill requests assigned to your stock');
   }
+  assertFulfillmentVerificationAllowed(row);
   if (row.status !== 'pending') {
     throw new Error(
       row.status === 'cancel_requested'
@@ -2352,6 +2651,180 @@ export async function previewFulfillPartRequestById(input: {
     mode: decision.mode,
     suggestedDeliveryFee: decision.suggestedDeliveryFee,
   };
+}
+
+async function loadPartRequestRow(requestId: string) {
+  await ensurePartsCatalogSchema();
+  const sequelize = getSequelize();
+  const rows = await sequelize.query<RequestRow>(
+    `
+      SELECT r.*,
+        supplier.name AS supplierName,
+        supplier.company_name AS supplierCompanyName
+      FROM parts_requests r
+      LEFT JOIN clients supplier ON supplier.id = r.supplierClientId
+      WHERE r.id = :requestId
+      LIMIT 1
+    `,
+    { type: QueryTypes.SELECT, replacements: { requestId } }
+  );
+  return rows[0] ?? null;
+}
+
+export async function reviewPartRequestVerification(input: {
+  requestId: string;
+  reviewerUserId: number;
+  action: 'accept' | 'deny' | 'skip';
+  notes?: string | null;
+}) {
+  const requestId = input.requestId.trim();
+  if (!requestId) throw new Error('Request id is required');
+  const action = input.action;
+  if (action !== 'accept' && action !== 'deny' && action !== 'skip') {
+    throw new Error('Invalid verification action');
+  }
+
+  const row = await loadPartRequestRow(requestId);
+  if (!row) throw new Error('Request not found');
+  const current = normalizeVerificationStatus(row.verificationStatus);
+  if (current === 'none') {
+    throw new Error('This request does not require verification');
+  }
+  if (current === 'accepted' || current === 'denied' || current === 'skipped') {
+    throw new Error('Verification was already resolved for this request');
+  }
+  if (action === 'accept' && current === 'awaiting_seller') {
+    throw new Error('Seller has not submitted a verification video yet');
+  }
+
+  const nextStatus: PartsRequestVerificationStatus =
+    action === 'accept' ? 'accepted' : action === 'deny' ? 'denied' : 'skipped';
+  const now = new Date().toISOString();
+  const notes = input.notes?.trim() || null;
+
+  const sequelize = getSequelize();
+  await sequelize.query(
+    `
+      UPDATE parts_requests
+      SET verificationStatus = :verificationStatus,
+          verificationNotes = COALESCE(:notes, verificationNotes),
+          verificationReviewedAt = :now,
+          verificationReviewedBy = :reviewerUserId,
+          updatedAt = :now
+      WHERE id = :requestId
+    `,
+    {
+      replacements: {
+        requestId,
+        verificationStatus: nextStatus,
+        notes,
+        now,
+        reviewerUserId: input.reviewerUserId,
+      },
+    }
+  );
+
+  await createClientNotice(
+    row.supplierClientId,
+    `Verification ${nextStatus}: ${row.requestNumber}`,
+    `Computer Dynamics ${nextStatus} verification for ${row.itemName}.${notes ? ` Note: ${notes}` : ''}`
+  );
+  await touchPartsCatalogActivity('verification-review');
+  const updated = await loadPartRequestRow(requestId);
+  return updated ? asRequest(updated) : null;
+}
+
+export async function requestSellerPartVerification(input: {
+  requestId: string;
+  staffUserId: number;
+  notes?: string | null;
+}) {
+  const requestId = input.requestId.trim();
+  if (!requestId) throw new Error('Request id is required');
+
+  const row = await loadPartRequestRow(requestId);
+  if (!row) throw new Error('Request not found');
+  if (row.status !== 'pending') {
+    throw new Error('Verification can only be requested while the order is still pending');
+  }
+  const current = normalizeVerificationStatus(row.verificationStatus);
+  if (current === 'accepted' || current === 'skipped') {
+    throw new Error('Verification is already cleared for this request');
+  }
+  if (current === 'pending_review') {
+    throw new Error('A verification video is already waiting for Computer Dynamics review');
+  }
+
+  const now = new Date().toISOString();
+  const notes = input.notes?.trim() || null;
+  const sequelize = getSequelize();
+  await sequelize.query(
+    `
+      UPDATE parts_requests
+      SET requiresVerificationSnapshot = 1,
+          verificationStatus = 'awaiting_seller',
+          verificationRequestedAt = :now,
+          verificationNotes = COALESCE(:notes, verificationNotes),
+          verificationReviewedAt = NULL,
+          verificationReviewedBy = NULL,
+          updatedAt = :now
+      WHERE id = :requestId
+    `,
+    { replacements: { requestId, now, notes } }
+  );
+
+  await createClientNotice(
+    row.supplierClientId,
+    `Verification video requested: ${row.requestNumber}`,
+    `Computer Dynamics needs a working-condition video for ${row.itemName} before fulfillment can continue.${notes ? ` ${notes}` : ''}`
+  );
+  await touchPartsCatalogActivity('verification-request-seller');
+  const updated = await loadPartRequestRow(requestId);
+  return updated ? asRequest(updated) : null;
+}
+
+export async function submitSellerPartVerificationVideo(input: {
+  requestId: string;
+  supplierClientId: string;
+  verificationVideoFile: string;
+}) {
+  const requestId = input.requestId.trim();
+  const video = input.verificationVideoFile?.trim();
+  if (!requestId) throw new Error('Request id is required');
+  if (!video) throw new Error('Verification video is required');
+
+  const row = await loadPartRequestRow(requestId);
+  if (!row) throw new Error('Request not found');
+  if (row.supplierClientId !== input.supplierClientId) {
+    throw new Error('You can only upload verification for your own incoming requests');
+  }
+  const current = normalizeVerificationStatus(row.verificationStatus);
+  if (current !== 'awaiting_seller' && current !== 'denied') {
+    throw new Error('This request is not waiting for a seller verification video');
+  }
+
+  const now = new Date().toISOString();
+  const sequelize = getSequelize();
+  await sequelize.query(
+    `
+      UPDATE parts_requests
+      SET verificationVideoFile = :video,
+          verificationStatus = 'pending_review',
+          verificationReviewedAt = NULL,
+          verificationReviewedBy = NULL,
+          updatedAt = :now
+      WHERE id = :requestId
+    `,
+    { replacements: { requestId, video, now } }
+  );
+
+  await createStaffNotice(
+    `Verification ready: ${row.requestNumber}`,
+    `${row.itemName} — seller uploaded a working-condition video. Accept, deny, or skip to allow fulfillment.`
+  );
+  await touchPartsCatalogActivity('verification-seller-video');
+  const updated = await loadPartRequestRow(requestId);
+  return updated ? asRequest(updated) : null;
 }
 
 /**
@@ -2408,6 +2881,7 @@ export async function fulfillPartRequestById(input: {
   if (row.supplierClientId !== input.supplierClientId) {
     throw new Error('You can only fulfill requests assigned to your stock');
   }
+  assertFulfillmentVerificationAllowed(row);
   if (row.status !== 'pending') {
     throw new Error(
       row.status === 'cancel_requested'

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Settings, X } from 'lucide-react';
 import {
   ACTIVATION_FEATURES,
@@ -9,6 +9,7 @@ import {
 } from '@/lib/license-constants';
 import type { ProductCatalog, ProductCatalogEntry } from '@/lib/management-system-product-config';
 import { deliverablePathForRoot } from '@/lib/product-catalog-paths';
+import { exampleInstallerFolderPath } from '@/lib/product-installer-shared';
 
 const inputClass =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20';
@@ -25,6 +26,20 @@ export function ProductConfigModal({ feature, open, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [installerProbe, setInstallerProbe] = useState<
+    Partial<
+      Record<
+        ActivationFeature,
+        {
+          checking?: boolean;
+          available: boolean;
+          fileName?: string;
+          configuredPath?: string;
+          resolvedPath?: string | null;
+        }
+      >
+    >
+  >({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,13 +60,80 @@ export function ProductConfigModal({ feature, open, onClose }: Props) {
     if (open) void load();
   }, [open, load]);
 
-  if (!open) return null;
+  const features = useMemo(
+    () => (feature ? [feature] : [...ACTIVATION_FEATURES]),
+    [feature],
+  );
 
-  const features = feature ? [feature] : ACTIVATION_FEATURES;
+  const probeInstaller = useCallback(async (f: ActivationFeature, row: ProductCatalogEntry) => {
+    const params = new URLSearchParams({ feature: f });
+    if (row.productInstallerPath?.trim()) {
+      params.set('productInstallerPath', row.productInstallerPath.trim());
+    }
+    if (row.projectRoot?.trim()) {
+      params.set('projectRoot', row.projectRoot.trim());
+    }
+    setInstallerProbe((prev) => ({
+      ...prev,
+      [f]: { ...(prev[f] || { available: false }), checking: true },
+    }));
+    try {
+      const res = await fetch(
+        `/api/msp/management-systems/product-installer/probe?${params.toString()}`,
+        { credentials: 'include' },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setInstallerProbe((prev) => ({
+          ...prev,
+          [f]: { checking: false, available: false, configuredPath: data.configuredPath },
+        }));
+        return;
+      }
+      setInstallerProbe((prev) => ({
+        ...prev,
+        [f]: {
+          checking: false,
+          available: Boolean(data.available),
+          fileName: data.fileName,
+          configuredPath: data.configuredPath,
+          resolvedPath: data.resolvedPath,
+        },
+      }));
+    } catch {
+      setInstallerProbe((prev) => ({
+        ...prev,
+        [f]: { checking: false, available: false },
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open || loading) return;
+    const timer = window.setTimeout(() => {
+      for (const f of features) {
+        const row = catalog[f] || {
+          projectRoot: '',
+          deliverableTemplatePath: '',
+          productInstallerPath: '',
+          systemKey: f,
+        };
+        void probeInstaller(f, row);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [open, loading, catalog, features, probeInstaller]);
+
+  if (!open) return null;
 
   function updateRow(f: ActivationFeature, patch: Partial<ProductCatalogEntry>) {
     setCatalog((prev) => {
-      const current = prev[f] || { projectRoot: '', deliverableTemplatePath: '', systemKey: f };
+      const current = prev[f] || {
+        projectRoot: '',
+        deliverableTemplatePath: '',
+        productInstallerPath: '',
+        systemKey: f,
+      };
       const next = { ...current, ...patch };
       if (patch.projectRoot !== undefined) {
         const root = patch.projectRoot.trim();
@@ -80,6 +162,50 @@ export function ProductConfigModal({ feature, open, onClose }: Props) {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function pickInstallerFolder(target: ActivationFeature) {
+    setError('');
+    try {
+      const res = await fetch('/api/developer-toolbox/provisioning', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pick-folder' }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || data.message || 'Folder picker failed');
+      const folderPath = String(data.path || data.folder || '').trim();
+      if (folderPath) {
+        updateRow(target, { productInstallerPath: folderPath });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Folder picker failed');
+    }
+  }
+
+  async function pickFile(target: ActivationFeature) {
+    setError('');
+    try {
+      const res = await fetch('/api/developer-toolbox/provisioning', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'pick-file',
+          title: 'Select product installer',
+          filters: ['exe', 'msi', 'zip'],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || data.message || 'File picker failed');
+      const filePath = String(data.path || data.file || '').trim();
+      if (filePath) {
+        updateRow(target, { productInstallerPath: filePath });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'File picker failed');
     }
   }
 
@@ -123,8 +249,18 @@ export function ProductConfigModal({ feature, open, onClose }: Props) {
           ) : (
             <div className="space-y-6">
               {features.map((f) => {
-                const row = catalog[f] || { projectRoot: '', deliverableTemplatePath: '', systemKey: f };
+                const row = catalog[f] || {
+                  projectRoot: '',
+                  deliverableTemplatePath: '',
+                  productInstallerPath: '',
+                  systemKey: f,
+                };
                 const label = ACTIVATION_FEATURE_LABELS[f];
+                const probe = installerProbe[f];
+                const installerReady = probe && !probe.checking ? probe.available : row.installerAvailable;
+                const installerFile =
+                  (probe && !probe.checking ? probe.fileName : undefined) || row.installerResolvedFile;
+                const installerChecking = Boolean(probe?.checking);
                 return (
                   <div key={f} className="rounded-xl border border-slate-200 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">{f}</p>
@@ -147,6 +283,58 @@ export function ProductConfigModal({ feature, open, onClose }: Props) {
                             Pick
                           </button>
                         </div>
+                      </label>
+                      <label className="block text-sm">
+                        <span className="mb-1 block font-medium text-slate-700">Product installer</span>
+                        <div className="flex gap-2">
+                          <input
+                            className={inputClass}
+                            value={row.productInstallerPath || ''}
+                            onChange={(e) => updateRow(f, { productInstallerPath: e.target.value })}
+                            placeholder={exampleInstallerFolderPath(f)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void pickInstallerFolder(f)}
+                            className="shrink-0 rounded-xl border border-slate-200 px-3 text-sm hover:bg-slate-50"
+                            title="Select folder containing the installer"
+                          >
+                            Folder
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void pickFile(f)}
+                            className="shrink-0 rounded-xl border border-slate-200 px-3 text-sm hover:bg-slate-50"
+                            title="Select installer file"
+                          >
+                            File
+                          </button>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Path to an installer file or a folder (e.g.{' '}
+                          <code className="rounded bg-slate-100 px-1">E:\POS System\installer\output</code>). For a
+                          folder, the newest <code className="rounded bg-slate-100 px-1">.exe</code>,{' '}
+                          <code className="rounded bg-slate-100 px-1">.msi</code>, or{' '}
+                          <code className="rounded bg-slate-100 px-1">.zip</code> inside is used. Default:{' '}
+                          <code className="rounded bg-slate-100 px-1">data/product-installers/</code>
+                          {installerChecking ? (
+                            <span className="ml-1 text-slate-500">— checking on server…</span>
+                          ) : installerReady ? (
+                            <span className="ml-1 font-medium text-emerald-700">
+                              — ready{installerFile ? ` (${installerFile})` : ''}
+                            </span>
+                          ) : row.productInstallerPath || row.projectRoot ? (
+                            <span className="ml-1 text-amber-700">
+                              — no installer found at{' '}
+                              <code className="rounded bg-slate-100 px-1">
+                                {probe?.configuredPath ||
+                                  row.productInstallerPath ||
+                                  `${row.projectRoot}\\installer\\output`}
+                              </code>
+                              . Put a .exe in that folder or pick the file directly.
+                            </span>
+                          ) : null}
+                        </p>
                       </label>
                       <label className="block text-sm">
                         <span className="mb-1 block font-medium text-slate-700">Deliverable template</span>

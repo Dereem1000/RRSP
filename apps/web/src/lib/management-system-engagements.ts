@@ -1,6 +1,7 @@
 import { SystemConfig } from '@cd-v2/database';
 import type { ActivationFeature } from '@/lib/license-constants';
 import type { DigitalLicenseCertificate } from '@/lib/digital-license-shared';
+import { refreshPublicInstallerManifestFiles } from '@/lib/product-installer-manifest';
 
 export const CONFIG_KEY_ENGAGEMENTS = 'management_system_engagements';
 export const CONFIG_CATEGORY = 'management_systems';
@@ -18,6 +19,9 @@ export type ManagementSystemEngagement = {
   installStatus: GateStatus;
   installRunId?: string;
   installAt?: string;
+  installerStatus: GateStatus;
+  installerRunId?: string;
+  installerAt?: string;
   deliverableDraft?: {
     placeholders: Record<string, string>;
     staffMarkdown: string;
@@ -101,6 +105,9 @@ export async function upsertEngagement(
     installStatus: patch.installStatus ?? existing?.installStatus ?? 'none',
     installRunId: patch.installRunId ?? existing?.installRunId,
     installAt: patch.installAt ?? existing?.installAt,
+    installerStatus: patch.installerStatus ?? existing?.installerStatus ?? 'none',
+    installerRunId: patch.installerRunId ?? existing?.installerRunId,
+    installerAt: patch.installerAt ?? existing?.installerAt,
     deliverableDraft: patch.deliverableDraft ?? existing?.deliverableDraft,
     deliverableClientMarkdown: patch.deliverableClientMarkdown ?? existing?.deliverableClientMarkdown,
     deliverableStatus: patch.deliverableStatus ?? existing?.deliverableStatus ?? 'none',
@@ -124,9 +131,11 @@ export async function recordGateResult(input: {
 }): Promise<ManagementSystemEngagement> {
   const status = normalizeGateResult(input.result);
   const now = new Date().toISOString();
-  const isInstall = String(input.phase).toLowerCase() === 'install';
+  const phaseKey = String(input.phase).toLowerCase();
+  const isInstall = phaseKey === 'install';
+  const isInstaller = phaseKey === 'installer';
 
-  return upsertEngagement({
+  const engagement = await upsertEngagement({
     clientId: input.clientId,
     feature: input.feature,
     customerName: input.customerName,
@@ -136,10 +145,26 @@ export async function recordGateResult(input: {
           installRunId: input.runId,
           installAt: now,
         }
-      : {
-          provisionStatus: status,
-          provisionRunId: input.runId,
-          provisionAt: now,
-        }),
+      : isInstaller
+        ? {
+            installerStatus: status,
+            installerRunId: input.runId,
+            installerAt: now,
+          }
+        : {
+            provisionStatus: status,
+            provisionRunId: input.runId,
+            provisionAt: now,
+          }),
   });
+
+  if (isInstaller && (status === 'passed' || status === 'passed_with_warnings')) {
+    try {
+      await refreshPublicInstallerManifestFiles();
+    } catch {
+      /* non-fatal */
+    }
+  }
+
+  return engagement;
 }

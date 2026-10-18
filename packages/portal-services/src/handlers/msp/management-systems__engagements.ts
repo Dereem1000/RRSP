@@ -59,6 +59,9 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
       installStatus: body.installStatus as never,
       installRunId: body.installRunId != null ? String(body.installRunId) : undefined,
       installAt: body.installAt != null ? String(body.installAt) : undefined,
+      installerStatus: body.installerStatus as never,
+      installerRunId: body.installerRunId != null ? String(body.installerRunId) : undefined,
+      installerAt: body.installerAt != null ? String(body.installerAt) : undefined,
       deliverableDraft: body.deliverableDraft as never,
       deliverableClientMarkdown:
         body.deliverableClientMarkdown != null ? String(body.deliverableClientMarkdown) : undefined,

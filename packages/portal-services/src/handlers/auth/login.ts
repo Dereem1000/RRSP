@@ -14,7 +14,7 @@ import {
 
 import { Op } from 'sequelize';
 import { logSecurityEvent, verifyPublicCaptchaDetailed } from '@cd-v2/security';
-import { User, SystemConfig, publicUser } from '@web/lib/db';
+import { Client, User, SystemConfig, publicUser } from '@web/lib/db';
 import { getClientIpFromCtx, getRequestHostFromCtx } from '../../http-helpers';
 
 async function logLoginAttempt(
@@ -50,6 +50,20 @@ async function isProductInstallerRequest(ctx: ApiContext): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function installerClientForUser(user: InstanceType<typeof User>, productInstaller: boolean) {
+  if (!productInstaller || user.role !== 'client') return null;
+  const client = await Client.findOne({
+    where: { userId: user.id },
+    attributes: ['id', 'email', 'companyName', 'name'],
+  });
+  if (!client) return null;
+  return {
+    msp_client_id: String(client.id),
+    email: client.email ?? null,
+    company_name: client.companyName || client.name || null,
+  };
 }
 
 export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
@@ -148,10 +162,12 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
           details: { role: user.role, clearance: user.securityClearance, tempPassword: true },
         });
       }
+      const installer_client = await installerClientForUser(user, productInstaller);
       return { status: 200, body: {
         success: true,
         user: publicUser(user),
         requiresPasswordSetup: true,
+        ...(installer_client ? { installer_client } : {}),
       }, cookies: [{ name: COOKIE_NAME, value: token, httpOnly: true, sameSite: 'lax', path: '/', maxAge: SESSION_COOKIE_MAX_AGE_MS }] };
     }
 
@@ -200,7 +216,16 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       }
     }
 
-    return { status: 200, body: { success: true, user: publicUser(user) }, cookies: [{ name: COOKIE_NAME, value: token, httpOnly: true, sameSite: 'lax', path: '/', maxAge: SESSION_COOKIE_MAX_AGE_MS }] };
+    const installer_client = await installerClientForUser(user, productInstaller);
+    return {
+      status: 200,
+      body: {
+        success: true,
+        user: publicUser(user),
+        ...(installer_client ? { installer_client } : {}),
+      },
+      cookies: [{ name: COOKIE_NAME, value: token, httpOnly: true, sameSite: 'lax', path: '/', maxAge: SESSION_COOKIE_MAX_AGE_MS }],
+    };
   } catch (error) {
     console.error('Login error:', error);
     return { status: 500, body: { success: false, message: 'Login error' } };

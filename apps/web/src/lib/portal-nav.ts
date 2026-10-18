@@ -160,6 +160,7 @@ export const PORTAL_NAV_LABELS: Record<string, string> = {
   '/accounting': 'Accounting',
   '/developer-toolbox': 'Developer Toolbox',
   '/mini': 'Mini',
+  '/mini/federation-catalog': 'Federation catalog',
   '/settings': 'Settings',
   '/settings/security/events': 'Security events',
   '/rrsp': 'Shop dashboard',
@@ -350,6 +351,12 @@ export function getPortalPageLabel(pathname: string | null, role?: string): stri
   }
   if (pathname === '/deliverables') {
     return PORTAL_NAV_LABELS['/deliverables'];
+  }
+  if (pathname === '/mini/federation-catalog') {
+    return PORTAL_NAV_LABELS['/mini/federation-catalog'];
+  }
+  if (pathname?.startsWith('/mini/')) {
+    return PORTAL_NAV_LABELS[pathname] ?? PORTAL_NAV_LABELS['/mini'] ?? 'Mini';
   }
   const base = pathname ?? '/dashboard';
   if (role) {

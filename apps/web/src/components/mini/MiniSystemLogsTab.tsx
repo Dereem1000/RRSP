@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, RefreshCw, ScrollText, Server, Settings, Trash2, Upload } from 'lucide-react';
+import { Check, KeyRound, Loader2, RefreshCw, ScrollText, Server, Settings, Trash2, Upload, X } from 'lucide-react';
 import { apiErrorMessage, parseFetchJsonResponse } from '@/lib/parse-fetch-json';
 
 type SystemLogConnection = {
@@ -21,6 +21,17 @@ type SystemLogConnection = {
   integration_kit_version_status?: 'current' | 'outdated' | 'unknown' | string;
   auto_updates_suspended?: boolean;
   auto_updates_suspended_at?: string | null;
+  supports_cd_installer_key_push?: boolean;
+  auto_push_cd_installer_key?: boolean;
+  cd_installer_key_fingerprint?: string | null;
+  cd_installer_key_synced_at?: string | null;
+  cd_installer_key_in_sync?: boolean | null;
+  cd_installer_key_push_needed?: boolean;
+};
+
+type CdMspSyncStatus = {
+  configured?: boolean;
+  token_fingerprint?: string | null;
 };
 
 type IntegrationKitCatalog = {
@@ -30,6 +41,7 @@ type IntegrationKitCatalog = {
 };
 
 type ExternalSystemsPayload = {
+  cd_msp_sync?: CdMspSyncStatus;
   system_logs?: {
     note?: string;
     connection_count?: number;
@@ -137,6 +149,62 @@ function canForgetConnection(status: string): boolean {
   return key === 'disconnected' || key === 'rejected';
 }
 
+function normalizeCrmBaseUrl(url: string | undefined): string {
+  return String(url || '').trim().replace(/\/+$/, '').toLowerCase();
+}
+
+function isLocalhostCrmUrl(url: string | undefined): boolean {
+  const normalized = normalizeCrmBaseUrl(url);
+  return (
+    normalized.startsWith('http://localhost:') ||
+    normalized.startsWith('http://127.0.0.1:') ||
+    normalized.startsWith('https://localhost:')
+  );
+}
+
+function findAcceptConflict(
+  connection: SystemLogConnection,
+  rows: SystemLogConnection[]
+): SystemLogConnection | null {
+  if (String(connection.status || '').toLowerCase() !== 'pending') return null;
+  const base = normalizeCrmBaseUrl(connection.crm_base_url);
+  const key = String(connection.system_key || '').trim().toLowerCase();
+  const company = String(connection.company_name || '').trim().toLowerCase();
+  for (const other of rows) {
+    if (other.connection_id === connection.connection_id) continue;
+    if (String(other.status || '').toLowerCase() !== 'accepted') continue;
+    const otherBase = normalizeCrmBaseUrl(other.crm_base_url);
+    if (base && otherBase && base === otherBase) return other;
+    const otherKey = String(other.system_key || '').trim().toLowerCase();
+    const otherCompany = String(other.company_name || '').trim().toLowerCase();
+    if (key && company && key === otherKey && company === otherCompany) return other;
+  }
+  return null;
+}
+
+/** POS and other products that accept a pushed CD installer/MSP API key (see Mini CD_INSTALLER_KEY_ROUTES). */
+const CD_INSTALLER_KEY_SYSTEM_KEYS = new Set(['pos']);
+
+function connectionSupportsCdInstallerKeyPush(connection: SystemLogConnection): boolean {
+  if (String(connection.status || '').toLowerCase() !== 'accepted') return false;
+  if (connection.supports_cd_installer_key_push) return true;
+  const key = String(connection.system_key || '').trim().toLowerCase();
+  return CD_INSTALLER_KEY_SYSTEM_KEYS.has(key);
+}
+
+/** Manual push only when Mini’s CD key and this site’s stored fingerprint differ (or never pushed). */
+function cdInstallerKeyPushNeeded(
+  connection: SystemLogConnection,
+  cdMspSync?: CdMspSyncStatus
+): boolean {
+  if (!connectionSupportsCdInstallerKeyPush(connection)) return false;
+  if (connection.cd_installer_key_push_needed === true) return true;
+  if (connection.cd_installer_key_push_needed === false) return false;
+  if (!cdMspSync?.configured || !cdMspSync.token_fingerprint) return false;
+  const connFp = String(connection.cd_installer_key_fingerprint || '').trim();
+  return !connFp || connFp !== cdMspSync.token_fingerprint;
+}
+
 const LOG_LEVEL_FILTERS = ['all', 'error', 'warn', 'info', 'debug'] as const;
 const LOG_CATEGORY_PRESETS = ['project_guard', 'license', 'api', 'console', 'general'] as const;
 
@@ -199,9 +267,13 @@ export function MiniSystemLogsTab() {
   const [loadingSystems, setLoadingSystems] = useState(true);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [forgettingId, setForgettingId] = useState('');
+  const [acceptingId, setAcceptingId] = useState('');
+  const [rejectingId, setRejectingId] = useState('');
   const [pushingKitId, setPushingKitId] = useState('');
+  const [pushingCdKeyId, setPushingCdKeyId] = useState('');
   const [settingsMenuId, setSettingsMenuId] = useState('');
   const [updatingSettingsId, setUpdatingSettingsId] = useState('');
+  const [updatingAutoPushId, setUpdatingAutoPushId] = useState('');
   const [kitNotice, setKitNotice] = useState('');
   const [error, setError] = useState('');
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -433,6 +505,121 @@ export function MiniSystemLogsTab() {
     }
   }
 
+  async function updateCdInstallerKeyAutoPush(connectionId: string, enabled: boolean) {
+    setUpdatingAutoPushId(connectionId);
+    setError('');
+    setKitNotice('');
+    try {
+      const res = await fetch('/api/mini/external-systems/system-logs/cd-installer-key-auto-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ connection_id: connectionId, enabled }),
+      });
+      const data = await parseFetchJsonResponse<{ error?: string; external_systems?: ExternalSystemsPayload }>(res);
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Failed to update auto-push setting'));
+      if (data.external_systems) setSystems(data.external_systems);
+      else await loadSystems();
+      setKitNotice(enabled ? 'CD installer key auto-push enabled.' : 'CD installer key auto-push disabled.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update auto-push setting');
+    } finally {
+      setUpdatingAutoPushId('');
+    }
+  }
+
+  async function pushCdInstallerKey(connection: SystemLogConnection) {
+    const targetLabel = formatKitPushTarget(connection);
+    setPushingCdKeyId(connection.connection_id);
+    setError('');
+    setKitNotice(`Pushing CD installer key to ${targetLabel}…`);
+    try {
+      const res = await fetch('/api/mini/external-systems/system-logs/push-cd-installer-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ connection_id: connection.connection_id }),
+      });
+      const data = await parseFetchJsonResponse<{
+        error?: string;
+        token_fingerprint?: string;
+        external_systems?: ExternalSystemsPayload;
+      }>(res);
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Failed to push CD installer key'));
+      if (data.error) throw new Error(data.error);
+      if (data.external_systems) setSystems(data.external_systems);
+      else await loadSystems();
+      setKitNotice(`CD installer key pushed to ${targetLabel}.`);
+    } catch (err) {
+      setKitNotice('');
+      setError(err instanceof Error ? err.message : 'Failed to push CD installer key');
+    } finally {
+      setPushingCdKeyId('');
+    }
+  }
+
+  async function acceptConnection(connectionId: string) {
+    setAcceptingId(connectionId);
+    setError('');
+    setKitNotice('');
+    try {
+      const res = await fetch('/api/mini/external-systems/system-logs/accept-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ connection_id: connectionId }),
+      });
+      const data = await parseFetchJsonResponse<{
+        error?: string;
+        conflict_label?: string;
+        callback_error?: string;
+        external_systems?: ExternalSystemsPayload;
+      }>(res);
+      if (!res.ok) {
+        const detail = [data.error, data.conflict_label ? `Conflicts with: ${data.conflict_label}` : null]
+          .filter(Boolean)
+          .join(' — ');
+        throw new Error(apiErrorMessage(data, detail || 'Failed to accept connection'));
+      }
+      if (data.callback_error) {
+        setKitNotice(
+          `Accepted on Mini, but the site could not be notified (${data.callback_error}). Check PUBLIC_BASE_URL and firewall on the POS PC, then Connect again on the site.`
+        );
+      } else {
+        setKitNotice('Connection accepted.');
+      }
+      if (data.external_systems) setSystems(data.external_systems);
+      else await loadSystems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to accept connection');
+    } finally {
+      setAcceptingId('');
+    }
+  }
+
+  async function rejectConnection(connectionId: string) {
+    setRejectingId(connectionId);
+    setError('');
+    setKitNotice('');
+    try {
+      const res = await fetch('/api/mini/external-systems/system-logs/reject-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ connection_id: connectionId }),
+      });
+      const data = await parseFetchJsonResponse<{ error?: string; external_systems?: ExternalSystemsPayload }>(res);
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Failed to reject connection'));
+      if (data.external_systems) setSystems(data.external_systems);
+      else await loadSystems();
+      setKitNotice('Connection rejected.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reject connection');
+    } finally {
+      setRejectingId('');
+    }
+  }
+
   async function forgetConnection(connectionId: string) {
     setForgettingId(connectionId);
     setError('');
@@ -471,6 +658,7 @@ export function MiniSystemLogsTab() {
 
   const summary = systems?.system_logs;
   const kitCatalog = summary?.integration_kit;
+  const cdMspSync = systems?.cd_msp_sync;
 
   return (
     <div className="min-w-0 space-y-4">
@@ -556,6 +744,9 @@ export function MiniSystemLogsTab() {
                   connection.status === 'accepted' && Boolean(connection.integration_kit_update_available);
                 const autoUpdatesSuspended = Boolean(connection.auto_updates_suspended);
                 const settingsOpen = settingsMenuId === connection.connection_id;
+                const acceptConflict = findAcceptConflict(connection, connections);
+                const localhostUrl = isLocalhostCrmUrl(connection.crm_base_url);
+                const isPending = String(connection.status || '').toLowerCase() === 'pending';
                 return (
                   <div
                     key={connection.connection_id}
@@ -578,14 +769,15 @@ export function MiniSystemLogsTab() {
                         title="Connection settings"
                         aria-label="Connection settings"
                       >
-                        {updatingSettingsId === connection.connection_id ? (
+                        {updatingSettingsId === connection.connection_id ||
+                        updatingAutoPushId === connection.connection_id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Settings className="h-3.5 w-3.5" />
                         )}
                       </button>
                       {settingsOpen ? (
-                        <div className="absolute right-0 top-[calc(100%+0.35rem)] min-w-[15rem] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                        <div className="absolute right-0 top-[calc(100%+0.35rem)] min-w-[17rem] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                             Connection settings
                           </p>
@@ -601,9 +793,29 @@ export function MiniSystemLogsTab() {
                             />
                             Suspend auto updates
                           </label>
+                          {connectionSupportsCdInstallerKeyPush(connection) ? (
+                            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={connection.auto_push_cd_installer_key ?? true}
+                                disabled={updatingAutoPushId === connection.connection_id}
+                                onChange={(event) => {
+                                  void updateCdInstallerKeyAutoPush(connection.connection_id, event.target.checked);
+                                }}
+                                className="rounded border-slate-300 text-sky-700 focus:ring-sky-500/30"
+                              />
+                              Auto-push CD installer key on rotation
+                            </label>
+                          ) : null}
                           {autoUpdatesSuspended ? (
                             <p className="mt-2 text-xs leading-relaxed text-slate-500">
                               Automatic kit and library updates are paused for this site.
+                            </p>
+                          ) : null}
+                          {connectionSupportsCdInstallerKeyPush(connection) ? (
+                            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                              When on, a new CD installer/MSP API key is pushed automatically after CD syncs it to Mini.
+                              If auto-push fails or is off, use &quot;Push CD installer key&quot; when it appears (out of sync only).
                             </p>
                           ) : null}
                         </div>
@@ -658,8 +870,60 @@ export function MiniSystemLogsTab() {
                       {connection.last_event && (
                         <p className="mt-1 truncate text-xs text-slate-400">{connection.last_event}</p>
                       )}
+                      {localhostUrl && (
+                        <p className="mt-1 text-xs text-amber-800">
+                          CRM URL is localhost — Mini cannot call back from another PC until PUBLIC_BASE_URL is set on
+                          that site.
+                        </p>
+                      )}
+                      {acceptConflict && (
+                        <p className="mt-1 text-xs text-amber-800">
+                          Accept blocked: another connection already uses this URL (
+                          {acceptConflict.display_label || acceptConflict.system_name}). Disconnect it first or fix
+                          PUBLIC_BASE_URL on the POS.
+                        </p>
+                      )}
                     </button>
                     <div className="mt-2 flex flex-wrap gap-2">
+                      {isPending && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void acceptConnection(connection.connection_id);
+                            }}
+                            disabled={acceptingId === connection.connection_id || Boolean(acceptConflict)}
+                            title={
+                              acceptConflict
+                                ? 'Disconnect the conflicting connection or set PUBLIC_BASE_URL on the POS first'
+                                : undefined
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                          >
+                            {acceptingId === connection.connection_id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Check className="h-3 w-3" />
+                            )}
+                            Accept connection
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void rejectConnection(connection.connection_id);
+                            }}
+                            disabled={rejectingId === connection.connection_id}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+                          >
+                            {rejectingId === connection.connection_id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <X className="h-3 w-3" />
+                            )}
+                            Reject
+                          </button>
+                        </>
+                      )}
                       {showKitPush && (
                         <button
                           type="button"
@@ -675,6 +939,24 @@ export function MiniSystemLogsTab() {
                             <Upload className="h-3 w-3" />
                           )}
                           Push kit update
+                        </button>
+                      )}
+                      {cdInstallerKeyPushNeeded(connection, cdMspSync) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void pushCdInstallerKey(connection);
+                          }}
+                          disabled={pushingCdKeyId === connection.connection_id}
+                          title="CD installer key on this site does not match Mini’s current key — push to fix"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-800 hover:bg-violet-100 disabled:opacity-60"
+                        >
+                          {pushingCdKeyId === connection.connection_id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <KeyRound className="h-3 w-3" />
+                          )}
+                          Push CD installer key
                         </button>
                       )}
                       {forgettable && (

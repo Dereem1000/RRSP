@@ -68,7 +68,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from license_validator import LicenseValidator
 from license_response_signature import sign_valid_license_response
 from models import db, LicenseActivation, CompanyRegistration, SystemConfiguration
-from license_serial import parse_license_features
+from license_serial import (
+    parse_license_features,
+    resolve_license_feature_key,
+    serial_implied_license_feature_key,
+    serial_matches_license_feature_key,
+)
 
 SYSTEM_TYPE_TO_FEATURE_KEY = {
     'crm': 'customer_management',
@@ -95,6 +100,53 @@ SYSTEM_TYPE_TO_FEATURE_KEY = {
     'medical_records_management': 'medical_records_management',
 }
 
+def _required_feature_key_from_system_info(system_info: dict) -> str | None:
+    if not system_info or not isinstance(system_info, dict):
+        return None
+    raw_type = (
+        system_info.get('system_type')
+        or system_info.get('system_key')
+        or system_info.get('product')
+        or ''
+    )
+    system_type = str(raw_type).strip().lower()
+    if not system_type:
+        return None
+    required = SYSTEM_TYPE_TO_FEATURE_KEY.get(system_type)
+    if required:
+        return required
+    if system_type == 'pos' or str(system_info.get('product') or '').strip().upper() == 'POS':
+        return 'pos_systems'
+    return None
+
+
+def _resolve_company_ids_for_account_lookup(email: str, msp_client_id: str) -> list[int]:
+    """Match portal client licenses: prefer msp_client_id, then company email."""
+    company_ids: list[int] = []
+    seen: set[int] = set()
+
+    msp_id = str(msp_client_id or '').strip()
+    if msp_id:
+        by_msp = CompanyRegistration.query.filter(
+            CompanyRegistration.msp_client_id == msp_id
+        ).all()
+        for company in by_msp:
+            if company.id not in seen:
+                seen.add(company.id)
+                company_ids.append(company.id)
+
+    normalized_email = str(email or '').strip().lower()
+    if normalized_email and '@' in normalized_email:
+        by_email = CompanyRegistration.query.filter(
+            CompanyRegistration.email.ilike(normalized_email)
+        ).all()
+        for company in by_email:
+            if company.id not in seen:
+                seen.add(company.id)
+                company_ids.append(company.id)
+
+    return company_ids
+
 
 def license_matches_requested_system(license_row, system_info: dict) -> tuple[bool, str | None]:
     """Return (ok, error_message). Skips check when client omits system_type."""
@@ -111,16 +163,48 @@ def license_matches_requested_system(license_row, system_info: dict) -> tuple[bo
     if not system_type:
         return True, None
 
-    required_key = SYSTEM_TYPE_TO_FEATURE_KEY.get(system_type)
+    required_key = _required_feature_key_from_system_info(system_info)
     if not required_key:
         return True, None
+
+    serial = getattr(license_row, 'serial_number', None) if license_row else None
+    if not serial_matches_license_feature_key(serial, required_key):
+        product = str(system_info.get('product') or system_type).upper()
+        return False, f'License serial is not for {product}'
 
     features = parse_license_features(license_row.features if license_row else {})
     if features.get(required_key):
         return True, None
 
+    inferred_key = resolve_license_feature_key(
+        license_row.features if license_row else {},
+        serial,
+    )
+    if inferred_key == required_key:
+        return True, None
+
     product = str(system_info.get('product') or system_type).upper()
     return False, f'License is not enabled for {product}'
+
+
+def _repair_license_features_if_needed(license_row) -> None:
+    """Ensure features JSON matches serial / MSP product (legacy rows may be empty)."""
+    if not license_row:
+        return
+    feature_key = resolve_license_feature_key(license_row.features, license_row.serial_number)
+    if not feature_key:
+        return
+    features = parse_license_features(license_row.features)
+    if features.get(feature_key):
+        return
+    from msp_integration import MSPClientIntegration
+
+    msp = MSPClientIntegration()
+    license_row.features = json.dumps(msp._build_license_features_for_key(feature_key))
+    db.session.commit()
+    print(
+        f'✅ Repaired missing features for license: {license_row.serial_number} -> {feature_key}'
+    )
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('LICENSE_SECRET_KEY', 'your-secret-key-here')
@@ -488,6 +572,7 @@ def validate_license():
             with app.app_context():
                 license_row = LicenseActivation.query.filter_by(serial_number=serial_number).first()
                 if license_row:
+                    _repair_license_features_if_needed(license_row)
                     system_ok, system_err = license_matches_requested_system(license_row, system_info)
                     if not system_ok:
                         print(f'🚫 REJECTING validation: {system_err}')
@@ -498,22 +583,6 @@ def validate_license():
                             'message': system_err,
                             'timestamp': datetime.now(timezone.utc).isoformat(),
                         }), 403
-                    from license_serial import parse_license_features, resolve_license_feature_key
-                    from msp_integration import MSPClientIntegration
-
-                    feature_key = resolve_license_feature_key(
-                        license_row.features,
-                        license_row.serial_number,
-                    )
-                    if feature_key and not parse_license_features(license_row.features).get(feature_key):
-                        msp = MSPClientIntegration()
-                        license_row.features = json.dumps(
-                            msp._build_license_features_for_key(feature_key)
-                        )
-                        db.session.commit()
-                        print(
-                            f'✅ Repaired missing features for license: {serial_number} -> {feature_key}'
-                        )
 
             # Convert expiration_date to ISO format string if it exists
             expiration_date = validation_result.get('expiration_date')
@@ -719,12 +788,19 @@ def account_licenses():
     """
     try:
         data = request.get_json() or {}
-        email = str(data.get('email') or '').strip().lower()
-        if not email or '@' not in email:
+        email = str(data.get('email') or data.get('account_email') or '').strip().lower()
+        msp_client_id = str(
+            data.get('msp_client_id')
+            or data.get('mspClientId')
+            or (data.get('installer_client') or {}).get('msp_client_id')
+            or ''
+        ).strip()
+
+        if (not email or '@' not in email) and not msp_client_id:
             return jsonify({
                 'success': False,
-                'error': 'email is required',
-                'message': 'Provide the account email from authenticated CD login',
+                'error': 'email or msp_client_id is required',
+                'message': 'Provide the linked client id from CD login and/or the account email',
             }), 400
 
         system_info = data.get('system_info') or {}
@@ -735,19 +811,24 @@ def account_licenses():
         if data.get('product') and not system_info.get('product'):
             system_info['product'] = data.get('product')
 
+        required_product_key = _required_feature_key_from_system_info(system_info)
+        if not required_product_key:
+            return jsonify({
+                'success': False,
+                'error': 'Unknown or missing product system_type',
+                'message': 'Send system_type (e.g. pos / pos_system) and product (e.g. POS) — not generic myapp/MYAPP',
+            }), 400
+
         with app.app_context():
-            companies = CompanyRegistration.query.filter(
-                CompanyRegistration.email.ilike(email)
-            ).all()
-            if not companies:
+            company_ids = _resolve_company_ids_for_account_lookup(email, msp_client_id)
+            if not company_ids:
                 return jsonify({
                     'success': True,
                     'licenses': [],
                     'count': 0,
-                    'message': 'No company registration found for this email',
+                    'message': 'No company registration found for this account',
                 })
 
-            company_ids = [c.id for c in companies]
             rows = LicenseActivation.query.filter(
                 LicenseActivation.company_id.in_(company_ids)
             ).all()
@@ -763,14 +844,17 @@ def account_licenses():
                         exp = exp.replace(tzinfo=timezone.utc)
                     if exp < now:
                         continue
+                _repair_license_features_if_needed(license_row)
                 system_ok, _system_err = license_matches_requested_system(license_row, system_info)
                 if not system_ok:
                     continue
                 features = parse_license_features(license_row.features)
+                bound_fp = bool(str(license_row.browser_fingerprint or '').strip())
                 licenses_data.append({
                     'serial_number': license_row.serial_number,
                     'license_type': license_row.license_type,
                     'is_active': bool(license_row.is_active),
+                    'device_bound': bound_fp,
                     'max_users': license_row.max_users,
                     'features': features,
                     'activation_date': license_row.activation_date.isoformat() if license_row.activation_date else None,
@@ -779,11 +863,9 @@ def account_licenses():
                     'company_email': license_row.company.email if license_row.company else email,
                 })
 
-            # Prefer longest remaining term
-            licenses_data.sort(
-                key=lambda item: item.get('expiration_date') or '',
-                reverse=True,
-            )
+            # Unbound first (available on this device), then longest remaining term
+            licenses_data.sort(key=lambda item: item.get('expiration_date') or '', reverse=True)
+            licenses_data.sort(key=lambda item: 1 if item.get('device_bound') else 0)
 
             return jsonify({
                 'success': True,

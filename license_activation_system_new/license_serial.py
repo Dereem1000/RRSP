@@ -130,6 +130,22 @@ def resolve_license_feature_key(features_raw: Any, serial: Optional[str] = None)
     return None
 
 
+def serial_implied_license_feature_key(serial: Optional[str]) -> Optional[str]:
+    """Feature key encoded in a CD-LIC serial (POINTOFSALE → pos_systems, RRSPONLINE → rrsp_online, …)."""
+    if not serial:
+        return None
+    code = primary_system_code_from_serial(str(serial))
+    return CODE_TO_LICENSE_KEY.get(code)
+
+
+def serial_matches_license_feature_key(serial: Optional[str], license_feature_key: str) -> bool:
+    """False when serial token clearly belongs to another product (e.g. RRSP serial for POS)."""
+    implied = serial_implied_license_feature_key(serial)
+    if not implied or not license_feature_key:
+        return True
+    return implied == license_feature_key
+
+
 def primary_system_code(features_raw: Any) -> str:
     features = parse_license_features(features_raw)
     for key, code in LICENSE_KEY_TO_CODE.items():

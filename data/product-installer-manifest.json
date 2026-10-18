@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-13T03:32:04.849Z",
+  "features": {
+    "pos": {
+      "available": true,
+      "fileName": "POSSystem-Setup-1.1.45.exe",
+      "downloadUrl": "/api/public/product-installer/download?feature=pos",
+      "sizeBytes": 97203945
+    }
+  },
+  "pages": {
+    "pos-system-learn-more.html": {
+      "feature": "pos",
+      "fileName": "POSSystem-Setup-1.1.45.exe",
+      "downloadUrl": "/api/public/product-installer/download?feature=pos"
+    }
+  }
+}

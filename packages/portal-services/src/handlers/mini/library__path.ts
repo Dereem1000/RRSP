@@ -1,15 +1,37 @@
 import type { ApiContext, ApiResult } from '@cd-v2/api-handlers';
 import { authErrorResult, requireSession } from '@cd-v2/api-handlers';
-import { miniProxyRequest } from '@web/lib/mini-dock';
+import { encodeMiniApiPath, miniProxyRequest } from '@web/lib/mini-dock';
 import { guardMiniApiRouteResult } from '../../mini-helpers';
+
+function searchParamsFrom(ctx: ApiContext): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(ctx.query)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) value.forEach((v) => params.append(key, v));
+    else params.set(key, String(value));
+  }
+  return params;
+}
 
 async function proxyLibrary(ctx: ApiContext, method: 'GET' | 'POST'): Promise<ApiResult> {
   requireSession(ctx);
   const guard = await guardMiniApiRouteResult();
   if (guard) return guard;
 
-  const segments = (ctx.params.path || '').split('/').filter(Boolean);
-  const target = `/api/library/${segments.join('/')}`;
+  let pathTail = String(ctx.params.path || '').trim();
+  if (!pathTail) {
+    const normalized = String(ctx.path || '').replace(/\/+/g, '/');
+    const prefix = '/mini/library/';
+    if (normalized.startsWith(prefix)) {
+      pathTail = normalized.slice(prefix.length);
+    }
+  }
+  const segments = pathTail.split('/').filter(Boolean);
+  let target = encodeMiniApiPath(`/api/library/${segments.join('/')}`);
+  const qs = searchParamsFrom(ctx);
+  const query = qs.toString();
+  if (query) target += `?${query}`;
+
   const init: RequestInit = { method };
 
   if (method === 'POST') {

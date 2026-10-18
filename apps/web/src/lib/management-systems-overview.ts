@@ -103,11 +103,14 @@ export async function getManagementSystemsOverview(
         activationDate: license?.activationDate ?? null,
         provisionStatus: engagement?.provisionStatus ?? 'none',
         installStatus: engagement?.installStatus ?? 'none',
+        installerStatus: engagement?.installerStatus ?? 'none',
         deliverableStatus: engagement?.deliverableStatus ?? 'none',
         provisionRunId: engagement?.provisionRunId,
         installRunId: engagement?.installRunId,
+        installerRunId: engagement?.installerRunId,
         provisionAt: engagement?.provisionAt,
         installAt: engagement?.installAt,
+        installerAt: engagement?.installerAt,
       });
     }
 

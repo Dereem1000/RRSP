@@ -73,6 +73,8 @@ import { dispatch as dispatch_mini_external_systems__system_logs__connectionId__
 import { dispatch as dispatch_mini_external_systems__system_logs__forget } from './handlers/mini/external-systems__system-logs__forget';
 import { dispatch as dispatch_mini_external_systems__system_logs__connection_settings } from './handlers/mini/external-systems__system-logs__connection-settings';
 import { dispatch as dispatch_mini_external_systems__system_logs__push_kit_update } from './handlers/mini/external-systems__system-logs__push-kit-update';
+import { dispatch as dispatch_mini_external_systems__system_logs__push_cd_installer_key } from './handlers/mini/external-systems__system-logs__push-cd-installer-key';
+import { dispatch as dispatch_mini_external_systems__system_logs__cd_installer_key_auto_push } from './handlers/mini/external-systems__system-logs__cd-installer-key-auto-push';
 import { dispatch as dispatch_mini_system_logs__path } from './handlers/mini/system_logs__path';
 import { dispatch as dispatch_mini_library } from './handlers/mini/library';
 import { dispatch as dispatch_mini_status } from './handlers/mini/status';
@@ -99,6 +101,8 @@ import { dispatch as dispatch_msp_license_status } from './handlers/msp/license-
 import { dispatch as dispatch_msp_license_status__clientId } from './handlers/msp/license-status__clientId';
 import { dispatch as dispatch_msp_management_systems } from './handlers/msp/management-systems';
 import { dispatch as dispatch_msp_management_systems__product_config } from './handlers/msp/management-systems__product-config';
+import { dispatch as dispatch_msp_management_systems__product_installer__download } from './handlers/msp/management-systems__product-installer__download';
+import { dispatch as dispatch_msp_management_systems__product_installer__probe } from './handlers/msp/management-systems__product-installer__probe';
 import { dispatch as dispatch_msp_management_systems__engagements } from './handlers/msp/management-systems__engagements';
 import { dispatch as dispatch_msp_management_systems__deliverable } from './handlers/msp/management-systems__deliverable';
 import { dispatch as dispatch_msp_management_systems__gate_checklist } from './handlers/msp/management-systems__gate-checklist';
@@ -131,6 +135,9 @@ import { dispatch as dispatch_msp_parts_catalog__requests__fulfill_preview } fro
 import { dispatch as dispatch_msp_parts_catalog__requests__pickup } from './handlers/msp/parts-catalog__requests__pickup';
 import { dispatch as dispatch_msp_parts_catalog__requests__receive } from './handlers/msp/parts-catalog__requests__receive';
 import { dispatch as dispatch_msp_parts_catalog__requests__route } from './handlers/msp/parts-catalog__requests__route';
+import { dispatch as dispatch_msp_parts_catalog__requests__verification__review } from './handlers/msp/parts-catalog__requests__verification__review';
+import { dispatch as dispatch_msp_parts_catalog__requests__verification__request_seller } from './handlers/msp/parts-catalog__requests__verification__request-seller';
+import { dispatch as dispatch_msp_parts_catalog__requests__verification__seller_video } from './handlers/msp/parts-catalog__requests__verification__seller-video';
 import { dispatch as dispatch_msp_payments__id } from './handlers/msp/payments__id';
 import { dispatch as dispatch_pos_products } from './handlers/pos/products';
 import { dispatch as dispatch_pos_products__id } from './handlers/pos/products__id';
@@ -150,6 +157,7 @@ import { dispatch as dispatch_msp_quotes__id__share_link } from './handlers/msp/
 import { dispatch as dispatch_msp_sync__clientId } from './handlers/msp/sync__clientId';
 import { dispatch as dispatch_notices_notices } from './handlers/notices/notices';
 import { dispatch as dispatch_payments_wipay__response } from './handlers/payments/wipay__response';
+import { dispatch as dispatch_public_product_installer } from './handlers/public/product-installer';
 import { dispatch as dispatch_public_captcha_config } from './handlers/public/captcha-config';
 import { dispatch as dispatch_public_client_signup } from './handlers/public/client-signup';
 import { dispatch as dispatch_public_demo_request } from './handlers/public/demo-request';
@@ -296,6 +304,8 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/mini/external-systems/system-logs/forget', handler: dispatch_mini_external_systems__system_logs__forget },
   { method: 'POST', pattern: '/mini/external-systems/system-logs/connection-settings', handler: dispatch_mini_external_systems__system_logs__connection_settings },
   { method: 'POST', pattern: '/mini/external-systems/system-logs/push-kit-update', handler: dispatch_mini_external_systems__system_logs__push_kit_update },
+  { method: 'POST', pattern: '/mini/external-systems/system-logs/push-cd-installer-key', handler: dispatch_mini_external_systems__system_logs__push_cd_installer_key },
+  { method: 'POST', pattern: '/mini/external-systems/system-logs/cd-installer-key-auto-push', handler: dispatch_mini_external_systems__system_logs__cd_installer_key_auto_push },
   { method: 'GET', pattern: '/mini/external-systems/web-browser', handler: dispatch_mini_web_browser },
   { method: 'GET', pattern: '/mini/library', handler: dispatch_mini_library },
   { method: 'GET', pattern: '/mini/status', handler: dispatch_mini_status },
@@ -325,6 +335,8 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'GET', pattern: '/msp/license-status/:clientId', handler: dispatch_msp_license_status__clientId },
   { method: 'GET', pattern: '/msp/management-systems/product-config', handler: dispatch_msp_management_systems__product_config },
   { method: 'PUT', pattern: '/msp/management-systems/product-config', handler: dispatch_msp_management_systems__product_config },
+  { method: 'GET', pattern: '/msp/management-systems/product-installer/download', handler: dispatch_msp_management_systems__product_installer__download },
+  { method: 'GET', pattern: '/msp/management-systems/product-installer/probe', handler: dispatch_msp_management_systems__product_installer__probe },
   { method: 'GET', pattern: '/msp/management-systems/engagements', handler: dispatch_msp_management_systems__engagements },
   { method: 'PUT', pattern: '/msp/management-systems/engagements', handler: dispatch_msp_management_systems__engagements },
   { method: 'GET', pattern: '/msp/management-systems/deliverable', handler: dispatch_msp_management_systems__deliverable },
@@ -367,6 +379,21 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'POST', pattern: '/msp/parts-catalog/requests/pickup', handler: dispatch_msp_parts_catalog__requests__pickup },
   { method: 'POST', pattern: '/msp/parts-catalog/requests/receive', handler: dispatch_msp_parts_catalog__requests__receive },
   { method: 'POST', pattern: '/msp/parts-catalog/requests/route', handler: dispatch_msp_parts_catalog__requests__route },
+  {
+    method: 'POST',
+    pattern: '/msp/parts-catalog/requests/verification/review',
+    handler: dispatch_msp_parts_catalog__requests__verification__review,
+  },
+  {
+    method: 'POST',
+    pattern: '/msp/parts-catalog/requests/verification/request-seller',
+    handler: dispatch_msp_parts_catalog__requests__verification__request_seller,
+  },
+  {
+    method: 'POST',
+    pattern: '/msp/parts-catalog/requests/verification/seller-video',
+    handler: dispatch_msp_parts_catalog__requests__verification__seller_video,
+  },
   { method: 'DELETE', pattern: '/msp/payments/:id', handler: dispatch_msp_payments__id },
   { method: 'GET', pattern: '/pos/products', handler: dispatch_pos_products },
   { method: 'POST', pattern: '/pos/products', handler: dispatch_pos_products },
@@ -394,6 +421,9 @@ export const portalRoutes: RouteEntry[] = [
   { method: 'PUT', pattern: '/msp/sync/:clientId', handler: dispatch_msp_sync__clientId },
   { method: 'GET', pattern: '/notices', handler: dispatch_notices_notices },
   { method: 'GET', pattern: '/payments/wipay/response', handler: dispatch_payments_wipay__response },
+  { method: 'GET', pattern: '/public/product-installer/download', handler: dispatch_public_product_installer },
+  { method: 'GET', pattern: '/public/product-installer/manifest', handler: dispatch_public_product_installer },
+  { method: 'GET', pattern: '/public/product-installer', handler: dispatch_public_product_installer },
   { method: 'GET', pattern: '/public/captcha-config', handler: dispatch_public_captcha_config },
   { method: 'POST', pattern: '/public/client-signup', handler: dispatch_public_client_signup },
   { method: 'POST', pattern: '/public/demo-request', handler: dispatch_public_demo_request },

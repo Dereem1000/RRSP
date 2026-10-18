@@ -23,6 +23,15 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       notes: typeof body.notes === 'string' ? body.notes : null,
       unitPrice: Number(body.unitPrice),
       quantity: Number(body.quantity),
+      category: typeof body.category === 'string' ? body.category : null,
+      itemCondition: typeof body.itemCondition === 'string' ? body.itemCondition : null,
+      imageFile: typeof body.imageFile === 'string' ? body.imageFile : null,
+      imageFiles: Array.isArray(body.imageFiles)
+        ? body.imageFiles.map((f) => String(f)).filter(Boolean)
+        : null,
+      verificationVideoFile:
+        typeof body.verificationVideoFile === 'string' ? body.verificationVideoFile : null,
+      requiresVerification: Boolean(body.requiresVerification),
     });
 
     return { status: 201, body: { success: true, listing } };

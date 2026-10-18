@@ -30,19 +30,21 @@ export function buildSecurityBadgeSummary(platform: PlatformSecurityStatus): Sec
     issues.push({ code: 'worker_stale', label: 'Security worker not responding' });
   }
 
-  if (platform.monitoring.threatLevel === 'critical') {
-    issues.push({ code: 'threat_critical', label: 'Critical threat level' });
-  } else if (platform.monitoring.threatLevel === 'high') {
-    issues.push({ code: 'threat_high', label: 'High threat level' });
-  } else if (platform.monitoring.threatLevel === 'medium') {
-    issues.push({ code: 'threat_medium', label: 'Elevated threat level' });
+  const bypassActive = platform.emergency.isActive && !platform.emergency.isExpired;
+
+  if (!bypassActive) {
+    if (platform.monitoring.threatLevel === 'critical') {
+      issues.push({ code: 'threat_critical', label: 'Critical threat level' });
+    } else if (platform.monitoring.threatLevel === 'high') {
+      issues.push({ code: 'threat_high', label: 'High threat level' });
+    } else if (platform.monitoring.threatLevel === 'medium') {
+      issues.push({ code: 'threat_medium', label: 'Elevated threat level' });
+    }
   }
 
   if (platform.license.status === 'offline') {
     issues.push({ code: 'license_api_offline', label: 'License API offline' });
   }
-
-  const bypassActive = platform.emergency.isActive && !platform.emergency.isExpired;
 
   if (!bypassActive) {
     if (platform.features.fileIntegrity.enabled && platform.features.fileIntegrity.lastIssues24h > 0) {
@@ -59,14 +61,16 @@ export function buildSecurityBadgeSummary(platform: PlatformSecurityStatus): Sec
     }
   }
 
-  const recentCritical = platform.recentEvents.filter(
-    (e) => e.severity === 'critical' || e.severity === 'high'
-  );
-  if (recentCritical.length > 0 && issues.length === 0) {
-    issues.push({
-      code: 'recent_events',
-      label: `${recentCritical.length} recent high-severity event(s)`,
-    });
+  if (!bypassActive) {
+    const recentCritical = platform.recentEvents.filter(
+      (e) => e.severity === 'critical' || e.severity === 'high'
+    );
+    if (recentCritical.length > 0 && issues.length === 0) {
+      issues.push({
+        code: 'recent_events',
+        label: `${recentCritical.length} recent high-severity event(s)`,
+      });
+    }
   }
 
   return {

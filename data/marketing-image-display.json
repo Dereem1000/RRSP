@@ -1,0 +1,170 @@
+{
+  "images/auto-system/modules/dashboard.png": {
+    "objectFit": "contain",
+    "posX": 51,
+    "posY": 24,
+    "showcaseMaxHeight": 600,
+    "scale": 1.52
+  },
+  "images/auto-system/modules/vehicles.png": {
+    "objectFit": "contain",
+    "posX": 51,
+    "posY": 43,
+    "showcaseMaxHeight": 616,
+    "scale": 1.54
+  },
+  "images/auto-system/modules/inspections.png": {
+    "objectFit": "contain",
+    "posX": 53,
+    "posY": 41,
+    "showcaseMaxHeight": 608,
+    "scale": 1.54
+  },
+  "images/auto-system/modules/insurance.png": {
+    "objectFit": "contain",
+    "posX": 48,
+    "posY": 0,
+    "showcaseMaxHeight": 280,
+    "scale": 1.54
+  },
+  "images/auto-system/modules/clients.png": {
+    "objectFit": "contain",
+    "posX": 50,
+    "posY": 0,
+    "showcaseMaxHeight": 280,
+    "scale": 1.5
+  },
+  "images/auto-system/modules/accounts.png": {
+    "objectFit": "contain",
+    "posX": 50,
+    "posY": 1,
+    "showcaseMaxHeight": 280,
+    "scale": 1.52
+  },
+  "images/auto-system/modules/documents.png": {
+    "objectFit": "contain",
+    "posX": 50,
+    "posY": 0,
+    "showcaseMaxHeight": 616,
+    "scale": 1.52
+  },
+  "images/rrms/hero/tickets.png": {
+    "objectFit": "cover",
+    "posX": 6,
+    "posY": 33,
+    "heroHeight": 256,
+    "scale": 1.04
+  },
+  "images/rrms/hero/dashboard.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 0,
+    "heroHeight": 256,
+    "scale": 1.6
+  },
+  "images/rrms/hero/customers.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 12,
+    "heroHeight": 256,
+    "scale": 1.32
+  },
+  "images/rrms/hero/orders.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 12,
+    "heroHeight": 260,
+    "scale": 1.18
+  },
+  "images/rrms/hero/parts.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 4,
+    "heroHeight": 260,
+    "scale": 1.26
+  },
+  "images/rrms/hero/accounting.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 12,
+    "heroHeight": 264,
+    "scale": 1.26
+  },
+  "images/rrms/hero/pos.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 0,
+    "heroHeight": 268,
+    "scale": 1.36
+  },
+  "images/rrms/hero/pos-inventory.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 12,
+    "heroHeight": 272,
+    "scale": 1.6
+  },
+  "images/rrms/modules/tickets.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 0,
+    "showcaseMaxHeight": 416,
+    "scale": 1
+  },
+  "images/rrms/modules/customers.png": {
+    "objectFit": "contain",
+    "posX": 3,
+    "posY": 0,
+    "showcaseMaxHeight": 424,
+    "scale": 1.6
+  },
+  "images/rrms/modules/orders.png": {
+    "objectFit": "contain",
+    "posX": 3,
+    "posY": 0,
+    "showcaseMaxHeight": 400,
+    "scale": 1.6
+  },
+  "images/rrms/modules/parts-marketplace.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 3,
+    "showcaseMaxHeight": 392,
+    "scale": 1.16
+  },
+  "images/rrms/modules/parts-my-stock.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 100,
+    "showcaseMaxHeight": 448,
+    "scale": 1.38
+  },
+  "images/rrms/modules/parts-outgoing.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 5,
+    "showcaseMaxHeight": 280,
+    "scale": 1.12
+  },
+  "images/rrms/modules/parts-incoming.png": {
+    "objectFit": "cover",
+    "posX": 0,
+    "posY": 0,
+    "showcaseMaxHeight": 304,
+    "scale": 1
+  },
+  "images/rrms/modules/pos.png": {
+    "objectFit": "contain",
+    "posX": 32,
+    "posY": 6,
+    "showcaseMaxHeight": 368,
+    "scale": 1.02
+  },
+  "images/rrms/modules/accounting.png": {
+    "objectFit": "contain",
+    "posX": 2,
+    "posY": 36,
+    "showcaseMaxHeight": 288,
+    "scale": 1.54
+  }
+}

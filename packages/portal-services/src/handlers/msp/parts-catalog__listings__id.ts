@@ -27,6 +27,15 @@ export async function PUTHandler(ctx: ApiContext): Promise<ApiResult> {
       unitPrice: Number(body.unitPrice),
       quantity: Number(body.quantity),
       availableQuantity: Number(body.availableQuantity),
+      category: typeof body.category === 'string' ? body.category : null,
+      itemCondition: typeof body.itemCondition === 'string' ? body.itemCondition : null,
+      imageFile: typeof body.imageFile === 'string' ? body.imageFile : null,
+      imageFiles: Array.isArray(body.imageFiles)
+        ? body.imageFiles.map((f) => String(f)).filter(Boolean)
+        : null,
+      verificationVideoFile:
+        typeof body.verificationVideoFile === 'string' ? body.verificationVideoFile : null,
+      requiresVerification: Boolean(body.requiresVerification),
     });
 
     return { status: 200, body: { success: true, listing } };

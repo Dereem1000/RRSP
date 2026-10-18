@@ -8,7 +8,7 @@ import { gateStatusLabel } from '@/lib/provisioning-checklist';
 import { gateStatusIcon } from '@/lib/management-system-provision';
 import { ProvisionChecklistView } from '@/components/msp/ProvisionChecklistView';
 
-type GateKind = 'provision' | 'install';
+type GateKind = 'provision' | 'install' | 'installer';
 
 type Props = {
   open: boolean;
@@ -79,8 +79,14 @@ export function ProvisionGateChecklistModal({
   if (!open) return null;
 
   const iconKind = gateStatusIcon(status);
-  const gateTitle = gate === 'install' ? 'Install gate' : 'Provision gate';
-  const phaseFilter = gate === 'install' ? ['Install'] : ['Readiness', 'Package'];
+  const gateTitle =
+    gate === 'install' ? 'Install gate' : gate === 'installer' ? 'Installer gate' : 'Provision gate';
+  const phaseFilter =
+    gate === 'install'
+      ? ['Install']
+      : gate === 'installer'
+        ? ['Installer']
+        : ['Readiness', 'Package'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

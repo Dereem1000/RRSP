@@ -14,7 +14,7 @@ export function buildProvisionDeepLink(input: {
   feature: ActivationFeature;
   customerName: string;
   projectRoot: string;
-  phase: 'Complete' | 'Install';
+  phase: 'Complete' | 'Install' | 'Installer';
 }) {
   const params = new URLSearchParams({
     tab: 'provisioning',

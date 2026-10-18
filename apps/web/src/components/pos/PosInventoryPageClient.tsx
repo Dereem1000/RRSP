@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Loader2,
+  Package,
   PackageMinus,
   PackagePlus,
   Pencil,
@@ -539,6 +540,7 @@ export function PosInventoryPageClient({
             <table className="min-w-full text-left text-sm">
               <thead className="sticky top-0 z-[1] bg-white">
                 <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-2 py-2 font-medium">Photo</th>
                   <th className="px-2 py-2 font-medium">Product</th>
                   <th className="px-2 py-2 font-medium">Type</th>
                   <th className="px-2 py-2 font-medium">SKU</th>
@@ -561,6 +563,22 @@ export function PosInventoryPageClient({
                       key={`${product.source}-${product.id}`}
                       className={`border-b border-slate-50 last:border-0 ${oos ? 'bg-amber-50/50' : ''}`}
                     >
+                      <td className="px-2 py-3">
+                        <div className="h-10 w-10 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                          {product.partsImageUrl ? (
+                            <img
+                              src={product.partsImageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-slate-400">
+                              <Package className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-3">
                         <div className="flex flex-wrap items-center gap-1.5">
                           {product.source === 'parts' ? (

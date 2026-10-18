@@ -472,8 +472,32 @@ let miniOfflineStreak = 0;
 const miniProxyInFlight = new Map<string, Promise<MiniProxyResult>>();
 const miniProxyReadCache = new Map<string, { checkedAt: number; result: MiniProxyResult }>();
 
+/** Encode each path segment so catalog keys like `barcode:…` are safe in fetch URLs. */
+export function encodeMiniApiPath(path: string): string {
+  const trimmed = path.startsWith('/') ? path : `/${path}`;
+  const qIndex = trimmed.indexOf('?');
+  const pathPart = qIndex >= 0 ? trimmed.slice(0, qIndex) : trimmed;
+  const queryPart = qIndex >= 0 ? trimmed.slice(qIndex) : '';
+  const encoded = pathPart
+    .split('/')
+    .map((segment) => (segment ? encodeURIComponent(decodeURIComponent(segment)) : segment))
+    .join('/');
+  return encoded + queryPart;
+}
+
+function miniProxyPathFromDedupeKey(dedupeKey: string, method: string): string {
+  const prefix = `${method.toUpperCase()}:`;
+  if (!dedupeKey.startsWith(prefix)) return dedupeKey;
+  let rest = dedupeKey.slice(prefix.length);
+  if (method !== 'GET' && method !== 'HEAD') {
+    const bodyMarker = rest.indexOf(':{');
+    if (bodyMarker >= 0) rest = rest.slice(0, bodyMarker);
+  }
+  return rest;
+}
+
 function miniProxyDedupeKey(method: string, targetPath: string, init: RequestInit = {}): string {
-  const pathSuffix = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+  const pathSuffix = encodeMiniApiPath(targetPath.startsWith('/') ? targetPath : `/${targetPath}`);
   const verb = method.toUpperCase();
   if (verb !== 'GET' && verb !== 'HEAD' && init.body) {
     const bodyKey = typeof init.body === 'string' ? init.body : '';
@@ -610,7 +634,7 @@ export async function miniProxyRequest(
 ): Promise<MiniProxyResult> {
   const method = (init.method || 'GET').toUpperCase();
   const dedupeKey = miniProxyDedupeKey(method, targetPath, init);
-  const pathOnly = dedupeKey.split(':', 2)[1] || targetPath;
+  const pathOnly = miniProxyPathFromDedupeKey(dedupeKey, method);
 
   if (method === 'GET' && MINI_CACHEABLE_GET_PATHS.has(pathOnly)) {
     const cached = getCachedMiniProxyResult(dedupeKey);
@@ -646,7 +670,7 @@ export async function miniProxyRequest(
 
   for (let index = 0; index < bases.length; index += 1) {
     const base = bases[index];
-    const pathSuffix = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+    const pathSuffix = encodeMiniApiPath(targetPath.startsWith('/') ? targetPath : `/${targetPath}`);
     // Remote CD hosts (no local Mini install path) only reach Mini through the tunnel — do not cap that attempt at 8s.
     const remoteOnlyMini = !settings.installPath.trim();
     const attemptTimeout =

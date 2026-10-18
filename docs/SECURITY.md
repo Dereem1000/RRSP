@@ -184,7 +184,8 @@ Events use **5-minute deduplication** for identical type+description (except exp
 - **Heuristics** — raises **`data_exfiltration_suspected`** (critical, outbound alert) when:
   - Response size ≥ **4 MB** (default; includes backup ZIP downloads),
   - Large list payloads on high-risk routes,
-  - **≥ 30** sensitive accesses in **5 minutes** per user/IP (worker + live).
+  - **≥ 30** export-class sensitive accesses in **5 minutes** per user/IP (worker + live; Security settings pages do not count toward burst).
+- **Record bulk** — applies to client/user/ticket/backup/license routes only, not `/api/security/events` or settings; **admin/technician** are exempt from record-count alerts.
 - **Auto-block** — when `data_leak_auto_block_ip` is true (default), blocks **client** or **anonymous** actors on exfiltration alerts; staff users are alerted but not IP-blocked by default.
 - **Toggles (S-CLS1)** — `data_leak_guard_enabled`, `data_leak_auto_block_ip` via Settings → Security or `POST /api/security/module-toggles`.
 

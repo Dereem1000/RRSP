@@ -4,9 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
+  Download,
   FileText,
   HardDriveDownload,
   Loader2,
+  MonitorDown,
   Package,
   XCircle,
 } from 'lucide-react';
@@ -22,12 +24,17 @@ type RowActionsProps = {
   projectRoot: string;
   provisionStatus?: GateStatus;
   installStatus?: GateStatus;
+  installerStatus?: GateStatus;
+  windowsInstallerSupported?: boolean;
   deliverableStatus?: 'none' | 'draft' | 'sent';
   provisionRunId?: string;
   installRunId?: string;
+  installerRunId?: string;
   provisionAt?: string;
   installAt?: string;
+  installerAt?: string;
   onOpenDeliverable: () => void;
+  productInstallerDownloadHref?: string | null;
 };
 
 function StatusIcon({
@@ -81,14 +88,21 @@ export function ProvisionRowActions({
   projectRoot,
   provisionStatus,
   installStatus,
+  installerStatus,
+  windowsInstallerSupported = true,
   deliverableStatus,
   provisionRunId,
   installRunId,
+  installerRunId,
   provisionAt,
   installAt,
+  installerAt,
   onOpenDeliverable,
+  productInstallerDownloadHref,
 }: RowActionsProps) {
-  const [checklistGate, setChecklistGate] = useState<'provision' | 'install' | null>(null);
+  const [checklistGate, setChecklistGate] = useState<'provision' | 'install' | 'installer' | null>(
+    null,
+  );
 
   const canDeliverable = gatePassed(provisionStatus);
   const provisionHref = buildProvisionDeepLink({
@@ -105,11 +119,33 @@ export function ProvisionRowActions({
     projectRoot,
     phase: 'Install',
   });
+  const installerHref = buildProvisionDeepLink({
+    clientId,
+    feature,
+    customerName: clientName,
+    projectRoot,
+    phase: 'Installer',
+  });
 
   const activeGate = checklistGate;
-  const activeStatus = activeGate === 'install' ? installStatus : provisionStatus;
-  const activeRunId = activeGate === 'install' ? installRunId : provisionRunId;
-  const activeAt = activeGate === 'install' ? installAt : provisionAt;
+  const activeStatus =
+    activeGate === 'install'
+      ? installStatus
+      : activeGate === 'installer'
+        ? installerStatus
+        : provisionStatus;
+  const activeRunId =
+    activeGate === 'install'
+      ? installRunId
+      : activeGate === 'installer'
+        ? installerRunId
+        : provisionRunId;
+  const activeAt =
+    activeGate === 'install'
+      ? installAt
+      : activeGate === 'installer'
+        ? installerAt
+        : provisionAt;
 
   return (
     <>
@@ -132,6 +168,17 @@ export function ProvisionRowActions({
               : undefined
           }
         />
+        {windowsInstallerSupported ? (
+          <StatusIcon
+            status={installerStatus}
+            title="Installer"
+            onClick={
+              gateStatusIcon(installerStatus) === 'pass' || gateStatusIcon(installerStatus) === 'fail'
+                ? () => setChecklistGate('installer')
+                : undefined
+            }
+          />
+        ) : null}
         {deliverableStatus === 'sent' && (
           <span title="Deliverable sent">
             <FileText className="h-4 w-4 text-indigo-500" aria-label="Deliverable sent" />
@@ -167,6 +214,30 @@ export function ProvisionRowActions({
             <HardDriveDownload className="h-4 w-4" />
           )}
         </Link>
+        {windowsInstallerSupported ? (
+          <Link
+            href={installerHref}
+            className={`rounded-lg p-1 hover:bg-slate-100 ${
+              gatePassed(installerStatus) ? 'text-emerald-600' : 'text-slate-500'
+            }`}
+            title="Run Windows installer gate (build .exe to installer/output)"
+          >
+            {gatePassed(installerStatus) ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <MonitorDown className="h-4 w-4" />
+            )}
+          </Link>
+        ) : null}
+        {productInstallerDownloadHref ? (
+          <a
+            href={productInstallerDownloadHref}
+            className="rounded-lg p-1 text-indigo-600 hover:bg-slate-100"
+            title="Download product installer"
+          >
+            <Download className="h-4 w-4" />
+          </a>
+        ) : null}
       </div>
 
       {activeGate && activeStatus && (

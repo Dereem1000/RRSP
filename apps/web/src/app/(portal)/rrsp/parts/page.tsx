@@ -21,7 +21,7 @@ export default async function RrspPartsPage() {
       <div className="shrink-0">
         <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Shop parts</h1>
         <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-          Parts catalog and stock for your shop
+          Browse the marketplace, list your stock with photos, and manage orders
         </p>
       </div>
       <Suspense fallback={<PartsLoading />}>

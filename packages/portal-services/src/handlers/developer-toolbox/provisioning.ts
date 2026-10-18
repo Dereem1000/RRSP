@@ -149,6 +149,20 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       );
       return { status: 200, body: { success: result.ok, ...(typeof result.body === 'object' ? result.body : { body: result.body }) } };
     }
+    if (action === 'pick-file') {
+      const result = await miniProxyRequest(
+        '/api/provisioning/pick-file',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            title: body.title,
+            filters: body.filters,
+          }),
+        },
+        { timeoutMs: MINI_PROVISIONING_PICK_TIMEOUT_MS, updateOnlineCache: false },
+      );
+      return { status: 200, body: { success: result.ok, ...(typeof result.body === 'object' ? result.body : { body: result.body }) } };
+    }
     const path =
       action === 'run'
         ? '/api/provisioning/run'

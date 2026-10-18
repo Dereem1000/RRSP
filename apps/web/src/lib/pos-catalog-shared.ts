@@ -31,6 +31,8 @@ export type PosProduct = {
   kind: PosProductKind;
   /** POS catalog rows, or Parts inventory listings included for sale. */
   source: 'cd' | 'shop' | 'parts';
+  /** First product photo when source is parts (marketplace listing media). */
+  partsImageUrl?: string | null;
 };
 
 export function normalizePosProductKind(value: unknown): PosProductKind {

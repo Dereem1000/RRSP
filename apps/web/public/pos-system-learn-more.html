@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS System - Learn More | Computer Dynamics</title>
+    <title>POS System - Download, Pricing &amp; Modules | Computer Dynamics</title>
+    <meta name="description" content="Download the Windows POS installer, start a 30-day trial with a Computer Dynamics account, and run your store for $30.00 USD (210 TTD)/month with support and module updates. Module Store, Store Credit, and more.">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -705,6 +706,289 @@
             color: var(--primary);
         }
 
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .get-started-section {
+            padding: 80px 0;
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .get-started-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.1fr;
+            gap: 32px;
+            align-items: stretch;
+        }
+
+        .pricing-card {
+            background: linear-gradient(145deg, var(--gray-900) 0%, var(--gray-800) 100%);
+            color: white;
+            border-radius: 24px;
+            padding: 40px 36px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+        }
+
+        .pricing-card .price-line {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .pricing-card .price-line span {
+            font-size: 1.125rem;
+            font-weight: 600;
+            opacity: 0.85;
+        }
+
+        .pricing-card .price-sub {
+            opacity: 0.9;
+            margin-bottom: 24px;
+            font-size: 1.05rem;
+        }
+
+        .pricing-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 28px;
+        }
+
+        .pricing-card ul li {
+            padding-left: 28px;
+            position: relative;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            opacity: 0.95;
+        }
+
+        .pricing-card ul li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: 700;
+        }
+
+        .pricing-card .pricing-note {
+            font-size: 0.875rem;
+            opacity: 0.8;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 20px;
+            line-height: 1.5;
+        }
+
+        .steps-card {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 24px;
+            padding: 36px 32px;
+        }
+
+        .steps-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .steps-card .steps-lede {
+            color: var(--gray-600);
+            margin-bottom: 28px;
+        }
+
+        .install-trust-notice {
+            background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
+            border: 1px solid #fcd34d;
+            border-radius: 16px;
+            padding: 22px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(146, 64, 14, 0.08);
+        }
+
+        .install-trust-notice h4 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 12px;
+        }
+
+        .install-trust-notice h4 i {
+            color: #d97706;
+        }
+
+        .install-trust-body {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 900px) {
+            .install-trust-body {
+                grid-template-columns: 1fr 1.15fr;
+                align-items: start;
+            }
+        }
+
+        .install-trust-copy p,
+        .install-trust-copy ol {
+            font-size: 0.9rem;
+            color: #78350f;
+            margin: 0 0 10px;
+        }
+
+        .install-trust-copy ol {
+            padding-left: 1.25rem;
+            margin-bottom: 0;
+        }
+
+        .install-trust-copy li {
+            margin-bottom: 6px;
+        }
+
+        .install-trust-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        @media (max-width: 640px) {
+            .install-trust-gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .install-trust-gallery figure {
+            margin: 0;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #fde68a;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .install-trust-gallery figure:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+        }
+
+        .install-trust-gallery img {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+
+        .install-trust-gallery figcaption {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #92400e;
+            text-align: center;
+            padding: 8px 6px 10px;
+            background: #fffbeb;
+            line-height: 1.3;
+        }
+
+        .trial-steps {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 28px;
+            counter-reset: trial-step;
+        }
+
+        .trial-steps li {
+            counter-increment: trial-step;
+            position: relative;
+            padding-left: 48px;
+            margin-bottom: 22px;
+        }
+
+        .trial-steps li::before {
+            content: counter(trial-step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trial-steps li strong {
+            display: block;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .trial-steps li span {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .get-started-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .btn-outline-dark {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline-dark:hover {
+            background: var(--gray-50);
+            transform: translateY(-2px);
+        }
+
+        .module-card.module-new {
+            border-color: var(--primary);
+            box-shadow: 0 12px 40px rgba(99, 102, 241, 0.12);
+        }
+
+        .module-card.module-store-highlight {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(236, 72, 153, 0.06) 100%);
+        }
+
+        @media (max-width: 900px) {
+            .get-started-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* CTA Section */
         .cta-section {
             padding: 80px 0;
@@ -874,6 +1158,9 @@
                 <a href="/" class="back-btn">
                     <i class="fas fa-arrow-left"></i> Back to Home
                 </a>
+                <a href="#get-started" class="back-btn">
+                    <i class="fas fa-download"></i> Download &amp; Pricing
+                </a>
                 <a href="#" class="demo-btn" data-cd-demo-request>
                     <i class="fas fa-calendar-alt"></i> Request Demo
                 </a>
@@ -890,22 +1177,26 @@
             <div class="hero-content">
                 <div class="hero-main">
                     <div class="hero-text">
+                        <p class="hero-badge"><i class="fas fa-windows"></i> Windows installer available — download and run on your PC</p>
                         <h1>Computer Dynamics POS System</h1>
                         <p class="hero-subtitle">
-                            A complete retail management platform for mini-marts, grocery stores, and convenience shops. Fast checkout, deep inventory control, cash drawer management, and powerful reporting — all on your own Windows PC.
+                            A complete retail platform for mini-marts, grocery stores, and convenience shops — checkout, inventory, cash control, reporting, and optional modules from the built-in <strong>Module Store</strong>. Run on your own Windows PC for on-site control, or choose a <strong>cloud-hosted</strong> deployment when that fits your business.
                         </p>
                         <p class="hero-tagline">
-                            Run your store smarter — from checkout to closing count.
+                            <strong>$30.00 USD (210 TTD)/month</strong> includes Computer Dynamics support and new standard module releases. Start with a <strong>30-day trial</strong> when you register your store with a CD account after install.
                         </p>
                         <div class="hero-buttons">
-                            <a href="http://190.213.252.119:3000" class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-cd-link-slot="pos-system-learn-more/access-pos">
-                                <i class="fas fa-sign-in-alt"></i> Access POS System
+                            <a href="#get-started" class="btn btn-primary cd-product-installer-btn cd-product-installer-pending" aria-disabled="true" data-cd-product-features="pos,ecommerce">
+                                <i class="fas fa-download"></i> Download Windows Installer
                             </a>
-                            <a href="#modules" class="btn btn-secondary">
-                                <i class="fas fa-info-circle"></i> View Modules
+                            <a href="/client-registration.html" class="btn btn-secondary">
+                                <i class="fas fa-user-plus"></i> Create CD Account
                             </a>
                             <a href="https://dev6.computerdynamicstt.com/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer" data-cd-link-slot="pos-system-learn-more/live-demo" data-cd-link-default="https://dev6.computerdynamicstt.com/">
                                 <i class="fas fa-play-circle"></i> Open Live Demo
+                            </a>
+                            <a href="#modules" class="btn btn-secondary">
+                                <i class="fas fa-puzzle-piece"></i> Modules &amp; Store Credit
                             </a>
                         </div>
                     </div>
@@ -1011,6 +1302,93 @@
         </div>
     </section>
 
+    <!-- Download, trial & pricing -->
+    <section class="get-started-section" id="get-started">
+        <div class="container">
+            <div class="section-header">
+                <h2>Download, trial &amp; pricing</h2>
+                <p>Get the same Windows installer our customers use in production. Link your store to Computer Dynamics for licensing, updates, and support.</p>
+            </div>
+            <div class="get-started-grid">
+                <div class="pricing-card">
+                    <p class="price-line">$30.00 <span>USD / month</span></p>
+                    <p class="price-sub">210 TTD / month · per store deployment — simple subscription pricing.</p>
+                    <ul>
+                        <li>Computer Dynamics support for your POS deployment</li>
+                        <li>Standard module releases delivered through the Module Store (user management, reporting, time clock, store credit, and future CD modules)</li>
+                        <li>Security and integration updates aligned with the Computer Dynamics platform</li>
+                        <li>On-premise installs keep sales running without internet; cloud hosting available when you want us to run it for you</li>
+                    </ul>
+                    <p class="pricing-note">
+                        <strong>Custom modules</strong> — Need a workflow built just for your business? Computer Dynamics can design and deliver bespoke POS modules; scoped and quoted separately from the monthly subscription.
+                    </p>
+                </div>
+                <div class="steps-card">
+                    <h3>Start your 30-day trial</h3>
+                    <p class="steps-lede">Download the installer, set up on Windows, then sign in with a Computer Dynamics account to activate your trial license.</p>
+                    <div class="install-trust-notice" id="windows-install-trust">
+                        <h4><i class="fas fa-shield-halved"></i> If Windows or your antivirus asks first</h4>
+                        <div class="install-trust-body">
+                            <div class="install-trust-copy">
+                                <p>Some PCs show a warning before the install runs. You can continue safely when you downloaded from this page.</p>
+                                <ol>
+                                    <li>Choose <strong>Keep</strong> or <strong>Save</strong> if your browser asks.</li>
+                                    <li>Open the file from <strong>Downloads</strong>.</li>
+                                    <li>On the blue Windows screen, click <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+                                    <li>If antivirus blocks it, use <strong>Allow</strong> or <strong>Restore</strong> after checking the file name matches your download.</li>
+                                </ol>
+                                <p style="margin-top:10px;margin-bottom:0">We show these pictures again right after you click <strong>Download</strong>. <a href="https://wa.me/18683168851?text=Hi! I need help installing the POS on my PC." target="_blank" rel="noopener noreferrer">Contact support</a> if you get stuck.</p>
+                            </div>
+                            <div class="install-trust-gallery" aria-label="Install help screenshots">
+                                <figure>
+                                    <img src="images/install-help/step-1-browser-keep.svg" width="400" height="220" alt="Browser download with Keep button highlighted" loading="lazy">
+                                    <figcaption>Keep the file</figcaption>
+                                </figure>
+                                <figure>
+                                    <img src="images/install-help/step-2-more-info.svg" width="400" height="220" alt="Windows screen with More info highlighted" loading="lazy">
+                                    <figcaption>More info</figcaption>
+                                </figure>
+                                <figure>
+                                    <img src="images/install-help/step-3-run-anyway.svg" width="400" height="220" alt="Windows screen with Run anyway highlighted" loading="lazy">
+                                    <figcaption>Run anyway</figcaption>
+                                </figure>
+                            </div>
+                        </div>
+                    </div>
+                    <ol class="trial-steps">
+                        <li>
+                            <strong>Download the installer</strong>
+                            <span>Use the download button on this page, or contact us for the latest installer file.</span>
+                        </li>
+                        <li>
+                            <strong>Install on your PC</strong>
+                            <span>Double-click the installer and follow the prompts. If Windows shows a blue warning, use <strong>More info</strong> → <strong>Run anyway</strong> (<a href="#windows-install-trust">see tips</a>). When setup finishes, license registration opens in your browser.</span>
+                        </li>
+                        <li>
+                            <strong>Create or sign in to your CD account</strong>
+                            <span><a href="/client-registration.html">Register a client portal account</a> if you are new, then complete license registration in the POS wizard with your business details.</span>
+                        </li>
+                        <li>
+                            <strong>Explore for 30 days</strong>
+                            <span>Use the full system during your trial period. When you subscribe at $30.00 USD (210 TTD)/month, you keep support and ongoing module releases.</span>
+                        </li>
+                    </ol>
+                    <div class="get-started-actions">
+                        <a href="#get-started" class="btn btn-primary cd-product-installer-btn cd-product-installer-pending" aria-disabled="true" data-cd-product-features="pos,ecommerce" style="background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;">
+                            <i class="fas fa-download"></i> Download installer
+                        </a>
+                        <a href="/client-registration.html" class="btn-outline-dark">
+                            <i class="fas fa-user-plus"></i> Create CD account
+                        </a>
+                        <a href="/login" class="btn-outline-dark">
+                            <i class="fas fa-sign-in-alt"></i> Sign in
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Features Section -->
     <section class="features-section" id="features">
         <div class="container">
@@ -1098,13 +1476,29 @@
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-store"></i>
+                    </div>
+                    <h3>Module Store</h3>
+                    <p>Browse, install, and update official POS modules from inside the app when your store is connected to Computer Dynamics Mini — no manual ZIP hunting.</p>
+                    <ul class="feature-list">
+                        <li>Catalog of CD-published modules (reporting, user management, clock in/out, store credit, and more)</li>
+                        <li>One-click install and update from Module Management</li>
+                        <li>Version awareness — see when a newer module build is available</li>
+                        <li>New standard releases included with your monthly subscription</li>
+                    </ul>
+                    <div class="feature-note">
+                        <strong>New:</strong> The <strong>Store Credit</strong> module extends checkout with customer credit lines, partial payments, balances, and reconciliation reports.
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-cloud"></i>
                     </div>
-                    <h3>Local &amp; Multi-Location Ready</h3>
-                    <p>Your sales and inventory stay on your machine — not a vendor cloud. Scale from one shop to many with separate data per store.</p>
+                    <h3>On-Premise or Cloud</h3>
+                    <p>Deploy the Windows installer at your store for full local control, or use Computer Dynamics <strong>cloud hosting</strong> if you prefer not to manage servers. Same POS features either way.</p>
                     <ul class="feature-list">
-                        <li>Local data ownership on your Windows PC</li>
-                        <li>No internet dependency for daily operations</li>
+                        <li>On-premise: data on your hardware; daily sales work offline</li>
+                        <li>Cloud option: hosted by Computer Dynamics when you need it</li>
                         <li>Multi-location ready — separate data per store</li>
                         <li>Responsive design for desktop, tablet, and mobile</li>
                         <li>Live demo available — one click to try the full system</li>
@@ -1262,9 +1656,47 @@
         <div class="container">
             <div class="section-header">
                 <h2>Powerful Modules</h2>
-                <p>Extendable modular architecture with specialized modules for every business need</p>
+                <p>Core POS plus optional modules from the <strong>Module Store</strong> — install what you need, update when CD ships new releases (included in your $30.00 USD / 210 TTD monthly plan). Custom development available on request.</p>
             </div>
             <div class="modules-grid">
+                <div class="module-card module-store-highlight">
+                    <div class="module-header">
+                        <div class="module-icon">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <h3 class="module-title">Module Store <span class="module-badge">Updated</span></h3>
+                    </div>
+                    <p class="module-description">
+                        Official Computer Dynamics modules are published from Mini and appear in <strong>Module Management → Module Store</strong> on your POS. Install, update, or remove modules without redeploying the whole application.
+                    </p>
+                    <ul class="module-features">
+                        <li>Central catalog synced from Computer Dynamics (requires accepted Mini connection)</li>
+                        <li>Install and upgrade modules in place — User Management, Advanced Reporting, Clock In/Out, Store Credit, and future releases</li>
+                        <li>Clear install state: not installed, up to date, or update available</li>
+                        <li>Standard module ZIPs ship with fresh installs; subscribers receive ongoing releases</li>
+                    </ul>
+                </div>
+
+                <!-- Store Credit Module -->
+                <div class="module-card module-new">
+                    <div class="module-header">
+                        <div class="module-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <h3 class="module-title">Store Credit Module <span class="module-badge">New</span></h3>
+                    </div>
+                    <p class="module-description">
+                        Customer store credit and accounts — credit lines, partial payments, outstanding balances, reports, and cash reconciliation. Integrates at checkout and adds a dedicated Store Credit dashboard in the admin UI.
+                    </p>
+                    <ul class="module-features">
+                        <li>Apply remaining balance to customer credit when cash paid is less than the total</li>
+                        <li>Optional inclusion of outstanding credit in amount due at checkout</li>
+                        <li>Shared credit pool sizing based on recent sales and profit history</li>
+                        <li>Configurable repay windows and credit-line rules for your risk policy</li>
+                        <li>Checkout panel and navigation entry for day-to-day staff workflows</li>
+                    </ul>
+                </div>
+
                 <!-- User Management Module -->
                 <div class="module-card">
                     <div class="module-header">
@@ -1395,14 +1827,20 @@
     <section class="cta-section">
         <div class="container">
             <div class="cta-content">
-                <h2>Ready to Transform Your Business?</h2>
-                <p>Click Try Live Demo to explore checkout, inventory, reports, and settings — or contact us to get started.</p>
+                <h2>Ready to run your store on CD POS?</h2>
+                <p>Download the Windows installer, register your Computer Dynamics account, and start your 30-day trial — or open the live demo to explore first.</p>
                 <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                    <a href="http://190.213.252.119:3000" class="btn-white" target="_blank" rel="noopener noreferrer" data-cd-link-slot="pos-system-learn-more/access-pos">
-                        <i class="fas fa-sign-in-alt"></i> Access POS System
+                    <a href="#get-started" class="btn-white cd-product-installer-btn cd-product-installer-pending" aria-disabled="true" data-cd-product-features="pos,ecommerce">
+                        <i class="fas fa-download"></i> Download installer
                     </a>
-                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System. Can I get a custom quote?" class="btn-white" target="_blank" rel="noopener noreferrer" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);">
-                        <i class="fab fa-whatsapp"></i> Get Quote
+                    <a href="/client-registration.html" class="btn-white" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);">
+                        <i class="fas fa-user-plus"></i> Create CD account
+                    </a>
+                    <a href="https://dev6.computerdynamicstt.com/" class="btn-white" target="_blank" rel="noopener noreferrer" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);" data-cd-link-slot="pos-system-learn-more/live-demo" data-cd-link-default="https://dev6.computerdynamicstt.com/">
+                        <i class="fas fa-play-circle"></i> Live demo
+                    </a>
+                    <a href="https://wa.me/18683168851?text=Hi! I'm interested in the POS System ($30 USD / 210 TTD per month). I'd like to start a trial or discuss custom modules." class="btn-white" target="_blank" rel="noopener noreferrer" style="background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid rgba(255, 255, 255, 0.3);">
+                        <i class="fab fa-whatsapp"></i> Contact sales
                     </a>
                 </div>
             </div>
@@ -1444,9 +1882,10 @@
         // Smooth scrolling for navigation links (defensive: only handle true hash anchors)
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
+                if (anchor.classList.contains('cd-product-installer-btn')) return;
+                const href = anchor.getAttribute('href') || '';
+                if (!href || href === '#' || href.charAt(0) !== '#') return;
                 e.preventDefault();
-                const href = this.getAttribute('href') || '';
-                if (!href || href.charAt(0) !== '#') return;
                 const id = href.slice(1);
                 const target = id ? document.getElementById(id) : null;
                 if (target) {
@@ -1470,6 +1909,7 @@
     <script src="/js/marketing-image-editor.js?v=20260721b" defer></script>
     <script src="/js/marketing-image-lightbox.js?v=20260828" defer></script>
     <script src="/js/marketing-link-editor.js?v=20260818c" defer></script>
+    <script src="/js/product-installer-download.js?v=20261014d" defer></script>
 </body>
 </html>
 

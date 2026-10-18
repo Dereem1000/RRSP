@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Clock,
   Loader2,
+  Download,
   RefreshCw,
   Settings,
   Users,
@@ -35,6 +36,12 @@ import { ProvisionRowActions } from '@/components/msp/ProvisionRowActions';
 
 export const ALL_CLIENTS_VIEW = '__all_clients__' as const;
 export type ManagementSystemsView = ActivationFeature | typeof ALL_CLIENTS_VIEW;
+
+function productInstallerDownloadHref(catalog: ProductCatalog, feature: ActivationFeature): string | null {
+  const row = catalog[feature];
+  if (!row?.installerAvailable) return null;
+  return `/api/msp/management-systems/product-installer/download?feature=${encodeURIComponent(feature)}`;
+}
 
 function statusBadge(status: string) {
   switch (status) {
@@ -236,14 +243,21 @@ function ClientTable({
                 projectRoot={productCatalog[system.feature]?.projectRoot || ''}
                 provisionStatus={row.provisionStatus}
                 installStatus={row.installStatus}
+                installerStatus={row.installerStatus}
                 deliverableStatus={row.deliverableStatus}
                 provisionRunId={row.provisionRunId}
                 installRunId={row.installRunId}
+                installerRunId={row.installerRunId}
                 provisionAt={row.provisionAt}
                 installAt={row.installAt}
+                installerAt={row.installerAt}
                 onOpenDeliverable={() =>
                   onOpenDeliverable(row.clientId, row.clientName, system.feature)
                 }
+                productInstallerDownloadHref={productInstallerDownloadHref(
+                  productCatalog,
+                  system.feature,
+                )}
               />
             </td>
           </tr>
@@ -426,11 +440,14 @@ function GroupedClientTable({
                       projectRoot={productCatalog[client.systems[0]!.feature]?.projectRoot || ''}
                       provisionStatus={client.systems[0]?.provisionStatus}
                       installStatus={client.systems[0]?.installStatus}
+                      installerStatus={client.systems[0]?.installerStatus}
                       deliverableStatus={client.systems[0]?.deliverableStatus}
                       provisionRunId={client.systems[0]?.provisionRunId}
                       installRunId={client.systems[0]?.installRunId}
+                      installerRunId={client.systems[0]?.installerRunId}
                       provisionAt={client.systems[0]?.provisionAt}
                       installAt={client.systems[0]?.installAt}
+                      installerAt={client.systems[0]?.installerAt}
                       onOpenDeliverable={() =>
                         onOpenDeliverable(
                           client.clientId,
@@ -438,6 +455,10 @@ function GroupedClientTable({
                           client.systems[0]!.feature
                         )
                       }
+                      productInstallerDownloadHref={productInstallerDownloadHref(
+                        productCatalog,
+                        client.systems[0]!.feature,
+                      )}
                     />
                   )}
                 </td>
@@ -485,14 +506,21 @@ function GroupedClientTable({
                         projectRoot={productCatalog[system.feature]?.projectRoot || ''}
                         provisionStatus={system.provisionStatus}
                         installStatus={system.installStatus}
+                        installerStatus={system.installerStatus}
                         deliverableStatus={system.deliverableStatus}
                         provisionRunId={system.provisionRunId}
                         installRunId={system.installRunId}
+                        installerRunId={system.installerRunId}
                         provisionAt={system.provisionAt}
                         installAt={system.installAt}
+                        installerAt={system.installerAt}
                         onOpenDeliverable={() =>
                           onOpenDeliverable(client.clientId, client.clientName, system.feature)
                         }
+                        productInstallerDownloadHref={productInstallerDownloadHref(
+                          productCatalog,
+                          system.feature,
+                        )}
                       />
                     </td>
                   </tr>
@@ -818,6 +846,21 @@ export function ManagementSystemsClient() {
                     >
                       <Settings className="h-4 w-4" />
                     </button>
+                    {(() => {
+                      const installerHref = productInstallerDownloadHref(
+                        productCatalog,
+                        selectedSystem.feature,
+                      );
+                      return installerHref ? (
+                        <a
+                          href={installerHref}
+                          className="rounded-lg p-1 text-indigo-600 hover:bg-slate-100"
+                          title="Download product installer"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      ) : null;
+                    })()}
                   </div>
                   <p className="mt-1 text-sm text-slate-500">{selectedSystem.description}</p>
                 </div>

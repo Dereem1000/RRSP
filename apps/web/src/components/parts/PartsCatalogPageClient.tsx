@@ -1,7 +1,42 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Boxes, ExternalLink, MapPin, Package, RefreshCw, ShoppingCart, Store, Trash2, Pencil, Plus, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Boxes,
+  ExternalLink,
+  Laptop,
+  MapPin,
+  Package,
+  RefreshCw,
+  ShieldCheck,
+  ShoppingCart,
+  Smartphone,
+  Store,
+  Trash2,
+  Pencil,
+  Plus,
+  Video,
+  X,
+} from 'lucide-react';
+import {
+  MAX_PARTS_LISTING_IMAGES,
+  PARTS_CATEGORY_LABELS,
+  PARTS_CONDITION_LABELS,
+  PARTS_ITEM_CONDITIONS,
+  PARTS_LISTING_CATEGORIES,
+  categoryRequiresVideoVerification,
+  fulfillmentVerificationClear,
+  listingImageFilesFromRow,
+  normalizeItemCondition,
+  normalizePartsCategory,
+  parseListingImageFilesJson,
+  partsCatalogMediaUrl,
+  VERIFICATION_STATUS_LABELS,
+  type PartsItemCondition,
+  type PartsListingCategory,
+  type PartsRequestVerificationStatus,
+} from '@/lib/parts-catalog-categories';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { useUrlTab } from '@/lib/use-url-tab';
 import {
@@ -267,11 +302,18 @@ type InventoryListing = {
   distanceMeters?: number | null;
   distanceLabel?: string | null;
   travelMinutes?: number | null;
+  category: PartsListingCategory;
+  itemCondition: PartsItemCondition;
+  imageFile: string | null;
+  imageFiles: string[];
+  verificationVideoFile: string | null;
+  requiresVerification: boolean;
 };
 
 type CatalogItem = {
   normalizedName: string;
   itemName: string;
+  category: PartsListingCategory;
   totalAvailable: number;
   supplierCount: number;
   listingCount: number;
@@ -331,6 +373,12 @@ type PartRequestView = {
   /** Line delivery charge (package fee on anchor; 0 when sharing). */
   deliveryFee?: number | null;
   billing?: PartsPackageBilling | null;
+  itemCategory?: PartsListingCategory;
+  requiresVerificationSnapshot?: boolean;
+  verificationStatus?: PartsRequestVerificationStatus;
+  verificationVideoFile?: string | null;
+  verificationNotes?: string | null;
+  verificationRequestedAt?: string | null;
 };
 
 type DashboardPayload = {
@@ -359,6 +407,11 @@ type StockFormState = {
   quantity: string;
   availableQuantity: string;
   notes: string;
+  category: PartsListingCategory;
+  itemCondition: PartsItemCondition;
+  requiresVerification: boolean;
+  imageFiles: string[];
+  verificationVideoFile: string | null;
 };
 
 const emptyStockForm: StockFormState = {
@@ -370,7 +423,106 @@ const emptyStockForm: StockFormState = {
   quantity: '1',
   availableQuantity: '1',
   notes: '',
+  category: 'mobile_parts',
+  itemCondition: 'new',
+  requiresVerification: false,
+  imageFiles: [],
+  verificationVideoFile: null,
 };
+
+type MarketplaceCategoryFilter = 'all' | PartsListingCategory;
+
+function catalogItemKey(item: Pick<CatalogItem, 'normalizedName' | 'category'>) {
+  return `${item.normalizedName}::${item.category}`;
+}
+
+function coerceInventoryListing(raw: InventoryListing): InventoryListing {
+  const imageFiles = listingImageFilesFromRow(
+    Array.isArray(raw.imageFiles)
+      ? raw.imageFiles.length
+        ? JSON.stringify(raw.imageFiles)
+        : null
+      : typeof raw.imageFiles === 'string'
+        ? raw.imageFiles
+        : null,
+    raw.imageFile
+  );
+  return {
+    ...raw,
+    imageFiles,
+    imageFile: imageFiles[0] ?? null,
+    itemCondition: normalizeItemCondition(raw.itemCondition),
+  };
+}
+
+function listingImageUrls(listing: Pick<InventoryListing, 'imageFiles' | 'imageFile'>) {
+  const files = listing.imageFiles?.length
+    ? listing.imageFiles
+    : listing.imageFile
+      ? [listing.imageFile]
+      : typeof listing.imageFiles === 'string'
+        ? parseListingImageFilesJson(listing.imageFiles)
+        : [];
+  return files
+    .map((file) => partsCatalogMediaUrl(file, 'image'))
+    .filter(Boolean) as string[];
+}
+
+function StockListingThumbnail({ urls, size = 'md' }: { urls: string[]; size?: 'sm' | 'md' }) {
+  const src = urls[0];
+  const box = size === 'sm' ? 'h-10 w-10' : 'h-14 w-14';
+  const icon = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
+  return (
+    <div
+      className={`${box} shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50`}
+    >
+      {src ? (
+        <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-slate-400">
+          <Package className={icon} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function pickCatalogCoverImages(item: CatalogItem) {
+  for (const listing of item.listings) {
+    const urls = listingImageUrls(listing);
+    if (urls.length) return urls;
+  }
+  return [];
+}
+
+function pickCatalogItemCondition(item: CatalogItem): PartsItemCondition | null {
+  const listing = item.listings[0];
+  return listing?.itemCondition ?? null;
+}
+
+function collectCatalogDetailImages(item: CatalogItem): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const listing of item.listings) {
+    for (const url of listingImageUrls(listing)) {
+      if (!seen.has(url)) {
+        seen.add(url);
+        urls.push(url);
+      }
+    }
+  }
+  return urls;
+}
+
+function catalogNeedsVerification(item: CatalogItem) {
+  return item.listings.some((listing) => listing.requiresVerification);
+}
+
+function categoryIcon(category: PartsListingCategory) {
+  if (category === 'laptop_parts') return Laptop;
+  if (category === 'full_devices') return Package;
+  return Smartphone;
+}
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -515,6 +667,10 @@ export function PartsCatalogPageClient({
   const [showViewOutgoing, setShowViewOutgoing] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [marketplaceCategory, setMarketplaceCategory] = useState<MarketplaceCategoryFilter>('all');
+  const [mediaUploading, setMediaUploading] = useState('');
+  const [verificationUploadingId, setVerificationUploadingId] = useState<string | null>(null);
+  const [marketplaceImageIndex, setMarketplaceImageIndex] = useState<Record<string, number>>({});
   const [stockSearchInput, setStockSearchInput] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [stockForm, setStockForm] = useState<StockFormState>(emptyStockForm);
@@ -522,6 +678,7 @@ export function PartsCatalogPageClient({
   const [requestItem, setRequestItem] = useState<CatalogItem | null>(null);
   const [requestListing, setRequestListing] = useState<InventoryListing | null>(null);
   const [priceDetailItem, setPriceDetailItem] = useState<CatalogItem | null>(null);
+  const [detailModalImageIndex, setDetailModalImageIndex] = useState(0);
   const [requestQuantity, setRequestQuantity] = useState('1');
   const [requestNotes, setRequestNotes] = useState('');
   const [tab, setTab] = useUrlTab(PARTS_TABS, 'marketplace');
@@ -581,7 +738,10 @@ export function PartsCatalogPageClient({
         cache: 'no-store',
       });
       const payload = await parseResponse(res);
-      setData(payload);
+      const myInventory = Array.isArray(payload.myInventory)
+        ? payload.myInventory.map((row: InventoryListing) => coerceInventoryListing(row))
+        : [];
+      setData({ ...payload, myInventory });
     } catch (err) {
       if (!silent) {
         setError(err instanceof Error ? err.message : 'Failed to load parts catalog');
@@ -669,6 +829,11 @@ export function PartsCatalogPageClient({
       })
       .filter(Boolean) as CatalogItem[];
   }, [data]);
+
+  const filteredMarketplaceCatalog = useMemo(() => {
+    if (marketplaceCategory === 'all') return marketplaceCatalog;
+    return marketplaceCatalog.filter((item) => item.category === marketplaceCategory);
+  }, [marketplaceCatalog, marketplaceCategory]);
 
   const totalAvailable = useMemo(
     () => marketplaceCatalog.reduce((sum, item) => sum + item.totalAvailable, 0),
@@ -784,6 +949,14 @@ export function PartsCatalogPageClient({
     () => groupedOutgoing.filter((request) => ACTIVE_REQUEST_STATUSES.has(request.status)),
     [groupedOutgoing]
   );
+  const pendingVerificationReviewCount = useMemo(
+    () =>
+      (data?.requests.incoming ?? []).filter(
+        (request) => request.verificationStatus === 'pending_review'
+      ).length,
+    [data?.requests.incoming]
+  );
+
   const activeIncoming = useMemo(
     () => (data?.requests.incoming ?? []).filter((request) => ACTIVE_REQUEST_STATUSES.has(request.status)),
     [data]
@@ -1016,9 +1189,74 @@ export function PartsCatalogPageClient({
       quantity: String(listing.quantity ?? 0),
       availableQuantity: String(listing.availableQuantity ?? 0),
       notes: listing.notes ?? '',
+      category: listing.category,
+      itemCondition: listing.itemCondition,
+      requiresVerification: listing.requiresVerification,
+      imageFiles: listing.imageFiles?.length
+        ? [...listing.imageFiles]
+        : listing.imageFile
+          ? [listing.imageFile]
+          : [],
+      verificationVideoFile: listing.verificationVideoFile,
     });
     setError('');
     setStockModalOpen(true);
+  }
+
+  async function uploadPartsMedia(file: File, kind: 'image' | 'video') {
+    const form = new FormData();
+    form.set('kind', kind);
+    form.set('file', file);
+    const res = await fetch('/api/parts-catalog-media', { method: 'POST', body: form });
+    const payload = await parseResponse(res);
+    return String(payload.fileName ?? '');
+  }
+
+  async function handleStockImagesPick(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    const remaining = MAX_PARTS_LISTING_IMAGES - stockForm.imageFiles.length;
+    if (remaining <= 0) {
+      setError(`You can upload up to ${MAX_PARTS_LISTING_IMAGES} photos per listing.`);
+      return;
+    }
+    const files = Array.from(fileList).slice(0, remaining);
+    setMediaUploading('image');
+    setError('');
+    try {
+      const uploaded: string[] = [];
+      for (const file of files) {
+        uploaded.push(await uploadPartsMedia(file, 'image'));
+      }
+      setStockForm((prev) => ({
+        ...prev,
+        imageFiles: [...prev.imageFiles, ...uploaded].slice(0, MAX_PARTS_LISTING_IMAGES),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Image upload failed');
+    } finally {
+      setMediaUploading('');
+    }
+  }
+
+  function removeStockImage(fileName: string) {
+    setStockForm((prev) => ({
+      ...prev,
+      imageFiles: prev.imageFiles.filter((f) => f !== fileName),
+    }));
+  }
+
+  async function handleStockVideoPick(file: File | null) {
+    if (!file) return;
+    setMediaUploading('video');
+    setError('');
+    try {
+      const fileName = await uploadPartsMedia(file, 'video');
+      setStockForm((prev) => ({ ...prev, verificationVideoFile: fileName }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Video upload failed');
+    } finally {
+      setMediaUploading('');
+    }
   }
 
   useEffect(() => {
@@ -1031,6 +1269,9 @@ export function PartsCatalogPageClient({
     setError('');
     setNotice('');
     try {
+      const category = normalizePartsCategory(stockForm.category);
+      const requiresVerification =
+        categoryRequiresVideoVerification(category) || stockForm.requiresVerification;
       const body = {
         itemName: stockForm.itemName,
         partNumber: stockForm.partNumber,
@@ -1039,6 +1280,12 @@ export function PartsCatalogPageClient({
         quantity: Number(stockForm.quantity),
         availableQuantity: Number(stockForm.availableQuantity),
         notes: stockForm.notes,
+        category,
+        itemCondition: normalizeItemCondition(stockForm.itemCondition),
+        requiresVerification,
+        imageFiles: stockForm.imageFiles,
+        imageFile: stockForm.imageFiles[0] ?? null,
+        verificationVideoFile: stockForm.verificationVideoFile,
       };
 
       const res = await fetch(
@@ -1079,13 +1326,96 @@ export function PartsCatalogPageClient({
     }
   }
 
+  function openMarketplaceDetail(item: CatalogItem) {
+    setDetailModalImageIndex(0);
+    setSellerMapListingId(null);
+    setPriceDetailItem(item);
+  }
+
+  function closeMarketplaceDetail() {
+    setPriceDetailItem(null);
+    setSellerMapListingId(null);
+    setDetailModalImageIndex(0);
+  }
+
   function openRequestForItem(item: CatalogItem, listing?: InventoryListing | null) {
     setRequestItem(item);
     setRequestListing(listing ?? null);
     setRequestQuantity('1');
     setRequestNotes('');
-    setPriceDetailItem(null);
-    setSellerMapListingId(null);
+    closeMarketplaceDetail();
+  }
+
+  async function reviewRequestVerification(
+    requestId: string,
+    action: 'accept' | 'deny' | 'skip'
+  ) {
+    const notes =
+      action === 'deny'
+        ? window.prompt('Optional note for the seller (denial reason):') ?? ''
+        : '';
+    setSubmitting(`verify-review:${requestId}`);
+    setError('');
+    try {
+      const res = await fetch('/api/msp/parts-catalog/requests/verification/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action, notes: notes.trim() || undefined }),
+      });
+      await parseResponse(res);
+      setNotice(
+        action === 'accept'
+          ? 'Verification accepted — fulfillment can proceed.'
+          : action === 'skip'
+            ? 'Verification skipped — fulfillment can proceed.'
+            : 'Verification denied.'
+      );
+      await refreshAfterChange();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update verification');
+    } finally {
+      setSubmitting('');
+    }
+  }
+
+  async function requestSellerVerification(requestId: string) {
+    const notes = window.prompt('Optional note to the seller about what to show in the video:') ?? '';
+    setSubmitting(`verify-request:${requestId}`);
+    setError('');
+    try {
+      const res = await fetch('/api/msp/parts-catalog/requests/verification/request-seller', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, notes: notes.trim() || undefined }),
+      });
+      await parseResponse(res);
+      setNotice('Verification requested from the seller.');
+      await refreshAfterChange();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request verification');
+    } finally {
+      setSubmitting('');
+    }
+  }
+
+  async function submitSellerVerificationVideo(requestId: string, file: File) {
+    setVerificationUploadingId(requestId);
+    setError('');
+    try {
+      const fileName = await uploadPartsMedia(file, 'video');
+      const res = await fetch('/api/msp/parts-catalog/requests/verification/seller-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, verificationVideoFile: fileName }),
+      });
+      await parseResponse(res);
+      setNotice('Verification video submitted for Computer Dynamics review.');
+      await refreshAfterChange();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload verification video');
+    } finally {
+      setVerificationUploadingId(null);
+    }
   }
 
   async function submitRequest() {
@@ -1103,6 +1433,7 @@ export function PartsCatalogPageClient({
           quantity: Number(requestQuantity),
           notes: requestNotes,
           preferredInventoryId: requestListing?.id ?? null,
+          category: requestItem.category,
         }),
       });
       const payload = await parseResponse(res);
@@ -1852,16 +2183,45 @@ export function PartsCatalogPageClient({
       <div className="max-lg:min-h-0 max-lg:flex-1 max-lg:overflow-y-auto max-lg:overscroll-contain">
       {tab === 'marketplace' && (
         <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Marketplace Stock</h2>
-            <p className="hidden text-sm text-slate-500 sm:block">
-              Combined stock is grouped by item name. Open a card to compare every option, then
-              request the one you want
-              {data?.viewer.role === 'admin' || data?.viewer.role === 'technician'
-                ? ' (seller name and location shown for CD staff).'
-                : '.'}{' '}
-              Your own stock is managed under {resolvedStockLabel} and is not listed here for purchase.
+          <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 px-4 py-5 text-white shadow-sm sm:px-6 sm:py-6">
+            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200">Shop marketplace</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">Parts &amp; devices from the network</h2>
+            <p className="mt-2 max-w-2xl text-sm text-indigo-100/90">
+              Browse like a shop — filter by category, compare sellers, and request what you need. Verified
+              listings may include working-condition video from the seller.
             </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setMarketplaceCategory('all')}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                marketplaceCategory === 'all'
+                  ? 'bg-slate-900 text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              All
+            </button>
+            {PARTS_LISTING_CATEGORIES.map((cat) => {
+              const Icon = categoryIcon(cat);
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setMarketplaceCategory(cat)}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                    marketplaceCategory === cat
+                      ? 'bg-indigo-600 text-white'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {PARTS_CATEGORY_LABELS[cat]}
+                </button>
+              );
+            })}
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
@@ -1875,7 +2235,7 @@ export function PartsCatalogPageClient({
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by item name, part number, or brand..."
+                placeholder="Search parts, brands, or part numbers..."
                 className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
               />
               <button
@@ -1895,93 +2255,164 @@ export function PartsCatalogPageClient({
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 shadow-sm">
               No parts from other sellers are listed yet.
             </div>
+          ) : !filteredMarketplaceCatalog.length ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 shadow-sm">
+              No listings in this category yet. Try another filter or clear your search.
+            </div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {marketplaceCatalog.map((item) => (
-                <article
-                  key={item.normalizedName}
-                  role={item.listings.length > 1 ? 'button' : undefined}
-                  tabIndex={item.listings.length > 1 ? 0 : undefined}
-                  onClick={() => {
-                    if (item.listings.length > 1) setPriceDetailItem(item);
-                  }}
-                  onKeyDown={(e) => {
-                    if (item.listings.length <= 1) return;
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setPriceDetailItem(item);
-                    }
-                  }}
-                  className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition sm:p-5 ${
-                    item.listings.length > 1
-                      ? 'cursor-pointer hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500/30'
-                      : ''
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-slate-900">{item.itemName}</h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {item.totalAvailable} in stock from {item.supplierCount} other seller
-                        {item.supplierCount === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-slate-100 px-3 py-2 text-right">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">From</p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {formatMoney(item.lowestPrice)}
-                      </p>
-                      {item.listingCount > 1 && item.highestPrice !== item.lowestPrice && (
-                        <p className="mt-0.5 text-[11px] text-slate-500">
-                          {item.listingCount} prices available
-                        </p>
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5">
+              {filteredMarketplaceCatalog.map((item) => {
+                const cardKey = catalogItemKey(item);
+                const coverImages = pickCatalogCoverImages(item);
+                const imageIndex = Math.min(
+                  marketplaceImageIndex[cardKey] ?? 0,
+                  Math.max(0, coverImages.length - 1)
+                );
+                const cover = coverImages[imageIndex] ?? null;
+                const itemCondition = pickCatalogItemCondition(item);
+                const CategoryIcon = categoryIcon(item.category);
+                const verified = catalogNeedsVerification(item);
+                const compareOptions = item.listings.length > 1;
+                return (
+                  <article
+                    key={cardKey}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openMarketplaceDetail(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openMarketplaceDetail(item);
+                      }
+                    }}
+                    className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-indigo-200 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                  >
+                    <div className="relative flex h-28 items-center justify-center bg-slate-100 sm:h-32">
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt=""
+                          className="max-h-full max-w-full object-contain object-center"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-1 text-slate-400">
+                          <CategoryIcon className="h-7 w-7 opacity-60" />
+                          <span className="text-[10px] font-medium">No photo</span>
+                        </div>
                       )}
+                      {coverImages.length > 1 && (
+                        <div
+                          className="absolute bottom-1 right-1 flex items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMarketplaceImageIndex((prev) => ({
+                                ...prev,
+                                [cardKey]: (imageIndex - 1 + coverImages.length) % coverImages.length,
+                              }))
+                            }
+                            className="rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-black/70"
+                          >
+                            ‹
+                          </button>
+                          <span className="rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                            {imageIndex + 1}/{coverImages.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMarketplaceImageIndex((prev) => ({
+                                ...prev,
+                                [cardKey]: (imageIndex + 1) % coverImages.length,
+                              }))
+                            }
+                            className="rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-black/70"
+                          >
+                            ›
+                          </button>
+                        </div>
+                      )}
+                      <div className="absolute left-1.5 top-1.5 flex max-w-[calc(100%-0.75rem)] flex-wrap gap-1">
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-0.5 text-[9px] font-semibold text-slate-800 shadow-sm">
+                          <CategoryIcon className="h-2.5 w-2.5" />
+                          <span className="max-w-[5.5rem] truncate sm:max-w-[7rem]">
+                            {PARTS_CATEGORY_LABELS[item.category]}
+                          </span>
+                        </span>
+                        {itemCondition && (
+                          <span className="rounded-full bg-slate-900/85 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm">
+                            {PARTS_CONDITION_LABELS[itemCondition]}
+                          </span>
+                        )}
+                        {verified && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-600/95 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm">
+                            <ShieldCheck className="h-2.5 w-2.5" />
+                            Verified
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-                    <span className="rounded-full bg-slate-100 px-3 py-1">Listings: {item.listingCount}</span>
-                    {item.listings.some((listing) => listing.partNumber) && (
-                      <span className="rounded-full bg-slate-100 px-3 py-1">
-                        Example part #: {item.listings.find((listing) => listing.partNumber)?.partNumber}
-                      </span>
-                    )}
-                    {item.listings.some((listing) => listing.brand) && (
-                      <span className="rounded-full bg-slate-100 px-3 py-1">
-                        Example brand: {item.listings.find((listing) => listing.brand)?.brand}
-                      </span>
-                    )}
-                  </div>
+                    <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+                        {item.itemName}
+                      </h3>
+                      <p className="mt-0.5 text-[10px] leading-tight text-slate-500">
+                        {item.totalAvailable} avail · {item.supplierCount} seller
+                        {item.supplierCount === 1 ? '' : 's'}
+                        {compareOptions ? ` · ${item.listingCount} opts` : ''}
+                      </p>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
-                    {item.listings.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPriceDetailItem(item);
-                        }}
-                        className="rounded-lg px-2 py-1 text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900"
-                      >
-                        Compare options
-                      </button>
-                    ) : (
-                      <span />
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openRequestForItem(item, null);
-                      }}
-                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 sm:w-auto"
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                      Request part
-                    </button>
-                  </div>
-                </article>
-              ))}
+                      <div className="mt-1.5 flex flex-wrap gap-1 text-[10px] text-slate-600">
+                        {item.listings.find((l) => l.partNumber)?.partNumber && (
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5">
+                            #{item.listings.find((l) => l.partNumber)?.partNumber}
+                          </span>
+                        )}
+                        {item.listings.find((l) => l.brand)?.brand && (
+                          <span className="max-w-[6rem] truncate rounded bg-slate-100 px-1.5 py-0.5">
+                            {item.listings.find((l) => l.brand)?.brand}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-medium uppercase tracking-wide text-slate-400">From</p>
+                          <p className="text-base font-bold leading-tight text-slate-900">
+                            {formatMoney(item.lowestPrice)}
+                          </p>
+                          {item.highestPrice !== item.lowestPrice && (
+                            <p className="text-[10px] text-slate-500">
+                              Up to {formatMoney(item.highestPrice)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => openMarketplaceDetail(item)}
+                            className="rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50 sm:text-xs"
+                          >
+                            {compareOptions ? 'Options' : 'Details'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openRequestForItem(item, null)}
+                            className="inline-flex min-h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-indigo-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 sm:flex-initial sm:px-2.5"
+                          >
+                            <ShoppingCart className="h-3.5 w-3.5" />
+                            Request
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
@@ -2050,14 +2481,27 @@ export function PartsCatalogPageClient({
           ) : (
             <>
               <div className="space-y-3 sm:hidden">
-                {filteredInventory.map((listing) => (
+                {filteredInventory.map((listing) => {
+                  const listingImages = listingImageUrls(listing);
+                  return (
                   <article
                     key={listing.id}
                     className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900">{listing.itemName}</p>
+                      <StockListingThumbnail urls={listingImages} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-slate-900">{listing.itemName}</p>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                            {PARTS_CONDITION_LABELS[listing.itemCondition]}
+                          </span>
+                          {listingImages.length > 1 && (
+                            <span className="text-[10px] text-slate-500">
+                              {listingImages.length} photos
+                            </span>
+                          )}
+                        </div>
                         {listing.notes && <p className="mt-1 text-xs text-slate-500">{listing.notes}</p>}
                       </div>
                       <div className="flex shrink-0 gap-1">
@@ -2110,13 +2554,14 @@ export function PartsCatalogPageClient({
                     </dl>
                     <p className="mt-3 text-[11px] text-slate-500">Updated {formatDate(listing.updatedAt)}</p>
                   </article>
-                ))}
+                  );
+                })}
               </div>
               <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm sm:block">
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/80">
-                    {['Item', 'Part #', 'Brand', 'Your price', 'Listed price', 'Qty', 'Available', 'Updated', ''].map(
+                    {['Photo', 'Item', 'Condition', 'Part #', 'Brand', 'Your price', 'Listed price', 'Qty', 'Available', 'Updated', ''].map(
                       (heading) => (
                       <th key={heading || 'actions'} className="px-4 py-3 font-semibold text-slate-600">
                         {heading}
@@ -2126,11 +2571,25 @@ export function PartsCatalogPageClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredInventory.map((listing) => (
+                  {filteredInventory.map((listing) => {
+                    const listingImages = listingImageUrls(listing);
+                    const thumb = listingImages[0];
+                    return (
                     <tr key={listing.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3">
+                        <StockListingThumbnail urls={listingImages} size="sm" />
+                      </td>
                       <td className="px-4 py-3">
                         <p className="font-medium text-slate-900">{listing.itemName}</p>
                         {listing.notes && <p className="text-xs text-slate-500">{listing.notes}</p>}
+                        {listingImages.length > 1 && (
+                          <p className="text-[11px] text-slate-500">
+                            {listingImages.length} photos
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {PARTS_CONDITION_LABELS[listing.itemCondition]}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{listing.partNumber ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{listing.brand ?? '—'}</td>
@@ -2163,7 +2622,8 @@ export function PartsCatalogPageClient({
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
               </div>
@@ -2425,6 +2885,14 @@ export function PartsCatalogPageClient({
                 : 'Fulfill seller orders, then collect from suppliers and run delivery to buyers.'}
             </p>
           </div>
+          {pendingVerificationReviewCount > 0 &&
+            (data?.viewer.role === 'admin' || data?.viewer.role === 'technician') && (
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+                <span className="font-semibold">{pendingVerificationReviewCount}</span> incoming
+                request{pendingVerificationReviewCount === 1 ? '' : 's'} need verification review
+                (accept, deny, or skip) before fulfillment can continue.
+              </div>
+            )}
           {!activeIncoming.length ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 shadow-sm">
               No active incoming requests.
@@ -2499,6 +2967,108 @@ export function PartsCatalogPageClient({
                       )}
                   </div>
                   {request.notes && <p className="mt-3 text-sm text-slate-500">{request.notes}</p>}
+                  {request.verificationStatus && request.verificationStatus !== 'none' && (
+                    <div className="mt-4 space-y-3 rounded-xl border border-violet-200 bg-violet-50/80 p-3 text-sm text-violet-950">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-medium">
+                          {VERIFICATION_STATUS_LABELS[request.verificationStatus]}
+                        </p>
+                        {request.itemCategory === 'full_devices' && (
+                          <span className="rounded-full bg-violet-200/80 px-2 py-0.5 text-[11px] font-semibold">
+                            Full device
+                          </span>
+                        )}
+                      </div>
+                      {request.verificationNotes && (
+                        <p className="text-xs text-violet-900/80">{request.verificationNotes}</p>
+                      )}
+                      {request.verificationVideoFile && (
+                        <a
+                          href={partsCatalogMediaUrl(request.verificationVideoFile, 'video') ?? '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 underline underline-offset-2"
+                        >
+                          <Video className="h-3.5 w-3.5" />
+                          View verification video
+                        </a>
+                      )}
+                      {(data?.viewer.role === 'admin' || data?.viewer.role === 'technician') && (
+                        <div className="flex flex-wrap gap-2">
+                          {request.verificationStatus === 'pending_review' && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={!!submitting}
+                                onClick={() => void reviewRequestVerification(request.id, 'accept')}
+                                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!!submitting}
+                                onClick={() => void reviewRequestVerification(request.id, 'deny')}
+                                className="rounded-lg border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-800 hover:bg-red-50 disabled:opacity-60"
+                              >
+                                Deny
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!!submitting}
+                                onClick={() => void reviewRequestVerification(request.id, 'skip')}
+                                className="rounded-lg border border-violet-300 bg-white px-2.5 py-1 text-xs font-semibold text-violet-900 hover:bg-violet-100 disabled:opacity-60"
+                              >
+                                Skip
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {data?.viewer.role === 'client' &&
+                        request.verificationStatus === 'awaiting_seller' && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-violet-900/90">
+                              Upload a short video showing the item works (power on / basic function).
+                            </p>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              disabled={verificationUploadingId === request.id}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) void submitSellerVerificationVideo(request.id, file);
+                                e.target.value = '';
+                              }}
+                              className="block w-full text-xs text-violet-900 file:mr-2 file:rounded-lg file:border-0 file:bg-violet-700 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-white"
+                            />
+                            {verificationUploadingId === request.id && (
+                              <p className="text-xs text-violet-800/80">Uploading video…</p>
+                            )}
+                          </div>
+                        )}
+                      {request.status === 'pending' &&
+                        !fulfillmentVerificationClear(request.verificationStatus) && (
+                          <p className="text-xs font-medium text-amber-900">
+                            Fulfillment is blocked until verification is resolved.
+                          </p>
+                        )}
+                    </div>
+                  )}
+                  {(data?.viewer.role === 'admin' || data?.viewer.role === 'technician') &&
+                    request.status === 'pending' &&
+                    (!request.verificationStatus || request.verificationStatus === 'none') && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          disabled={!!submitting}
+                          onClick={() => void requestSellerVerification(request.id)}
+                          className="text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900 disabled:opacity-60"
+                        >
+                          Request verification from seller
+                        </button>
+                      </div>
+                    )}
                   {data?.viewer.role !== 'client' && request.routeEditor && (
                     <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div className="flex items-start justify-between gap-2">
@@ -2670,7 +3240,11 @@ export function PartsCatalogPageClient({
                     <div className="mt-4">
                       <button
                         type="button"
-                        disabled={submitting === `fulfill:${request.id}` || fulfillModal?.requestId === request.id}
+                        disabled={
+                          submitting === `fulfill:${request.id}` ||
+                          fulfillModal?.requestId === request.id ||
+                          !fulfillmentVerificationClear(request.verificationStatus)
+                        }
                         onClick={() => void openFulfillModal(request)}
                         className="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
                       >
@@ -2972,6 +3546,153 @@ export function PartsCatalogPageClient({
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <label className="block sm:col-span-2">
+                <span className="mb-1 block text-sm font-medium text-slate-700">Category</span>
+                <select
+                  value={stockForm.category}
+                  onChange={(e) => {
+                    const category = normalizePartsCategory(e.target.value);
+                    setStockForm((prev) => ({
+                      ...prev,
+                      category,
+                      requiresVerification: categoryRequiresVideoVerification(category)
+                        ? true
+                        : prev.requiresVerification,
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  {PARTS_LISTING_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {PARTS_CATEGORY_LABELS[cat]}
+                    </option>
+                  ))}
+                </select>
+                {categoryRequiresVideoVerification(stockForm.category) && (
+                  <span className="mt-1 block text-xs text-amber-800">
+                    Full devices must include a short video proving the device powers on and works.
+                  </span>
+                )}
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Condition <span className="text-red-600">*</span>
+                </span>
+                <select
+                  value={stockForm.itemCondition}
+                  onChange={(e) =>
+                    setStockForm((prev) => ({
+                      ...prev,
+                      itemCondition: normalizeItemCondition(e.target.value),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  required
+                >
+                  {PARTS_ITEM_CONDITIONS.map((condition) => (
+                    <option key={condition} value={condition}>
+                      {PARTS_CONDITION_LABELS[condition]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="block sm:col-span-2">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Product photos{' '}
+                  <span className="font-normal text-slate-400">
+                    (optional, up to {MAX_PARTS_LISTING_IMAGES})
+                  </span>
+                </span>
+                {stockForm.imageFiles.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {stockForm.imageFiles.map((fileName) => (
+                      <div
+                        key={fileName}
+                        className="relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200"
+                      >
+                        <img
+                          src={partsCatalogMediaUrl(fileName, 'image') ?? ''}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStockImage(fileName)}
+                          className="absolute right-0.5 top-0.5 rounded bg-black/60 px-1 text-[10px] font-medium text-white"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={
+                    mediaUploading === 'image' ||
+                    stockForm.imageFiles.length >= MAX_PARTS_LISTING_IMAGES
+                  }
+                  onChange={(e) => {
+                    void handleStockImagesPick(e.target.files);
+                    e.target.value = '';
+                  }}
+                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white"
+                />
+                {mediaUploading === 'image' && (
+                  <p className="mt-1 text-xs text-slate-500">Uploading photos…</p>
+                )}
+              </div>
+
+              {(categoryRequiresVideoVerification(stockForm.category) ||
+                stockForm.requiresVerification) && (
+                <div className="block sm:col-span-2">
+                  <span className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <Video className="h-4 w-4 text-indigo-600" />
+                    Working-condition video
+                    {categoryRequiresVideoVerification(stockForm.category) ? ' (required)' : ''}
+                  </span>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    disabled={mediaUploading === 'video'}
+                    onChange={(e) => void handleStockVideoPick(e.target.files?.[0] ?? null)}
+                    className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white"
+                  />
+                  {stockForm.verificationVideoFile && (
+                    <p className="mt-2 text-xs text-emerald-700">Video uploaded and ready to save.</p>
+                  )}
+                  {mediaUploading === 'video' && (
+                    <p className="mt-1 text-xs text-slate-500">Uploading video…</p>
+                  )}
+                </div>
+              )}
+
+              {!categoryRequiresVideoVerification(stockForm.category) && (
+                <label className="flex items-start gap-3 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={stockForm.requiresVerification}
+                    onChange={(e) =>
+                      setStockForm((prev) => ({
+                        ...prev,
+                        requiresVerification: e.target.checked,
+                      }))
+                    }
+                    className="mt-1 h-4 w-4 rounded border-slate-300"
+                  />
+                  <span className="text-sm text-slate-600">
+                    <span className="font-medium text-slate-800">Requires verification</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                      Flag this listing for extra checks before fulfillment (optional video above).
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              <label className="block sm:col-span-2">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Item name</span>
                 <input
                   ref={stockItemNameRef}
@@ -3085,7 +3806,7 @@ export function PartsCatalogPageClient({
               <button
                 type="button"
                 onClick={() => void saveStockListing()}
-                disabled={submitting === 'stock'}
+                disabled={submitting === 'stock' || !!mediaUploading}
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
               >
                 <Plus className="h-4 w-4" />
@@ -3101,28 +3822,173 @@ export function PartsCatalogPageClient({
       )}
 
       {priceDetailItem && (
-        <div className={PARTS_MODAL_BACKDROP}>
-          <div className={`${PARTS_MODAL_PANEL} max-w-lg`}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">{priceDetailItem.itemName}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Choose any option. Lowest price is first; others by closest location.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPriceDetailItem(null);
-                  setSellerMapListingId(null);
-                }}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-              >
-                Close
-              </button>
-            </div>
+        <div className={PARTS_MODAL_BACKDROP} onClick={closeMarketplaceDetail}>
+          <div
+            className={`${PARTS_MODAL_PANEL} max-w-2xl`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const detailImages = collectCatalogDetailImages(priceDetailItem);
+              const safeImageIndex = Math.min(
+                detailModalImageIndex,
+                Math.max(0, detailImages.length - 1)
+              );
+              const detailCondition = pickCatalogItemCondition(priceDetailItem);
+              const detailVerified = catalogNeedsVerification(priceDetailItem);
+              const DetailCategoryIcon = categoryIcon(priceDetailItem.category);
+              const partNum = priceDetailItem.listings.find((l) => l.partNumber)?.partNumber;
+              const brand = priceDetailItem.listings.find((l) => l.brand)?.brand;
+              return (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
+                        {priceDetailItem.itemName}
+                      </h2>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                          <DetailCategoryIcon className="h-3.5 w-3.5" />
+                          {PARTS_CATEGORY_LABELS[priceDetailItem.category]}
+                        </span>
+                        {detailCondition && (
+                          <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white">
+                            {PARTS_CONDITION_LABELS[detailCondition]}
+                          </span>
+                        )}
+                        {detailVerified && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white">
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Verified listing
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeMarketplaceDetail}
+                      className="shrink-0 rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                      aria-label="Close"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
 
-            <div className="mt-5 space-y-3">
+                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                    <div className="relative flex h-44 items-center justify-center sm:h-52">
+                      {detailImages[safeImageIndex] ? (
+                        <img
+                          src={detailImages[safeImageIndex]}
+                          alt=""
+                          className="max-h-full max-w-full object-contain object-center"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                          <DetailCategoryIcon className="h-12 w-12 opacity-50" />
+                          <span className="text-sm">No photos for this item</span>
+                        </div>
+                      )}
+                      {detailImages.length > 1 && (
+                        <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDetailModalImageIndex(
+                                (safeImageIndex - 1 + detailImages.length) % detailImages.length
+                              )
+                            }
+                            className="rounded-full bg-black/55 px-2.5 py-1 text-sm font-medium text-white hover:bg-black/70"
+                          >
+                            ‹
+                          </button>
+                          <span className="rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white">
+                            {safeImageIndex + 1}/{detailImages.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDetailModalImageIndex((safeImageIndex + 1) % detailImages.length)
+                            }
+                            className="rounded-full bg-black/55 px-2.5 py-1 text-sm font-medium text-white hover:bg-black/70"
+                          >
+                            ›
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {detailImages.length > 1 && (
+                      <div className="flex gap-1 overflow-x-auto border-t border-slate-200 bg-white p-2">
+                        {detailImages.map((url, thumbIndex) => (
+                          <button
+                            key={url}
+                            type="button"
+                            onClick={() => setDetailModalImageIndex(thumbIndex)}
+                            className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${
+                              thumbIndex === safeImageIndex
+                                ? 'border-indigo-600'
+                                : 'border-transparent opacity-80 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={url} alt="" className="h-full w-full object-contain bg-slate-50" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                        From
+                      </dt>
+                      <dd className="mt-0.5 font-semibold text-slate-900">
+                        {formatMoney(priceDetailItem.lowestPrice)}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                        Available
+                      </dt>
+                      <dd className="mt-0.5 font-semibold text-slate-900">
+                        {priceDetailItem.totalAvailable}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                        Sellers
+                      </dt>
+                      <dd className="mt-0.5 font-semibold text-slate-900">
+                        {priceDetailItem.supplierCount}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                        Options
+                      </dt>
+                      <dd className="mt-0.5 font-semibold text-slate-900">
+                        {priceDetailItem.listingCount}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {(partNum || brand) && (
+                    <p className="mt-3 text-sm text-slate-600">
+                      {partNum ? <span className="font-medium">Part #{partNum}</span> : null}
+                      {partNum && brand ? ' · ' : null}
+                      {brand ? <span>{brand}</span> : null}
+                    </p>
+                  )}
+
+                  <h3 className="mt-6 text-sm font-semibold text-slate-900">
+                    Seller options
+                    <span className="ml-2 font-normal text-slate-500">
+                      Lowest price first, then by distance
+                    </span>
+                  </h3>
+                </>
+              );
+            })()}
+
+            <div className="mt-3 space-y-3">
               {priceDetailItem.listings.map((listing, index) => {
                 const isLowest = listing.unitPrice === priceDetailItem.lowestPrice;
                 const isStaff =
@@ -3142,6 +4008,7 @@ export function PartsCatalogPageClient({
                     ? 'Lowest price'
                     : 'Lowest price · closer'
                   : `Option ${index + 1}`;
+                const listingThumb = listingImageUrls(listing)[0];
                 return (
                   <div
                     key={listing.id}
@@ -3151,7 +4018,17 @@ export function PartsCatalogPageClient({
                         : 'border-slate-200 bg-slate-50 text-slate-700'
                     }`}
                   >
-                    <div className="min-w-0">
+                    <div className="flex gap-3">
+                      {listingThumb ? (
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/80 bg-white">
+                          <img
+                            src={listingThumb}
+                            alt=""
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
                       <p className="font-medium">{optionLabel}</p>
                       <p className="mt-0.5 text-base font-semibold">
                         {formatMoney(listing.unitPrice)}
@@ -3182,13 +4059,28 @@ export function PartsCatalogPageClient({
                       )}
                       <p className="mt-1 text-xs opacity-80">
                         {listing.availableQuantity} available
+                        {listing.itemCondition
+                          ? ` · ${PARTS_CONDITION_LABELS[listing.itemCondition]}`
+                          : ''}
                         {listing.brand ? ` · ${listing.brand}` : ''}
                         {listing.partNumber ? ` · #${listing.partNumber}` : ''}
                         {distanceBits.length ? ` · ${distanceBits.join(' · ')}` : ''}
                       </p>
+                      {listing.requiresVerification && listing.verificationVideoFile && (
+                        <a
+                          href={partsCatalogMediaUrl(listing.verificationVideoFile, 'video') ?? '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-700 underline underline-offset-2"
+                        >
+                          <Video className="h-3.5 w-3.5" />
+                          View working video
+                        </a>
+                      )}
                       {listing.notes?.trim() && (
                         <p className="mt-1 text-xs opacity-70">Notes: {listing.notes.trim()}</p>
                       )}
+                      </div>
                     </div>
                     {isStaff && mapOpen && listing.supplierMapEmbedUrl && (
                       <div className="mt-3 space-y-2">
@@ -3239,10 +4131,7 @@ export function PartsCatalogPageClient({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setPriceDetailItem(null);
-                  setSellerMapListingId(null);
-                }}
+                onClick={closeMarketplaceDetail}
                 className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Close
@@ -3273,6 +4162,19 @@ export function PartsCatalogPageClient({
             </div>
 
             <div className="mt-5 grid gap-4">
+              {(requestListing?.requiresVerification ||
+                requestItem.listings.some((l) => l.requiresVerification)) && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+                  <p className="flex items-center gap-2 font-medium">
+                    <ShieldCheck className="h-4 w-4" />
+                    Verified listing
+                  </p>
+                  <p className="mt-1 text-xs text-emerald-900/80">
+                    This item may require seller verification. Full devices include a working-condition
+                    video when provided by the seller.
+                  </p>
+                </div>
+              )}
               {requestListing ? (
                 <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
                   <p className="font-medium">Selected option</p>
@@ -3300,7 +4202,7 @@ export function PartsCatalogPageClient({
                   <button
                     type="button"
                     onClick={() => {
-                      setPriceDetailItem(requestItem);
+                      openMarketplaceDetail(requestItem);
                       setRequestItem(null);
                       setRequestListing(null);
                     }}
@@ -3332,7 +4234,7 @@ export function PartsCatalogPageClient({
                   <button
                     type="button"
                     onClick={() => {
-                      setPriceDetailItem(requestItem);
+                      openMarketplaceDetail(requestItem);
                       setRequestItem(null);
                     }}
                     className="mt-2 block text-xs font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"

@@ -15,6 +15,7 @@ import {
   listInventoryForClient,
   updateInventoryListing,
 } from '@/lib/parts-catalog';
+import { partsCatalogMediaUrl } from '@/lib/parts-catalog-categories';
 import {
   normalizePosProductKind,
   tracksPosStock,
@@ -124,18 +125,23 @@ async function listPartsAsPosProducts(
   const includeOutOfStock = options?.includeOutOfStock === true;
   return listings
     .filter((row) => includeOutOfStock || row.availableQuantity > 0)
-    .map((row) => ({
-      id: row.id,
-      sku: row.partNumber ?? null,
-      name: row.itemName,
-      description: [row.brand, row.notes].filter(Boolean).join(' · ') || null,
-      unitPrice: Number(row.unitPrice) || 0,
-      costPrice: 0,
-      quantity: Number(row.quantity) || 0,
-      availableQuantity: Number(row.availableQuantity) || 0,
-      kind: 'physical' as const,
-      source: 'parts' as const,
-    }))
+    .map((row) => {
+      const coverFile =
+        row.imageFiles?.[0] ?? (row.imageFile?.trim() ? row.imageFile.trim() : null);
+      return {
+        id: row.id,
+        sku: row.partNumber ?? null,
+        name: row.itemName,
+        description: [row.brand, row.notes].filter(Boolean).join(' · ') || null,
+        unitPrice: Number(row.unitPrice) || 0,
+        costPrice: 0,
+        quantity: Number(row.quantity) || 0,
+        availableQuantity: Number(row.availableQuantity) || 0,
+        kind: 'physical' as const,
+        source: 'parts' as const,
+        partsImageUrl: coverFile ? partsCatalogMediaUrl(coverFile, 'image') : null,
+      };
+    })
     .filter((row) => matchesSearch(row, search));
 }
 
@@ -569,6 +575,9 @@ export async function updatePosInventoryLine(
       availableQuantity,
     });
     if (!updated) throw new Error('Parts listing not found');
+    const coverFile =
+      updated.imageFiles?.[0] ??
+      (updated.imageFile?.trim() ? updated.imageFile.trim() : null);
     return {
       id: updated.id,
       sku: updated.partNumber ?? null,
@@ -580,6 +589,7 @@ export async function updatePosInventoryLine(
       availableQuantity: Number(updated.availableQuantity) || 0,
       kind: 'physical',
       source: 'parts',
+      partsImageUrl: coverFile ? partsCatalogMediaUrl(coverFile, 'image') : null,
     };
   }
   return updatePosProduct(mode, id, input);

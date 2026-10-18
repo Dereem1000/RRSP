@@ -24,11 +24,14 @@ export type ManagementSystemClientRow = {
   activationDate: string | null;
   provisionStatus?: GateStatus;
   installStatus?: GateStatus;
+  installerStatus?: GateStatus;
   deliverableStatus?: DeliverableStatus;
   provisionRunId?: string;
   installRunId?: string;
+  installerRunId?: string;
   provisionAt?: string;
   installAt?: string;
+  installerAt?: string;
 };
 
 export type ManagementSystemOverview = {
@@ -67,11 +70,14 @@ export type ClientSystemActivation = {
   expirationDate: string | null;
   provisionStatus?: GateStatus;
   installStatus?: GateStatus;
+  installerStatus?: GateStatus;
   deliverableStatus?: DeliverableStatus;
   provisionRunId?: string;
   installRunId?: string;
+  installerRunId?: string;
   provisionAt?: string;
   installAt?: string;
+  installerAt?: string;
 };
 
 export type GroupedManagementClient = {
@@ -110,11 +116,14 @@ export function buildGroupedManagementClients(
         expirationDate: row.expirationDate,
         provisionStatus: row.provisionStatus,
         installStatus: row.installStatus,
+        installerStatus: row.installerStatus,
         deliverableStatus: row.deliverableStatus,
         provisionRunId: row.provisionRunId,
         installRunId: row.installRunId,
+        installerRunId: row.installerRunId,
         provisionAt: row.provisionAt,
         installAt: row.installAt,
+        installerAt: row.installerAt,
       });
     }
   }

@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "User management module for POS system with role-based access control and PIN authentication",
   "main": "index.js",
-  "author": "POS System",
-  "license": "MIT",
+  "author": "Computer Dynamics",
+  "license": "UNLICENSED",
   "dependencies": {
     "bcryptjs": "^2.4.3"
   },

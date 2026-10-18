@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Advanced reporting module with enhanced filtering, analytics, export capabilities, and multi-tenant support",
   "main": "index.js",
-  "author": "POS System",
-  "license": "MIT",
+  "author": "Computer Dynamics",
+  "license": "UNLICENSED",
   "dependencies": {},
   "posDependencies": {
     "core": ">=1.0.0"

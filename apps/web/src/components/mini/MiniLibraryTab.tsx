@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, FolderOpen, Loader2, Package, RefreshCw, Search } from 'lucide-react';
+import { BookOpen, FolderOpen, Library, Loader2, Package, RefreshCw, Search } from 'lucide-react';
+import { CatalogLibraryTab } from '@/components/mini/catalog-library/CatalogLibraryTab';
 import { apiErrorMessage, parseFetchJsonResponse } from '@/lib/parse-fetch-json';
 import { useAdaptiveMiniPoll } from '@/lib/use-adaptive-mini-poll';
 
-type LibraryModule = 'knowledge' | 'updates';
+type LibraryModule = 'knowledge' | 'updates' | 'catalog';
 type KnowledgePane = 'project' | 'general';
 
 type ProjectEntry = {
@@ -70,6 +71,28 @@ type LibraryPayload = {
       release_date?: string;
     }>;
   };
+  module_store?: {
+    total?: number;
+    source_count?: number;
+    sources?: Array<{ project?: string; modules_path?: string }>;
+    entries?: Array<{
+      id?: string;
+      entry_id?: string;
+      name?: string;
+      version?: string;
+      description?: string;
+      file_name?: string;
+    }>;
+  };
+  pos_catalog?: {
+    policy?: {
+      federation_enabled?: boolean;
+      consensus_mode?: 'two_stores' | 'majority' | 'min_count';
+      min_agree_count?: number;
+    };
+    canonical_total?: number;
+    sharing_connections?: number;
+  };
 };
 
 function sourcePath(source: { path?: string; index_folder?: string } | string): string {
@@ -110,14 +133,20 @@ async function libraryGet(): Promise<LibraryPayload> {
 }
 
 async function libraryFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`/api/mini/library/${path}`, { cache: 'no-store', credentials: 'include' });
+  const { buildMiniLibraryApiUrl } = await import('@/lib/mini-library-api');
+  const res = await fetch(buildMiniLibraryApiUrl(path), {
+    cache: 'no-store',
+    credentials: 'include',
+    headers: { 'Cache-Control': 'no-cache' },
+  });
   const data = await parseFetchJsonResponse<T & { error?: string }>(res);
   if (!res.ok) throw new Error(apiErrorMessage(data, `Request failed (${res.status})`));
   return data as T;
 }
 
 async function libraryPost<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch(`/api/mini/library/${path}`, {
+  const { buildMiniLibraryApiUrl } = await import('@/lib/mini-library-api');
+  const res = await fetch(buildMiniLibraryApiUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -486,6 +515,7 @@ export function MiniLibraryTab() {
           [
             ['knowledge', 'Mini Knowledge Base', BookOpen],
             ['updates', 'Update Library', Package],
+            ['catalog', 'Catalog Library', Library],
           ] as const
         ).map(([id, label, Icon]) => (
           <button
@@ -511,7 +541,20 @@ export function MiniLibraryTab() {
         <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">{status}</div>
       )}
 
-      {module === 'knowledge' ? (
+      {module === 'catalog' ? (
+        <CatalogLibraryTab
+          moduleStore={payload?.module_store}
+          posCatalogSummary={payload?.pos_catalog}
+          busy={busy}
+          runAction={runAction}
+          libraryPost={libraryPost}
+          libraryFetch={libraryFetch}
+          setStatus={setStatus}
+          onRefresh={async () => {
+            await load();
+          }}
+        />
+      ) : module === 'knowledge' ? (
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">

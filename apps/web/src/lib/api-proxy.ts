@@ -98,7 +98,9 @@ export async function proxyToExpressApi(req: NextRequest, pathSegments: string[]
     return new NextResponse(null, { status: 499 });
   }
 
-  const pathname = pathSegments.map(encodeURIComponent).join('/');
+  const pathname = pathSegments
+    .map((segment) => encodeURIComponent(decodeURIComponent(segment)))
+    .join('/');
   const target = `${API_ORIGIN}/api/${pathname}${req.nextUrl.search}`;
 
   const headers = new Headers();

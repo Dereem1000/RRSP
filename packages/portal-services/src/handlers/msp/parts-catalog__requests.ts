@@ -35,6 +35,7 @@ export async function POSTHandler(ctx: ApiContext): Promise<ApiResult> {
       notes: typeof body.notes === 'string' ? body.notes : null,
       preferredInventoryId,
       excludeSupplierClientId: stockOwner?.id ? String(stockOwner.id) : null,
+      category: typeof body.category === 'string' ? body.category : null,
     });
 
     return {

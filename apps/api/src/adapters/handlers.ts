@@ -85,6 +85,15 @@ export function buildApiContext(req: Request, session: TokenPayload | null = nul
     if (value === undefined) continue;
     query[key] = Array.isArray(value) ? value.map(String) : String(value);
   }
+  if (Object.keys(query).length === 0) {
+    const original = String(req.originalUrl || '');
+    const qIndex = original.indexOf('?');
+    if (qIndex >= 0) {
+      for (const [key, value] of new URLSearchParams(original.slice(qIndex + 1))) {
+        query[key] = value;
+      }
+    }
+  }
 
   const urlPath = req.originalUrl.split('?')[0] || req.path;
   const parsedCookies = req.cookies as Record<string, string> | undefined;

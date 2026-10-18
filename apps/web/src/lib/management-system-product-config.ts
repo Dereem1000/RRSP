@@ -4,6 +4,7 @@ import {
   inferProjectRootFromDeliverable,
   resolveDeliverableTemplatePath,
 } from '@/lib/product-catalog-paths';
+import { getInstallerInfoForPath, resolveConfiguredInstallerPath } from '@/lib/product-installer-paths';
 
 export {
   DELIVERABLE_TEMPLATE_FILENAME,
@@ -18,7 +19,13 @@ export const CONFIG_CATEGORY = 'management_systems';
 export type ProductCatalogEntry = {
   projectRoot: string;
   deliverableTemplatePath: string;
+  /** Absolute path to installer (.exe, .msi, .zip) or empty to use data/product-installers/{feature}.exe */
+  productInstallerPath?: string;
   systemKey?: string;
+  /** Populated on read — true when the resolved installer file exists on disk */
+  installerAvailable?: boolean;
+  /** Populated on read — basename of the resolved installer file when available */
+  installerResolvedFile?: string;
 };
 
 export type ProductCatalog = Partial<Record<ActivationFeature, ProductCatalogEntry>>;
@@ -64,15 +71,27 @@ function normalizeCatalogEntry(
     projectRoot = inferProjectRootFromDeliverable(deliverableTemplatePath);
   }
 
-  if (!projectRoot && !deliverableTemplatePath) return null;
+  const productInstallerPath = String(row.productInstallerPath || '').trim();
 
-  return {
+  if (!projectRoot && !deliverableTemplatePath && !productInstallerPath) return null;
+
+  const entry: ProductCatalogEntry = {
     projectRoot,
     deliverableTemplatePath: projectRoot
       ? resolveDeliverableTemplatePath(projectRoot, deliverableTemplatePath)
       : deliverableTemplatePath,
+    productInstallerPath,
     systemKey: String(row.systemKey || feature).trim() || feature,
   };
+
+  const installerPath = resolveConfiguredInstallerPath(entry, feature);
+  const installerInfo = getInstallerInfoForPath(installerPath, feature);
+  entry.installerAvailable = Boolean(installerInfo?.available);
+  if (installerInfo?.available) {
+    entry.installerResolvedFile = installerInfo.fileName;
+  }
+
+  return entry;
 }
 
 function mergeCatalog(stored: ProductCatalog | null): ProductCatalog {
@@ -86,6 +105,9 @@ function mergeCatalog(stored: ProductCatalog | null): ProductCatalog {
           projectRoot: String(row.projectRoot || merged[feature]?.projectRoot || '').trim(),
           deliverableTemplatePath: String(
             row.deliverableTemplatePath || merged[feature]?.deliverableTemplatePath || '',
+          ).trim(),
+          productInstallerPath: String(
+            row.productInstallerPath || merged[feature]?.productInstallerPath || '',
           ).trim(),
           systemKey: String(row.systemKey || merged[feature]?.systemKey || feature).trim() || feature,
         },
@@ -108,6 +130,7 @@ export async function getProductConfig(feature: ActivationFeature): Promise<Prod
     catalog[feature] ?? {
       projectRoot: '',
       deliverableTemplatePath: '',
+      productInstallerPath: '',
       systemKey: feature,
     }
   );
@@ -119,7 +142,14 @@ export async function saveProductCatalog(catalog: ProductCatalog): Promise<Produ
     const row = catalog[feature];
     if (!row) continue;
     const entry = normalizeCatalogEntry(row, feature);
-    if (entry) normalized[feature] = entry;
+    if (entry) {
+      const {
+        installerAvailable: _installerAvailable,
+        installerResolvedFile: _installerResolvedFile,
+        ...toSave
+      } = entry;
+      normalized[feature] = toSave;
+    }
   }
   await SystemConfig.setConfig(CONFIG_KEY_PRODUCT_CATALOG, normalized, 'json', CONFIG_CATEGORY);
   return mergeCatalog(normalized);

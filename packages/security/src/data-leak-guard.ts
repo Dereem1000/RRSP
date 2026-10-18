@@ -28,6 +28,24 @@ export type SensitiveDataCategory =
   | 'settings_secrets'
   | 'license_sensitive';
 
+/** Routes where large list payloads may indicate export (not admin Security UI pages). */
+const EXFIL_VOLUME_CATEGORIES: SensitiveDataCategory[] = [
+  'backup_download',
+  'backup_restore',
+  'user_directory',
+  'client_directory',
+  'ticket_directory',
+  'license_sensitive',
+];
+
+function isStaffRole(role?: string | null): boolean {
+  return role === 'admin' || role === 'technician';
+}
+
+function descriptionIndicatesExportCategory(description: string): boolean {
+  return EXFIL_VOLUME_CATEGORIES.some((c) => description.includes(`: ${c} `));
+}
+
 export type DataAccessAuditInput = {
   method: string;
   path: string;
@@ -148,16 +166,19 @@ function actorKey(input: Pick<DataAccessAuditInput, 'userId' | 'ip'>): string {
   return `ip:${input.ip || 'unknown'}`;
 }
 
-async function countRecentDataAccess(actor: string, windowMs: number): Promise<number> {
+async function countRecentExportAccess(actor: string, windowMs: number): Promise<number> {
   const since = new Date(Date.now() - windowMs);
-  return SecurityEvent.count({
+  const events = await SecurityEvent.findAll({
     where: {
       ...whereCreatedSince(since),
       isActive: true,
       eventType: 'data_access',
       description: { [Op.like]: `%(${actor})%` },
     },
+    attributes: ['description'],
+    limit: 200,
   });
+  return events.filter((ev) => descriptionIndicatesExportCategory(ev.description)).length;
 }
 
 async function maybeRaiseExfiltrationAlert(input: {
@@ -225,11 +246,6 @@ export async function auditSensitiveApiResult(input: DataAccessAuditInput): Prom
   const actor = actorKey(input);
   const pathLabel = normalizePathForMatch(input.urlPath || input.path);
 
-  const highVolumeCategory =
-    category === 'backup_download' ||
-    category === 'backup_restore' ||
-    category === 'security_audit';
-
   const severity =
     category === 'backup_download' || category === 'backup_restore' ? 'high' : 'medium';
 
@@ -251,9 +267,15 @@ export async function auditSensitiveApiResult(input: DataAccessAuditInput): Prom
     outcome: 'allowed',
   });
 
-  const accessCount = await countRecentDataAccess(actor, thresholds.burstWindowMs);
+  const accessCount = await countRecentExportAccess(actor, thresholds.burstWindowMs);
 
-  if (bytes >= thresholds.bytesThreshold) {
+  const staff = isStaffRole(input.userRole);
+
+  if (
+    bytes >= thresholds.bytesThreshold &&
+    EXFIL_VOLUME_CATEGORIES.includes(category) &&
+    !(staff && category === 'backup_download')
+  ) {
     await maybeRaiseExfiltrationAlert({
       actor,
       ip: input.ip,
@@ -270,7 +292,11 @@ export async function auditSensitiveApiResult(input: DataAccessAuditInput): Prom
     return;
   }
 
-  if (recordCount >= thresholds.recordsThreshold && highVolumeCategory) {
+  if (
+    !staff &&
+    recordCount >= thresholds.recordsThreshold &&
+    EXFIL_VOLUME_CATEGORIES.includes(category)
+  ) {
     await maybeRaiseExfiltrationAlert({
       actor,
       ip: input.ip,
@@ -324,6 +350,7 @@ export async function runDataLeakBurstMonitor(): Promise<{ alerts: number }> {
   for (const ev of events) {
     const match = ev.description.match(/\((user:\d+|ip:[^)]+)\)\s*$/);
     const key = match?.[1] ?? `ip:${ev.ipAddress ?? 'unknown'}`;
+    if (!descriptionIndicatesExportCategory(ev.description)) continue;
     const cur = byActor.get(key) ?? { count: 0, ip: ev.ipAddress ?? 'unknown', userId: ev.userId };
     cur.count++;
     byActor.set(key, cur);

@@ -76,6 +76,7 @@ type ProvisionSystem = {
   }>;
   run_defaults?: ProvisionRunDefaults;
   install_connections?: InstallConnection[];
+  windows_installer?: { supported?: boolean; build_script?: string; output_dir?: string };
   checklist?: ProvisionChecklist;
 };
 
@@ -139,6 +140,13 @@ const PROVISION_UI_REV = 'async-v4';
 
 const FINAL_PROVISION_RESULTS = new Set(['PASSED', 'PASSED_WITH_WARNINGS', 'FAILED']);
 
+type InstallerGateProgress = {
+  percent?: number;
+  phase_label?: string;
+  message?: string;
+  state?: string;
+};
+
 function hasProvisionRunOutcome(body: Record<string, unknown>): boolean {
   if (typeof body.exit_code === 'number') return true;
   const label = String(body.audit_result ?? body.result ?? '').trim().toUpperCase();
@@ -158,9 +166,9 @@ function resolveProvisionPollJobId(res: Response, body: Record<string, unknown>)
 
 async function waitForProvisionRunJob(
   jobId: string,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, progress?: InstallerGateProgress | null) => void,
 ): Promise<Record<string, unknown>> {
-  const deadline = Date.now() + 20 * 60_000;
+  const deadline = Date.now() + 65 * 60_000;
   let polls = 0;
   while (Date.now() < deadline) {
     const res = await fetch(
@@ -174,15 +182,31 @@ async function waitForProvisionRunJob(
     }
     const jobStatus = String(body.status || '').toLowerCase();
     if (jobStatus === 'running') {
-      const elapsed = Math.round((polls * 3));
-      onProgress?.(`Provision audit running on Mini… (${elapsed}s)`);
+      const rawProgress = body.progress;
+      const progress =
+        rawProgress && typeof rawProgress === 'object' && !Array.isArray(rawProgress)
+          ? (rawProgress as InstallerGateProgress)
+          : null;
+      if (progress?.percent != null) {
+        const label = progress.phase_label || 'Installer gate';
+        const detail = progress.message ? ` — ${progress.message}` : '';
+        onProgress?.(`${label} — ${progress.percent}%${detail}`, progress);
+      } else {
+        const elapsed = Math.round(polls * 3);
+        onProgress?.(`Provision audit running on Mini… (${elapsed}s)`, null);
+      }
       await new Promise((resolve) => window.setTimeout(resolve, 3000));
       continue;
     }
     if (jobStatus === 'completed' || jobStatus === 'failed') {
       const normalized = normalizeProvisionRunBody(body);
-      if (normalized.error && jobStatus === 'failed') {
-        throw new Error(String(normalized.error));
+      const errText = String(normalized.error || body.error || '').trim();
+      if (jobStatus === 'failed' && errText) {
+        throw new Error(
+          errText.includes('Invalid phase') && errText.includes('Installer')
+            ? `${errText} Stop and restart the Mini app, then run Installer again.`
+            : errText,
+        );
       }
       if (!hasProvisionRunOutcome(normalized)) {
         throw new Error(
@@ -237,6 +261,10 @@ function checklistStatusClass(status?: string) {
 const PROVISION_RUN_STEPS: Record<string, string[]> = {
   Readiness: ['Readiness — rules 1–5 on dev tree'],
   Package: ['Package — folder, layout, and security'],
+  Installer: [
+    'Ensure provision package is current',
+    'Build Windows installer — scripts/build-exe-installer.ps1 → installer/output',
+  ],
   Install: ['Install — live site via Mini connection (health, changelog, Mini checks)'],
   Complete: [
     'Readiness — rules 1–5 on dev tree',
@@ -255,6 +283,7 @@ function filterInstallConnections(connections: InstallConnection[] = [], custome
 
 function provisionPhasesForRun(phase: string) {
   if (phase === 'Complete') return ['Readiness', 'Package'];
+  if (phase === 'Installer') return ['Installer'];
   return [phase];
 }
 
@@ -409,6 +438,7 @@ export function ProvisioningPanel() {
   const [version, setVersion] = useState('');
   const [allowWarnings, setAllowWarnings] = useState(false);
   const [skipReadiness, setSkipReadiness] = useState(false);
+  const [refreshProvisionForInstaller, setRefreshProvisionForInstaller] = useState(false);
   const [registerPath, setRegisterPath] = useState('');
   const [registerLabel, setRegisterLabel] = useState('');
   const [reportMarkdown, setReportMarkdown] = useState('Run a provision gate from Mini to see the audit report here.');
@@ -417,13 +447,27 @@ export function ProvisioningPanel() {
   const reportPanelRef = useRef<HTMLDivElement | null>(null);
   const [checklistOverride, setChecklistOverride] = useState<ProvisionChecklist | null>(null);
   const [runProgressStep, setRunProgressStep] = useState(0);
+  const [runInstallerProgress, setRunInstallerProgress] = useState<InstallerGateProgress | null>(null);
 
   const prov = data?.provisioning;
   const systems = dedupeProvisionSystems(prov?.systems ?? []);
   const activeSystem = systems.find((s) => s.project_root === selectedRoot) ?? systems[0];
   const displayChecklist = checklistOverride ?? activeSystem?.checklist;
   const runSteps = PROVISION_RUN_STEPS[phase] ?? ['Running provision gate…'];
-  const showConnectionField = phase === 'Install' && !installRoot.trim();
+  const isInstallerPhase = phase === 'Installer';
+  const isInstallPhase = phase === 'Install';
+  const isPackagePhase = phase === 'Package';
+  const isCompletePhase = phase === 'Complete';
+  const showConnectionField = isInstallPhase && !installRoot.trim();
+  const showInstallerOptions = isInstallerPhase;
+  const showCustomerName = !isInstallerPhase;
+  const showVersion = isInstallerPhase || isPackagePhase || isCompletePhase;
+  const showPackagePath = isInstallerPhase || isPackagePhase || isCompletePhase;
+  const showInstallRoot = isInstallPhase;
+  const showPublicUrl = isInstallPhase;
+  const showSkipReadiness = isCompletePhase;
+  const showAllowWarnings = !isInstallerPhase;
+  const installerSupported = activeSystem?.windows_installer?.supported !== false;
   const installConnections = filterInstallConnections(
     activeSystem?.install_connections ?? [],
     customerName,
@@ -665,7 +709,7 @@ export function ProvisioningPanel() {
   }, [activeSystem?.id, recentRuns, loadReport, selectedReportKey]);
 
   useEffect(() => {
-    if (busy !== 'run') return undefined;
+    if (busy !== 'run' || phase === 'Installer') return undefined;
     const steps = PROVISION_RUN_STEPS[phase] ?? [];
     if (steps.length <= 1) return undefined;
     const timer = window.setInterval(() => {
@@ -689,6 +733,7 @@ export function ProvisioningPanel() {
     }
     const templateItems = activeSystem?.checklist?.items ?? [];
     setRunProgressStep(0);
+    setRunInstallerProgress(null);
     if (templateItems.length) {
       setChecklistOverride(buildRunningChecklist(templateItems, phase, 0));
     } else {
@@ -716,6 +761,9 @@ export function ProvisioningPanel() {
         runBody.connection_id = connectionId;
         runBody.public_url = publicUrl;
       }
+      if (phase === 'Installer') {
+        runBody.refresh_provision = refreshProvisionForInstaller;
+      }
 
       const res = await fetch('/api/developer-toolbox/provisioning', {
         method: 'POST',
@@ -732,7 +780,10 @@ export function ProvisioningPanel() {
         setMessage(
           `Provision audit started on Mini (job ${pollJobId.slice(0, 8)}…) — do not close this page…`,
         );
-        body = await waitForProvisionRunJob(pollJobId, (msg) => setMessage(msg));
+        body = await waitForProvisionRunJob(pollJobId, (msg, progress) => {
+          setMessage(msg);
+          if (progress) setRunInstallerProgress(progress);
+        });
       } else if (!hasProvisionRunOutcome(body)) {
         throw new Error(
           'Provision run returned no job id and no result. Hard-refresh this page (Ctrl+Shift+R) — you may be on a cached UI build.',
@@ -772,6 +823,7 @@ export function ProvisioningPanel() {
     } finally {
       setChecklistOverride(null);
       setRunProgressStep(0);
+      setRunInstallerProgress(null);
       setBusy(null);
     }
   };
@@ -976,46 +1028,78 @@ export function ProvisioningPanel() {
                   <option value="Readiness">Readiness only — rules 1–5 on dev tree</option>
                   <option value="Package">Package only — scan provision folder</option>
                   <option value="Install">Install only — live site after customer install</option>
+                  <option value="Installer">Installer — build Windows .exe to installer/output</option>
                 </select>
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">Customer name</span>
-                <input className={inputClass} value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">Version</span>
-                <input className={inputClass} value={version} onChange={(e) => setVersion(e.target.value)} />
-              </label>
-              <label className="block text-sm sm:col-span-2 xl:col-span-1">
-                <span className="mb-1 block font-medium text-slate-700">Package path</span>
-                <input
-                  className={inputClass}
-                  value={packagePath}
-                  placeholder={activeSystem?.run_defaults?.suggested_package_path || 'Build provision package first (Step 1)'}
-                  onChange={(e) => setPackagePath(e.target.value)}
-                />
-                {!packagePath.trim() && activeSystem?.run_defaults?.suggested_package_path && (
-                  <span className="mt-1 block text-xs text-slate-500">
-                    No package folder yet — build at{' '}
-                    <code className="rounded bg-slate-100 px-1">{activeSystem.run_defaults.suggested_package_path}</code>
-                    {' '}(or leave Package path empty and run Full gate to auto-build)
-                  </span>
-                )}
-                {packagePath.trim() && (
-                  <span className="mt-1 block text-xs text-slate-500">
-                    Auditing package: <code className="rounded bg-slate-100 px-1">{packagePath}</code>
+                {showInstallerOptions && !installerSupported && (
+                  <span className="mt-1 block text-xs text-amber-700">
+                    This product has no <code className="rounded bg-amber-50 px-1">scripts/build-exe-installer.ps1</code>{' '}
+                    yet (see docs/WINDOWS_INSTALLER_BUILD.md).
                   </span>
                 )}
               </label>
-              <label className="block text-sm sm:col-span-2 xl:col-span-1">
-                <span className="mb-1 block font-medium text-slate-700">Install root</span>
-                <input
-                  className={inputClass}
-                  placeholder="Leave empty for remote Install gate via Mini connection"
-                  value={installRoot}
-                  onChange={(e) => setInstallRoot(e.target.value)}
-                />
-              </label>
+              {showCustomerName && (
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-slate-700">Customer name</span>
+                  <input className={inputClass} value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                </label>
+              )}
+              {showVersion && (
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-slate-700">Version</span>
+                  <input
+                    className={inputClass}
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    placeholder={isInstallerPhase ? 'Used to auto-build provision if needed' : undefined}
+                  />
+                </label>
+              )}
+              {showPackagePath && (
+                <label className="block text-sm sm:col-span-2 xl:col-span-1">
+                  <span className="mb-1 block font-medium text-slate-700">Package path</span>
+                  <input
+                    className={inputClass}
+                    value={packagePath}
+                    placeholder={
+                      activeSystem?.run_defaults?.suggested_package_path ||
+                      (isInstallerPhase
+                        ? 'Leave empty to auto-build, or pick existing provision folder'
+                        : 'Build provision package first (Step 1)')
+                    }
+                    onChange={(e) => setPackagePath(e.target.value)}
+                  />
+                  {isInstallerPhase && (
+                    <span className="mt-1 block text-xs text-slate-500">
+                      Mini must find a provision folder before building the .exe. The installer uses the{' '}
+                      <strong>latest</strong> <code className="rounded bg-slate-100 px-1">provision/*-provision-v*</code>{' '}
+                      under this product root.
+                    </span>
+                  )}
+                  {!isInstallerPhase && !packagePath.trim() && activeSystem?.run_defaults?.suggested_package_path && (
+                    <span className="mt-1 block text-xs text-slate-500">
+                      No package folder yet — build at{' '}
+                      <code className="rounded bg-slate-100 px-1">{activeSystem.run_defaults.suggested_package_path}</code>
+                      {' '}(or leave Package path empty and run Full gate to auto-build)
+                    </span>
+                  )}
+                  {!isInstallerPhase && packagePath.trim() && (
+                    <span className="mt-1 block text-xs text-slate-500">
+                      Auditing package: <code className="rounded bg-slate-100 px-1">{packagePath}</code>
+                    </span>
+                  )}
+                </label>
+              )}
+              {showInstallRoot && (
+                <label className="block text-sm sm:col-span-2 xl:col-span-1">
+                  <span className="mb-1 block font-medium text-slate-700">Install root</span>
+                  <input
+                    className={inputClass}
+                    placeholder="Leave empty for remote Install gate via Mini connection"
+                    value={installRoot}
+                    onChange={(e) => setInstallRoot(e.target.value)}
+                  />
+                </label>
+              )}
               {showConnectionField && (
                 <label className="block text-sm sm:col-span-2 xl:col-span-1">
                   <span className="mb-1 block font-medium text-slate-700">Mini connection</span>
@@ -1051,25 +1135,41 @@ export function ProvisioningPanel() {
                   )}
                 </label>
               )}
-              <label className="block text-sm sm:col-span-2 xl:col-span-1">
-                <span className="mb-1 block font-medium text-slate-700">Public URL</span>
-                <input
-                  className={inputClass}
-                  placeholder="Auto-filled from Mini connection"
-                  value={publicUrl}
-                  onChange={(e) => setPublicUrl(e.target.value)}
-                />
-              </label>
+              {showPublicUrl && (
+                <label className="block text-sm sm:col-span-2 xl:col-span-1">
+                  <span className="mb-1 block font-medium text-slate-700">Public URL</span>
+                  <input
+                    className={inputClass}
+                    placeholder="Auto-filled from Mini connection"
+                    value={publicUrl}
+                    onChange={(e) => setPublicUrl(e.target.value)}
+                  />
+                </label>
+              )}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={allowWarnings} onChange={(e) => setAllowWarnings(e.target.checked)} />
-                Allow warnings
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={skipReadiness} onChange={(e) => setSkipReadiness(e.target.checked)} />
-                Skip readiness
-              </label>
+              {showAllowWarnings && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={allowWarnings} onChange={(e) => setAllowWarnings(e.target.checked)} />
+                  Allow warnings
+                </label>
+              )}
+              {showSkipReadiness && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={skipReadiness} onChange={(e) => setSkipReadiness(e.target.checked)} />
+                  Skip readiness
+                </label>
+              )}
+              {showInstallerOptions && (
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={refreshProvisionForInstaller}
+                    onChange={(e) => setRefreshProvisionForInstaller(e.target.checked)}
+                  />
+                  Refresh provision package before build
+                </label>
+              )}
             </div>
             <button
               type="submit"
@@ -1247,7 +1347,29 @@ export function ProvisioningPanel() {
             )}
             {activeSystem && (
               <>
-                {busy === 'run' && (
+                {busy === 'run' && phase === 'Installer' && runInstallerProgress?.percent == null && (
+                  <p className="mt-2 text-xs font-medium text-indigo-700">Installer gate starting on Mini…</p>
+                )}
+                {busy === 'run' && runInstallerProgress?.percent != null && (
+                  <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2 text-xs font-medium text-indigo-900">
+                      <span>{runInstallerProgress.phase_label || 'Installer gate'}</span>
+                      <span className="tabular-nums">{runInstallerProgress.percent}%</span>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-indigo-100">
+                      <div
+                        className="h-2 rounded-full bg-indigo-600 transition-all duration-500"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, runInstallerProgress.percent ?? 0))}%`,
+                        }}
+                      />
+                    </div>
+                    {runInstallerProgress.message ? (
+                      <p className="mt-2 text-xs text-indigo-800/90">{runInstallerProgress.message}</p>
+                    ) : null}
+                  </div>
+                )}
+                {busy === 'run' && phase !== 'Installer' && (
                   <div className="mt-2 space-y-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
                     <p className="text-xs font-medium text-indigo-900">Provision gate running</p>
                     {runSteps.map((label, index) => (
@@ -1284,7 +1406,7 @@ export function ProvisioningPanel() {
                   </p>
                 )}
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                  {(['Readiness', 'Package', 'Install'] as const).map((phaseName) => {
+                  {(['Readiness', 'Package', 'Installer', 'Install'] as const).map((phaseName) => {
                     const items = (displayChecklist?.items ?? []).filter((item) => item.phase === phaseName);
                     if (items.length === 0) return null;
                     return (

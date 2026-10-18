@@ -15,7 +15,7 @@ export async function GET(
     return NextResponse.json({ success: false, message: 'Not found' }, { status: 404 });
   }
 
-  const body = fs.readFileSync(resolved.abs);
+  const body = new Uint8Array(fs.readFileSync(resolved.abs));
   return new NextResponse(body, {
     status: 200,
     headers: {
